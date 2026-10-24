@@ -1,0 +1,208 @@
+import type { GameView } from '../game/view';
+import { DEAL_STEP_MS } from '../net/protocol';
+import { dropZone } from './drag';
+
+export type Vec3 = [number, number, number];
+export type Zone = 'deck' | 'discard' | 'hand' | 'opp';
+
+export interface Target {
+  pos: Vec3;
+  /** Euler angles, order YXZ: yaw around the table, then tilt, then in-plane spin */
+  rot: Vec3;
+  zone: Zone;
+  interactive: boolean;
+  dim: boolean;
+  /** seconds to wait before the first flight (staggered deal) */
+  delay: number;
+  /** buried deep in the deck or the pile: not drawn at all */
+  hidden?: boolean;
+}
+
+export interface View {
+  portrait: boolean;
+}
+
+const PI = Math.PI;
+/** height of the endless deck stack, and how many real cards lie on top of it */
+export const DECK_TOP = 0.42;
+export const DECK_SHOWN = 3;
+
+/** Arena geometry: deck up-left of the pile, opponents along the far arc, you at the near edge. */
+export function arena(v: View) {
+  return v.portrait
+    ? { deck: [-1.35, 0, -0.95] as Vec3, discard: [0.75, 0, -0.45] as Vec3, rx: 2.85, rz: 4.5, hand: { y: 2.75, z: 6.75, maxW: 4.2, sp: 0.6, tilt: -0.85 } }
+    : { deck: [-2.45, 0, -1.25] as Vec3, discard: [0.25, 0, -0.15] as Vec3, rx: 6.1, rz: 3.5, hand: { y: 1.15, z: 4.35, maxW: 8.6, sp: 0.86, tilt: -0.55 } };
+}
+
+/**
+ * Shared with the render loop: where new cards appear (the deck) and where each player sits,
+ * so effects like the bombing run can aim without knowing the game.
+ */
+export const spawn = { pos: [-2.45, 0.6, -1.25] as Vec3, seats: [] as Vec3[] };
+
+/**
+ * Where each card actually is on screen right now, written by the card itself every frame.
+ * Online, a card can come back under a new id (fromId): it then starts from where the old one really was.
+ * After a rebuilt canvas the cards reappear where they were. A card that was never on screen has no entry,
+ * so it always starts from the deck.
+ */
+export const lastPlace = new Map<number, { pos: Vec3; quat: [number, number, number, number]; zone: Zone }>();
+
+/**
+ * Angle of player i around the table (+z is the near edge, angle π/2).
+ * Opponents are spread over the far half, left to right in turn order.
+ */
+export function seatAngle(g: GameView, i: number) {
+  const n = g.s.players.length;
+  const rel = (i - g.seat() + n) % n;
+  if (rel === 0) return PI / 2;
+  const k = n - 1;
+  if (k === 1) return 1.5 * PI;
+  if (k === 2) return PI + (PI * (rel - 0.5)) / 2;
+  return PI - 0.12 + ((PI + 0.24) * (rel - 1)) / (k - 1);
+}
+
+export function seatPos(g: GameView, i: number, v: View): Vec3 {
+  const a = seatAngle(g, i);
+  const { rx, rz } = arena(v);
+  return [Math.cos(a) * rx, 0, Math.sin(a) * rz];
+}
+
+const hash = (n: number) => {
+  const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+};
+
+export function computeTargets(g: GameView, v: View): Map<number, Target> {
+  const s = g.s;
+  const out = new Map<number, Target>();
+  const n = s.players.length;
+  const A = arena(v);
+  spawn.pos = [A.deck[0], DECK_TOP + 0.1, A.deck[2]];
+  Object.assign(dropZone, { x: A.discard[0], z: A.discard[2], radius: v.portrait ? 2.2 : 2.6, handZ: A.hand.z });
+  spawn.seats = s.players.map((_, i) => {
+    if (i === g.seat()) return [0, 0.3, A.hand.z - 0.4] as Vec3;
+    const [x, , z] = seatPos(g, i, v);
+    return [x, 0.6, z] as Vec3;
+  });
+  // one card at a time around the table, then the first card of the pile
+  const step = DEAL_STEP_MS / 1000;
+  const dealDelay = (idx?: number) => (idx === undefined ? n * 7 * step : idx * step);
+
+  // the deck: only the top few real cards sit on the endless stack (DeckStack draws the rest)
+  const dn = s.deck.length;
+  s.deck.forEach((c, i) => {
+    const fromTop = dn - 1 - i;
+    out.set(c.id, {
+      pos: [A.deck[0] + (hash(c.id) - 0.5) * 0.04, DECK_TOP + (DECK_SHOWN - fromTop) * 0.016, A.deck[2] + (hash(c.id + 9) - 0.5) * 0.04],
+      rot: [PI / 2, -0.35 + 0.08 * (hash(c.id) - 0.5), 0],
+      zone: 'deck', interactive: false, dim: false, delay: 0, hidden: fromTop >= DECK_SHOWN,
+    });
+  });
+
+  // the pile: a messy fan of the last cards, newest on top
+  const dl = s.discard.length;
+  s.discard.forEach((c, i) => {
+    const layer = Math.max(0, i - (dl - 40));
+    out.set(c.id, {
+      pos: [A.discard[0] + (hash(c.id) - 0.5) * 0.55, 0.02 + layer * 0.016, A.discard[2] + (hash(c.id + 3) - 0.5) * 0.4],
+      rot: [-PI / 2, (hash(c.id + 5) - 0.5) * 1.3, 0],
+      zone: 'discard', interactive: false, dim: false, delay: dealDelay(c.dealIdx), hidden: i < dl - 24,
+    });
+  });
+
+  const seat = g.seat();
+  const viewer = g.viewer();
+  const over = s.phase === 'over';
+  const myTurn = viewer !== null && viewer === s.cur;
+
+  s.players.forEach((p, pi) => {
+    const m = p.hand.length;
+    if (pi === seat && over) {
+      // finale: lay the leftover hand flat in front, out of the podium's way
+      const sp = Math.min(0.7, A.hand.maxW / Math.max(m - 1, 1));
+      p.hand.forEach((c, k) => {
+        const off = k - (m - 1) / 2;
+        out.set(c.id, {
+          pos: [off * sp, 0.03 + k * 0.004, A.hand.z - 0.3],
+          rot: [-PI / 2, 0, -off * 0.04],
+          zone: 'hand', interactive: false, dim: false, delay: 0,
+        });
+      });
+      return;
+    }
+    if (pi === seat) {
+      const h = A.hand;
+      // blind event: you still play, but you cannot see what
+      const faceUp = (viewer === seat && s.blindTurns === 0) || over;
+      const sp = Math.min(h.sp, h.maxW / Math.max(m - 1, 1));
+      p.hand.forEach((c, k) => {
+        const off = k - (m - 1) / 2;
+        const x = off * sp;
+        let interactive = false;
+        let dim = false;
+        if (myTurn && !over) {
+          if (s.phase === 'play') {
+            interactive = g.playable(c);
+            dim = !interactive;
+          } else if (s.phase === 'choose' && s.choice?.kind === 'card') interactive = true;
+        }
+        const tilt = h.tilt;
+        // the card face normal: everything that must sit "in front" moves along it
+        const ny = -Math.sin(tilt);
+        const nz = Math.cos(tilt);
+        const lift = interactive ? 0.3 : 0;
+        const layer = k * 0.02 + lift * 0.5;
+        out.set(c.id, {
+          // the fan curves downward only; depth comes from the layer alone, so each card is strictly in
+          // front of its left neighbour and their edges never cut into each other
+          pos: [x, h.y + lift + ny * layer - Math.abs(off) * sp * 0.02, h.z + nz * layer],
+          rot: [faceUp ? tilt : tilt + PI, 0, -off * Math.min(0.035, 0.4 / m)],
+          zone: 'hand', interactive, dim, delay: dealDelay(c.dealIdx),
+        });
+      });
+      return;
+    }
+    // opponents hold their cards standing, backs to the middle of the table
+    const a = seatAngle(g, pi);
+    // yaw that turns a card's face toward its owner, swung most of the way round so the backs face the camera
+    const radial = PI / 2 - a;
+    const toCam = PI - radial;
+    const face = radial + (Math.atan2(Math.sin(toCam), Math.cos(toCam))) * 0.6;
+    const lx: Vec3 = [Math.cos(face), 0, -Math.sin(face)];
+    const nx = Math.cos(a);
+    const nz = Math.sin(a);
+    // side seats sit nearer the middle so their fans stay on screen
+    const side = Math.abs(nx);
+    const base: Vec3 = [nx * A.rx * (1 - side * 0.12), 0, nz * A.rz];
+    const sp = Math.min(v.portrait ? 0.22 : 0.28, (v.portrait ? 1.5 : 2.2) / Math.max(m - 1, 1));
+    // the back of the cards points this way (toward the camera, roughly)
+    const bx = -Math.sin(face);
+    const bz = -Math.cos(face);
+    if (over) {
+      // finale: leftover cards spread face up on the table in front of their owner
+      const fsp = Math.min(0.5, 2.4 / Math.max(m - 1, 1));
+      p.hand.forEach((c, k) => {
+        const off = k - (m - 1) / 2;
+        out.set(c.id, {
+          pos: [base[0] * 0.92 + lx[0] * off * fsp, 0.03 + k * 0.004, base[2] * 0.92 + lx[2] * off * fsp],
+          rot: [-PI / 2, 0, -off * 0.05],
+          zone: 'opp', interactive: false, dim: false, delay: 0,
+        });
+      });
+      return;
+    }
+    p.hand.forEach((c, k) => {
+      const off = k - (m - 1) / 2;
+      const bend = off * off * 0.01;
+      const stack = k * 0.022; // each next card a hair closer to the viewer, so the fan overlaps cleanly
+      out.set(c.id, {
+        pos: [base[0] + lx[0] * off * sp + nx * bend + bx * stack, 0.8, base[2] + lx[2] * off * sp + nz * bend + bz * stack],
+        // the back texture is drawn for cards lying on the table; standing ones turn it upright
+        rot: [0.2, face, off * 0.035 + PI],
+        zone: 'opp', interactive: false, dim: false, delay: dealDelay(c.dealIdx),
+      });
+    });
+  });
+  return out;
+}

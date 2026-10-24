@@ -1,0 +1,51 @@
+/**
+ * Mutable, render-loop friendly effect clock shared by 3D components.
+ * Times are seconds from performance.now(); components read these inside useFrame.
+ */
+export const fxState = {
+  shakeUntil: 0,
+  shakeAmp: 0,
+  chaosUntil: 0,
+  boomAt: -100,
+  winAt: -100,
+  /** cards whose target changes before this moment wait for it (meteor impact etc.) */
+  holdUntil: 0,
+  /** hand cards do a double spin (recolor events) */
+  spinUntil: 0,
+  /** camera rolled upside down */
+  upsideUntil: 0,
+  /** direction arrows race around (carousel) */
+  carouselUntil: 0,
+  eventAt: -100,
+  meteor: { at: -100, target: 0 },
+  lightning: { at: -100, target: 0 },
+  burst: { at: -100, target: 0 },
+  /** opening deal (perf seconds): cards stay in the deck until dealAt, Infinity while the table is loading */
+  dealAt: Infinity,
+  dealEnd: Infinity,
+  /** barrel-plane mascot: a swoop across the arena, victory laps, or a bombing run on one player */
+  mascot: { at: -100, mode: 'fly' as MascotMode, seed: 0, target: 0 },
+  /** bombing run: cards that land in a hand during [at, until) fall out of the plane instead of leaving the deck */
+  drop: { at: -100, until: -100, pos: [0, 4, 0] as [number, number, number] },
+};
+
+export type MascotMode = 'fly' | 'loop' | 'bomber';
+export const BOMBER_TIME = 3.6;
+/** the plane is right above its target halfway through the run */
+export const BOMBER_DROP = BOMBER_TIME / 2;
+
+export function summonMascot(mode: MascotMode = 'fly', delay = 0, target = 0) {
+  fxState.mascot = { at: nowSec() + delay, mode, seed: Math.random(), target };
+}
+
+export const nowSec = () => performance.now() / 1000;
+
+export function shake(amp: number, dur: number) {
+  fxState.shakeAmp = amp;
+  fxState.shakeUntil = nowSec() + dur;
+}
+
+export const METEOR_FALL = 0.9;
+export const SPIN_TIME = 1.3;
+
+if (import.meta.env.DEV && typeof window !== 'undefined') (window as unknown as { __fx: typeof fxState }).__fx = fxState;
