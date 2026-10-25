@@ -9,6 +9,8 @@ import { TablePanel } from './TablePanel';
 import { ThemePicker } from './ThemePicker';
 import { Legend } from './Legend';
 import { SMALL_SCREEN, enterFullscreen, useMedia } from './phone';
+import { SwipeBack } from './SwipeBack';
+import { useEffect } from 'react';
 import { PhoneTip } from './RotateGate';
 
 interface Props {
@@ -27,9 +29,15 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
   const table = cfg.table ?? DEFAULT_TABLE;
   const teamsWrong = table.teams ? teamsProblem(players.length) : null;
   const small = useMedia(SMALL_SCREEN);
+  const theme = cfg.theme ?? 'classic';
+  useEffect(() => {
+    document.body.classList.add(`page-${theme}`);
+    return () => document.body.classList.remove(`page-${theme}`);
+  }, [theme]);
 
   return (
     <div className={`setup-page page-${cfg.theme ?? 'classic'}`}>
+      <SwipeBack onBack={onBack} />
       <button className="btn back" onClick={onBack}>← Назад</button>
       <Hero sub="Один экран на всю компанию. Передаёте телефон или ноутбук по кругу, и пусть победит самый наглый." />
 

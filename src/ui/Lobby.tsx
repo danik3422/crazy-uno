@@ -10,6 +10,7 @@ import { RulesPanel } from './RulesPanel';
 import { TablePanel } from './TablePanel';
 import { ThemePicker } from './ThemePicker';
 import { enterFullscreen } from './phone';
+import { SwipeBack } from './SwipeBack';
 import { PhoneTip } from './RotateGate';
 
 interface Props {
@@ -45,6 +46,7 @@ export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
 
   return (
     <div className={`lobby page-${room.theme}`}>
+      <SwipeBack onBack={onLeave} />
       <header className="lobby-top">
         <button className="btn ghost back" onClick={onLeave}>← Выйти</button>
         <ConnBadge conn={conn} />

@@ -1373,3 +1373,38 @@ html.gate-on, html.gate-on body { background: #2a0c52; }
   .home-logo .logo-uno { font-size: clamp(50px, 14vh, 66px); }
   .home-tag { font-size: 12.5px; line-height: 1.4; max-width: 34ch; margin-top: 6px; opacity: 0.88; }
 }
+
+/* ---------- home-screen app on iPhone ---------- */
+/* One backdrop behind every menu, fixed to the screen and reaching well past its bottom: in the
+   home-screen app iOS can report the screen shorter than it is (status bar, a rotation), and the strip
+   left below the page used to show a bare dark-red background. The pages themselves stay transparent. */
+html, body { overscroll-behavior: none; }
+html { background: #4a0606; }
+html body { background: transparent; }
+body::before {
+  content: ''; position: fixed; z-index: -1; left: 0; top: 0; width: 100%;
+  height: calc(100lvh + 25vmax); background: var(--stage); pointer-events: none;
+}
+.home, .lobby, .setup-page { background: transparent; }
+/* the status bar sits over the page: keep everything below it */
+.lobby { padding-top: max(12px, env(safe-area-inset-top, 0px)); }
+.setup-page { padding-top: max(20px, env(safe-area-inset-top, 0px)); }
+.home { padding-top: max(28px, env(safe-area-inset-top, 0px)); }
+@media (max-width: 900px) { .home { padding-top: max(8px, env(safe-area-inset-top, 0px)); } }
+/* the rotate screen paints the strip below itself too */
+.rotate-gate { box-shadow: 0 25vmax 0 0 #2a0c52; }
+
+/* lying on its side, the home menu is one still screen: no scroll, no bounce */
+@media (orientation: landscape) and (max-height: 520px) {
+  html:has(.home), html:has(.home) body { overflow: hidden; height: 100%; }
+  .home { height: 100%; min-height: 0; overflow: hidden; }
+}
+
+/* swipe in from the left edge to go back (home-screen app) */
+.swipe-back {
+  position: fixed; left: 0; top: 50%; z-index: 300; width: 46px; height: 46px; border-radius: 50%;
+  display: grid; place-items: center; pointer-events: none; opacity: 0; transform: translate(-30px, -50%) scale(0.7);
+  background: rgba(20, 8, 30, 0.85); color: #fff; border: 2px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35); transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.swipe-back.ready { background: linear-gradient(180deg, #fff09a, #ffc61a); color: #3a1d00; border-color: transparent; }
