@@ -1396,13 +1396,41 @@ body::before {
   .home { height: 100%; min-height: 0; overflow: hidden; }
 }
 
-/* swipe in from the left edge to go back (home-screen app) */
+/* swipe in from the left edge to go back (home-screen app): a solid tab that slides out of the edge */
 .swipe-back {
-  position: fixed; left: 0; top: 50%; z-index: 300; width: 46px; height: 46px; border-radius: 50%;
-  display: grid; place-items: center; pointer-events: none; opacity: 0; transform: translate(-30px, -50%) scale(0.7);
-  background: rgba(20, 8, 30, 0.85); color: #fff; border: 2px solid rgba(255, 255, 255, 0.35);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35); transition: background 0.15s, color 0.15s, border-color 0.15s;
+  position: fixed; left: 0; top: 50%; z-index: 300; width: 52px; height: 64px; border-radius: 0 32px 32px 0;
+  display: grid; place-items: center; padding-left: 8px; pointer-events: none; opacity: 0; transform: translate(-52px, -50%);
+  background: #1c0a24; color: #fff;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4); transition: background 0.15s, color 0.15s;
 }
-.swipe-back.ready { background: linear-gradient(180deg, #fff09a, #ffc61a); color: #3a1d00; border-color: transparent; }
+.swipe-back.ready { background: linear-gradient(180deg, #fff09a, #ffc61a); color: #3a1d00; }
 .dirIcon { display: inline-grid; place-items: center; }
 .dirIcon svg { display: block; }
+
+/* room header: readable glass pills, whatever part of the backdrop glows behind them */
+.lobby-top .btn.back, .lobby-top .conn {
+  padding: 8px 14px; min-height: 0; border-radius: 999px; color: #fff; font-weight: 700; font-size: 14px;
+  background: rgba(14, 4, 18, 0.5); border: 1px solid rgba(255, 255, 255, 0.16); backdrop-filter: blur(10px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+.lobby-top .btn.back:hover { background: rgba(14, 4, 18, 0.7); }
+.lobby-top .conn { font-size: 13px; }
+
+/* scrollbars hidden everywhere; scrolling itself (finger, wheel, keys) works as before */
+* { scrollbar-width: none; -ms-overflow-style: none; }
+*::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+/* landscape home: the card is sized by the screen's height (a small margin above and below),
+   so it breathes on a tall phone and stays compact on a short one, instead of one squashed size */
+@media (orientation: landscape) and (max-height: 520px) {
+  .home { grid-template-columns: minmax(0, 1fr) clamp(330px, 44vw, 430px); padding-block: max(3.5vh, 10px, env(safe-area-inset-top, 0px)) max(3.5vh, 10px, env(safe-area-inset-bottom, 0px)); }
+  .player-card { max-width: none; width: 100%; gap: clamp(6px, 2.1vh, 12px); padding: clamp(10px, 3vh, 16px) clamp(12px, 3.2vh, 18px); }
+  .pc-ava .avatar { width: clamp(42px, 12vh, 58px) !important; height: clamp(42px, 12vh, 58px) !important; }
+  .pc-ava .avatar-emoji { font-size: clamp(25px, 7vh, 34px) !important; }
+  .pc-name { font-size: clamp(15px, 4.1vh, 18px); padding-block: clamp(5px, 1.6vh, 9px); }
+  .pc-label { font-size: clamp(10px, 2.6vh, 11.5px); }
+  .btn.pc-main, .pc-join .btn { font-size: clamp(15px, 4vh, 17px); padding-block: clamp(8px, 2.6vh, 13px); }
+  .ct { aspect-ratio: 1.55 / 1; }
+  .ct { font-size: calc((100cqw - 24px) / 4 * 0.38); }
+  .btn.pc-local { padding-block: clamp(6px, 2vh, 10px); }
+}

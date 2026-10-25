@@ -25,14 +25,15 @@ export function SwipeBack({ onBack }: { onBack: () => void }) {
       if (!el) return;
       const k = Math.min(1, d / GO);
       el.style.opacity = String(Math.min(1, d / 30));
-      el.style.transform = `translate(${Math.min(d, GO + 20) * 0.6 - 30}px, -50%) scale(${0.7 + k * 0.3})`;
+      // slides out of the edge and stays attached to it
+      el.style.transform = `translate(${-52 + 52 * k}px, -50%)`;
       el.classList.toggle('ready', d >= GO);
     };
     const hide = () => {
       const el = knob.current;
       if (!el) return;
       el.style.opacity = '0';
-      el.style.transform = 'translate(-30px, -50%) scale(0.7)';
+      el.style.transform = 'translate(-52px, -50%)';
       el.classList.remove('ready');
     };
     const down = (e: TouchEvent) => {
