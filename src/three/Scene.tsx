@@ -10,13 +10,14 @@ import { IconStack } from '../ui/Icons';
 import { TurnRing } from '../ui/TurnRing';
 import { Card3D } from './Card3D';
 import { DeckStack } from './DeckStack';
+import { dealTiming } from '../net/protocol';
 import { drag } from './drag';
 import { Arena, PALETTES } from './Environment';
 import { BombDrop, GoldBurst, Lightning, Meteor } from './EventFx';
 import { fxState, nowSec } from './fxState';
-import { arena, computeTargets, seatAngle, type View } from './layout';
+import { RING_R, RING_Z, arena, computeTargets, deckCenter, deckSpot, seatAngle, type View } from './layout';
 import { Mascot } from './Mascot';
-import { PlayFx } from './PlayFx';
+import { PlayFx, StackFx } from './PlayFx';
 import { Podium } from './Podium';
 
 interface Props {
@@ -38,6 +39,8 @@ export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dea
   const targets = useMemo(() => computeTargets(game, view), [game, version, view]);
   const s = game.s;
   const A = arena(view);
+  const deck = useMemo(() => deckSpot(game, view), [game, version, view]);
+  const deckMid = useMemo(() => deckCenter(game, view), [game, version, view]);
   const cards = [...s.deck, ...s.discard, ...s.players.flatMap(p => p.hand)];
   const top = s.discard[s.discard.length - 1];
   const theme = s.theme ?? 'classic';
@@ -66,11 +69,12 @@ export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dea
         const t = targets.get(c.id);
         return t ? <Card3D key={c.id} card={c} t={t} theme={theme} onPick={onCard} /> : null;
       })}
-      <DeckStack at={A.deck} theme={theme} />
-      <DeckHit active={canDraw} onClick={onDeck} pending={s.pending} at={A.deck} />
+      <DeckStack at={deck} center={deckMid} theme={theme} portrait={portrait} slideAt={dealTiming(s.players.length, s.table?.handSize ?? 7).slideMs / 1000} />
+      <DeckHit active={canDraw} onClick={onDeck} pending={s.pending} at={deck} />
       {/* during the finale the podium shows everyone, so the seat plates step aside */}
       {s.phase !== 'over' && <PlayerPlates game={game} view={view} dealing={dealing} />}
       {top && <PlayFx top={top} at={A.discard} />}
+      <StackFx pending={s.pending} top={top} at={A.discard} />
       <DropZone at={A.discard} radius={portrait ? 2.2 : 2.6} />
       {s.bombDeadline !== null && s.timerKind === 'bomb' && <Bomb deadline={s.bombDeadline} offset={game.clockOffset} />}
       <Explosion />
@@ -134,7 +138,7 @@ function CameraRig({ portrait, finale, focus }: { portrait: boolean; finale: boo
 /** Two big glowing arrows sweeping around the pile in the direction of play. */
 function DirectionArrows({ dir, at }: { dir: 1 | -1; at: [number, number, number] }) {
   const spin = useRef<THREE.Group>(null!);
-  const R = 2.75;
+  const R = RING_R;
   const ARC = 1.9;
   const speed = useRef(0);
   useFrame((_, dt) => {
@@ -155,7 +159,7 @@ function DirectionArrows({ dir, at }: { dir: 1 | -1; at: [number, number, number
     </group>
   );
   return (
-    <group position={[at[0], 0.035, at[2]]} scale={[1, 1, 0.69]}>
+    <group position={[at[0], 0.035, at[2]]} scale={[1, 1, RING_Z]}>
       <group ref={spin}>
         {/* torus lies in XY; +90° about X maps its angles onto the seat angles (x = cos a, z = sin a) */}
         <group rotation-x={Math.PI / 2} scale={[1, dir, 1]}>
@@ -244,7 +248,7 @@ function DeckHit({ active, onClick, pending, at }: { active: boolean; onClick: (
         <boxGeometry args={[1.5, 1, 1.9]} />
       </mesh>
       <mesh rotation-x={-Math.PI / 2} position-y={0.008}>
-        <ringGeometry args={[1.0, 1.18, 48]} />
+        <ringGeometry args={[0.92, 1.04, 48]} />
         <meshBasicMaterial ref={ring} color={pending ? '#ff6b5e' : '#ffffff'} transparent toneMapped={false} />
       </mesh>
     </group>
@@ -426,8 +430,30 @@ function DropZone({ at, radius }: { at: [number, number, number]; radius: number
 function ReadySignal({ onReady }: { onReady?: () => void }) {
   const frames = useRef(0);
   const done = useRef(false);
-  useFrame(() => {
-    if (done.current || ++frames.current < 4) return;
+  const lastAt = useRef(0);
+  const calm = useRef(0);
+  useFrame(({ gl, scene, camera }) => {
+    if (frames.current === 1) {
+      // compile every shader now, under the loading curtain: effects that show up for the first time
+      // mid-game (pile flash, meteor, lightning, the plane…) would otherwise freeze a frame or two
+      const hidden: THREE.Object3D[] = [];
+      scene.traverse(o => {
+        if (!o.visible) {
+          hidden.push(o);
+          o.visible = true;
+        }
+      });
+      gl.compile(scene, camera);
+      hidden.forEach(o => (o.visible = false));
+    }
+    if (done.current) return;
+    // ready once the first heavy frames (shader compiles, texture uploads) are behind us and frames come
+    // at an even pace again, so the shuffle starts smoothly; a slow device still goes after about a second
+    const n = ++frames.current;
+    const dt = performance.now() - lastAt.current;
+    lastAt.current = performance.now();
+    calm.current = dt < 28 ? calm.current + 1 : 0;
+    if (n < 4 || (calm.current < 4 && n < 60)) return;
     done.current = true;
     onReady?.();
   });

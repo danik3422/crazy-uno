@@ -171,7 +171,8 @@ class SoundEngine {
         this.tone(o, t, 150, 0.08, 0.5, 'sine', 55);
         break;
       case 'draw':
-        for (let i = 0; i < Math.min(count, 6); i++) this.burst(o, t + i * 0.09, 0.14, 'highpass', 2600, 0.18, 0.7, 5200);
+        // one flick per card, in step with the cards leaving the deck one by one
+        for (let i = 0; i < Math.min(count, 12); i++) this.burst(o, t + i * 0.16, 0.14, 'highpass', 2600, 0.18, 0.7, 5200);
         break;
       case 'shuffle':
         for (let i = 0; i < 14; i++) this.burst(o, t + i * 0.045 + Math.random() * 0.015, 0.035, 'bandpass', 2800 + Math.random() * 1200, 0.3, 1.2);

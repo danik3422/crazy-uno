@@ -3,7 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExter
 import { sound } from '../audio/sound';
 import { Game } from '../game/engine';
 import type { GameView } from '../game/view';
-import { DEAL_STEP_MS, dealMs } from '../net/protocol';
+import { DEAL_STEP_MS, SHUFFLE_MS, dealMs } from '../net/protocol';
 import { RemoteGame } from '../net/remoteGame';
 import { BOMB_FALL, BOMB_RELEASE, METEOR_FALL, SPIN_TIME, fxState, nowSec, shake, summonMascot } from '../three/fxState';
 import { lastPlace, spawn } from '../three/layout';
@@ -84,8 +84,11 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
       setStage('play');
       return;
     }
-    later(at - 0.35, () => setStage('dealing'));
-    later(at, () => sound.play('shuffle'));
+    // the loading curtain lifts on the shuffle, two riffles with their own sound, then the deal
+    const shuffleAt = at - SHUFFLE_MS / 1000;
+    later(shuffleAt - 0.55, () => setStage('dealing')); // the curtain is gone before the first cut
+    later(shuffleAt + 0.35, () => sound.play('shuffle'));
+    later(shuffleAt + 1.25, () => sound.play('shuffle'));
     // a soft flick for every few cards as they leave the deck
     const flicks = Math.floor(((end - at) * 1000 - 900) / (DEAL_STEP_MS * 3));
     for (let i = 1; i <= flicks; i++) later(at + 0.8 + (i * DEAL_STEP_MS * 3) / 1000, () => sound.play('draw'));
@@ -97,9 +100,9 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
 
   const onSceneReady = useCallback(() => {
     if (game instanceof RemoteGame) return game.ready();
-    const ms = dealMs(game.s.players.length);
-    const at = nowSec() + 0.25;
-    local?.holdClock(ms + 250);
+    const ms = dealMs(game.s.players.length, game.s.table.handSize);
+    const at = nowSec() + 0.6 + SHUFFLE_MS / 1000;
+    local?.holdClock(ms + 600 + SHUFFLE_MS);
     startDeal(at, at + ms / 1000);
   }, [game, local, startDeal]);
 
@@ -112,6 +115,13 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
     startDeal(toPerf(warm.dealAt), toPerf(warm.dealEnd));
   }, [warm, game, startDeal, version]);
   const locked = stage !== 'play';
+  // the loading screen fades out over the start of the shuffle instead of vanishing in one frame
+  const [curtain, setCurtain] = useState(true);
+  useEffect(() => {
+    if (stage === 'loading') return setCurtain(true);
+    const t = setTimeout(() => setCurtain(false), 450);
+    return () => clearTimeout(t);
+  }, [stage]);
   const playCard = useCallback(
     (id: number) => {
       if (locked) return;
@@ -294,8 +304,8 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
       {flashOn && <div key={`flash-${flash}`} className="flash" />}
       {banner && <EventBanner key={`event-${banner.id}`} banner={banner} onDone={() => setBanner(b => (b?.id === banner.id ? null : b))} />}
       <Overlays game={game} version={version} score={score} onAgain={onAgain} onMenu={onMenu} online={online} locked={locked} />
-      {stage === 'loading' && (
-        <div className="loading-screen">
+      {curtain && (
+        <div className={`loading-screen ${stage === 'loading' ? '' : 'leaving'}`}>
           <CardLoader
             theme={s.theme}
             title="Раскладываем стол"

@@ -876,6 +876,7 @@ export class Game {
       case 'draw2':
         s.pending += 2;
         s.pendingType = 'draw2';
+        if (s.pending > 2) this.say(`📚 Стопка! Штраф уже +${s.pending}`);
         break;
       case 'wild':
         return this.ask({ kind: 'color', title: 'Какой цвет?' });

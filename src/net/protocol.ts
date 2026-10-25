@@ -58,7 +58,18 @@ export interface Warmup {
 
 /** How long the opening deal takes: one card at a time around the table, then the first card of the pile. */
 export const DEAL_STEP_MS = 55;
-export const dealMs = (players: number) => (players * 7 + 1) * DEAL_STEP_MS + 900;
+/** the deck is shuffled in the middle of the table right before the deal */
+export const SHUFFLE_MS = 1900;
+/** after the last hand card leaves, the deck slides from the middle to its spot; only then the pile gets its first card */
+export const DECK_SLIDE_MS = 650;
+export function dealTiming(players: number, handSize = 7) {
+  const handsMs = players * handSize * DEAL_STEP_MS;
+  const slideMs = handsMs + 150;
+  const pileMs = slideMs + DECK_SLIDE_MS + 50;
+  // the pile card's flight, and a breath before play
+  return { handsMs, slideMs, pileMs, totalMs: pileMs + 420 + 300 };
+}
+export const dealMs = (players: number, handSize = 7) => dealTiming(players, handSize).totalMs;
 /** Nobody waits longer than this for a slow phone. */
 export const WARMUP_MAX_MS = 12_000;
 

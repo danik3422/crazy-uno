@@ -4,7 +4,7 @@ import { BOTNAMES, DEFAULT_RULES, DEFAULT_TABLE, RULES, cleanTable, isTheme, tea
 import { Game } from '../src/game/engine';
 import type { Card, Rules, Table, ThemeId } from '../src/game/types';
 import {
-  MAX_MEMBERS, MAX_PLAYERS, REMATCH_COUNTDOWN_MS, WARMUP_MAX_MS, cleanName, dealMs,
+  MAX_MEMBERS, MAX_PLAYERS, REMATCH_COUNTDOWN_MS, SHUFFLE_MS, WARMUP_MAX_MS, cleanName, dealMs,
   type Action, type ClientMsg, type ErrorCode, type PlayerView, type RoomInfo, type ServerMsg,
 } from '../src/net/protocol';
 
@@ -310,8 +310,9 @@ export class Room {
     if (!force && this.notReady().length) return;
     if (w.timer) clearTimeout(w.timer);
     w.timer = null;
-    w.dealAt = Date.now() + 400 * this.opts.dealScale;
-    w.dealEnd = w.dealAt + dealMs(this.seats.length) * this.opts.dealScale;
+    // a moment to settle, the shuffle, then the deal
+    w.dealAt = Date.now() + (700 + SHUFFLE_MS) * this.opts.dealScale;
+    w.dealEnd = w.dealAt + dealMs(this.seats.length, this.game.s.table.handSize) * this.opts.dealScale;
     // the turn clock starts only when the cards are in everyone's hands
     this.game.holdClock(w.dealEnd - Date.now());
   }

@@ -1,5 +1,5 @@
 import type { GameView } from '../game/view';
-import { DEAL_STEP_MS } from '../net/protocol';
+import { DEAL_STEP_MS, dealTiming } from '../net/protocol';
 import { dropZone } from './drag';
 
 export type Vec3 = [number, number, number];
@@ -32,7 +32,7 @@ export const DECK_SHOWN = 3;
 /** Arena geometry: deck up-left of the pile, opponents along the far arc, you at the near edge. */
 export function arena(v: View) {
   return v.portrait
-    ? { deck: [0.35, 0, -3.35] as Vec3, discard: [0.75, 0, -0.45] as Vec3, rx: 2.85, rz: 4.5, hand: { y: 2.75, z: 6.75, maxW: 4.2, sp: 0.6, tilt: -0.85 } }
+    ? { deck: [0.35, 0, -3.35] as Vec3, discard: [0.75, 0, -0.45] as Vec3, rx: 2.85, rz: 4.5, hand: { y: 2.75, z: 6.75, maxW: 3.5, sp: 0.6, tilt: -0.85 } }
     : { deck: [-1.9, 0, -2.6] as Vec3, discard: [0.25, 0, -0.15] as Vec3, rx: 6.1, rz: 3.5, hand: { y: 1.15, z: 4.35, maxW: 8.6, sp: 0.86, tilt: -0.55 } };
 }
 
@@ -64,6 +64,66 @@ export function seatAngle(g: GameView, i: number) {
   return PI - 0.12 + ((PI + 0.24) * (rel - 1)) / (k - 1);
 }
 
+/** Radius of the ring of direction arrows around the pile (x; z is squashed by RING_Z). */
+export const RING_R = 3.3;
+export const RING_Z = 0.69;
+
+/**
+ * Where the draw pile rests: outside the ring of direction arrows (never inside it), as far as possible
+ * from every opponent's fan and name plate, clear of your own hand, and on screen.
+ * It depends on how many people sit where, so it is searched over a grid of candidate spots.
+ */
+export function deckSpot(g: GameView, v: View): Vec3 {
+  const A = arena(v);
+  const D = A.discard;
+  const n = g.s.players.length;
+  const seat = g.seat();
+  // each opponent's fan and plate: the fan stands 0.8 above the table, so on screen it sits further back
+  const A0 = arena(v);
+  const others = Array.from({ length: n }, (_, i) => i).filter(i => i !== seat).map(i => {
+    const a = seatAngle(g, i);
+    const side = Math.abs(Math.cos(a));
+    return [Math.cos(a) * A0.rx * (1 - side * 0.12), 0, Math.sin(a) * A0.rz - 0.8] as Vec3;
+  });
+  // what the camera shows of the table, and where your hand starts (in table coordinates)
+  const xMax = v.portrait ? 2.2 : 5.4;
+  const zMin = v.portrait ? -2.6 : -2.2;
+  const handZ = v.portrait ? 5.2 : 3.0;
+  // the deck (about 1 × 1.5) must keep its whole body outside the ring
+  const ringOut = (x: number, z: number) => {
+    const rx = RING_R + 0.95;
+    // the stack is tall and the camera looks down at an angle: on the near side it needs more room
+    const rz = RING_R * RING_Z + (z > D[2] ? 1.4 : 1.05);
+    return ((x - D[0]) / rx) ** 2 + ((z - D[2]) / rz) ** 2 >= 1;
+  };
+  let best: Vec3 = [D[0] - (RING_R + 1.4), 0, D[2] + 0.8];
+  let bestScore = -Infinity;
+  for (let x = -xMax; x <= xMax + 1e-6; x += 0.2) {
+    for (let z = zMin; z <= handZ; z += 0.2) {
+      if (!ringOut(x, z)) continue;
+      // distance to the nearest opponent (fan and plate sit around the seat point)
+      const toSeats = Math.min(99, ...others.map(o => Math.hypot(o[0] - x, (o[2] - z) * 1.3)));
+      // distance to the hand area and to the screen edges
+      const toHand = handZ - z;
+      const toEdge = Math.min(xMax - Math.abs(x), z - zMin + 0.6);
+      // the deck should stay close to the ring (easy to reach), so being far away costs a little
+      const ringDist = Math.hypot((x - D[0]) / (RING_R + 0.95), (z - D[2]) / (RING_R * RING_Z + 1.05)) - 1;
+      const score = Math.min(toSeats, toHand * 1.4 + 0.6, toEdge * 2 + 0.6) - ringDist * 0.8 + (x < 0 ? 0.05 : 0);
+      if (score > bestScore) {
+        bestScore = score;
+        best = [x, 0, z];
+      }
+    }
+  }
+  return best;
+}
+
+/** Where the deck is shuffled and dealt from: exactly the middle of the table (the centre of the ring). */
+export function deckCenter(_g: GameView, v: View): Vec3 {
+  const A = arena(v);
+  return [A.discard[0], 0, A.discard[2]];
+}
+
 export function seatPos(g: GameView, i: number, v: View): Vec3 {
   const a = seatAngle(g, i);
   const { rx, rz } = arena(v);
@@ -80,7 +140,9 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
   const out = new Map<number, Target>();
   const n = s.players.length;
   const A = arena(v);
-  spawn.pos = [A.deck[0], DECK_TOP + 0.1, A.deck[2]];
+  const deck = deckSpot(g, v);
+  // right on top of the real top cards, so a card waiting for its deal does not hover over the deck
+  spawn.pos = [deck[0], DECK_TOP + DECK_SHOWN * 0.016 + 0.006, deck[2]];
   Object.assign(dropZone, { x: A.discard[0], z: A.discard[2], radius: v.portrait ? 2.2 : 2.6, handZ: A.hand.z });
   spawn.seats = s.players.map((_, i) => {
     if (i === g.seat()) return [0, 0.3, A.hand.z - 0.4] as Vec3;
@@ -89,14 +151,16 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
   });
   // one card at a time around the table, then the first card of the pile
   const step = DEAL_STEP_MS / 1000;
-  const dealDelay = (idx?: number) => (idx === undefined ? n * 7 * step : idx * step);
+  // the pile's first card comes last, once the deck has left the middle (see dealTiming)
+  const pileAt = dealTiming(n, s.table?.handSize ?? 7).pileMs / 1000;
+  const dealDelay = (idx?: number) => (idx === undefined ? pileAt : idx * step);
 
   // the deck: only the top few real cards sit on the endless stack (DeckStack draws the rest)
   const dn = s.deck.length;
   s.deck.forEach((c, i) => {
     const fromTop = dn - 1 - i;
     out.set(c.id, {
-      pos: [A.deck[0] + (hash(c.id) - 0.5) * 0.04, DECK_TOP + (DECK_SHOWN - fromTop) * 0.016, A.deck[2] + (hash(c.id + 9) - 0.5) * 0.04],
+      pos: [deck[0] + (hash(c.id) - 0.5) * 0.04, DECK_TOP + (DECK_SHOWN - fromTop) * 0.016, deck[2] + (hash(c.id + 9) - 0.5) * 0.04],
       rot: [PI / 2, -0.35 + 0.08 * (hash(c.id) - 0.5), 0],
       zone: 'deck', interactive: false, dim: false, delay: 0, hidden: fromTop >= DECK_SHOWN,
     });

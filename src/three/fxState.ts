@@ -17,9 +17,17 @@ export const fxState = {
   /** direction arrows race around (carousel) */
   carouselUntil: 0,
   eventAt: -100,
+  /** when the card just played touches the pile (the flash and the ring start then) */
+  landAt: -100,
   meteor: { at: -100, target: 0 },
   lightning: { at: -100, target: 0 },
   burst: { at: -100, target: 0 },
+  /** where the deck stack is right now, relative to its resting spot (it is shuffled mid-table, then slides over) */
+  deckOffset: [0, 0, 0] as [number, number, number],
+  /** the deck cards are inside the riffle animation: hide the real top cards meanwhile */
+  shuffling: false,
+  /** the stack shows its own top (shuffling, or turned another way than its resting angle): real cards on it hide */
+  deckHidesTop: false,
   /** opening deal (perf seconds): cards stay in the deck until dealAt, Infinity while the table is loading */
   dealAt: Infinity,
   dealEnd: Infinity,

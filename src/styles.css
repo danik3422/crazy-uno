@@ -132,7 +132,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outl
 /* ---------- game ---------- */
 .game { position: fixed; inset: 0; background: var(--felt-deep); overflow: hidden; }
 .game canvas { touch-action: none; }
-.hud { position: absolute; inset: 0; pointer-events: none; }
+.hud { position: absolute; inset: 0; pointer-events: none; z-index: 22; } /* above the seat plates (z 0–20): upside down they slide under the dock */
 .hud button { pointer-events: auto; }
 .hud-top {
   position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); right: 0;
@@ -263,10 +263,12 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outl
 /* ---------- random events ---------- */
 .flash {
   /* invisible by default: if animations are off (reduced motion) it must never cover the game */
-  position: fixed; inset: 0; z-index: 45; pointer-events: none; background: var(--edge); opacity: 0;
-  animation: flash 0.45s ease-out;
+  position: fixed; inset: 0; z-index: 45; pointer-events: none; opacity: 0;
+  /* a warm burst from the middle of the table, not a white-out: the game stays readable through it */
+  background: radial-gradient(ellipse at 50% 55%, rgba(255, 252, 235, 0.9), rgba(255, 220, 160, 0.45) 45%, rgba(255, 200, 120, 0) 80%);
+  animation: flash 0.5s cubic-bezier(.2, .7, .3, 1);
 }
-@keyframes flash { from { opacity: 0.85; } to { opacity: 0; } }
+@keyframes flash { 0% { opacity: 0; } 12% { opacity: 0.6; } 100% { opacity: 0; } }
 .event {
   position: fixed; inset: 0; z-index: 40; pointer-events: none; display: flex; justify-content: center; align-items: flex-start;
   padding: calc(64px + env(safe-area-inset-top, 0px)) 16px 0; perspective: 900px; overflow: hidden;
@@ -1120,3 +1122,4 @@ button.pl-ava { cursor: pointer; }
 /* crowded phone table: face and card count only, so neighbouring plates never overlap */
 .oplate.tiny { padding: 3px 7px 3px 3px; gap: 5px; }
 .oplate.tiny .plate-name { display: none; }
+.deal-banner { white-space: nowrap; }
