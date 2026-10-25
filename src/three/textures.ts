@@ -7,12 +7,28 @@ const H = 384;
 const DISPLAY = '"Unbounded", "Arial Black", system-ui, sans-serif';
 const BODY = '"Rubik", system-ui, sans-serif';
 const EDGE = '#fffdf6';
-const TEX_SCALE = 1.5;
+/** card faces at 2× (512 × 768): sharp on a phone held close, even tilted */
+const TEX_SCALE = 2;
 const isEmoji = (s: string) => /\p{Extended_Pictographic}/u.test(s);
 
 const EMOJI_FONT = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif';
-const EMOJI_BASE = 64;
+/** emoji are drawn once this big; Safari leaves very large colour emoji blank, so a smaller size is the fallback */
+const EMOJI_SIZES = [128, 64];
 const emojiCache = new Map<string, HTMLCanvasElement>();
+
+function emojiTile(emoji: string, base: number) {
+  const tile = document.createElement('canvas');
+  tile.width = tile.height = base * 1.25;
+  const t = tile.getContext('2d', { willReadFrequently: true })!;
+  t.textAlign = 'center';
+  t.textBaseline = 'middle';
+  t.font = `${base}px ${EMOJI_FONT}`;
+  t.fillText(emoji, tile.width / 2, tile.height / 2 + base * 0.06);
+  // did anything get drawn? (a sparse sample is enough)
+  const px = t.getImageData(0, 0, tile.width, tile.height).data;
+  for (let i = 3; i < px.length; i += 4 * 37) if (px[i] > 0) return tile;
+  return null;
+}
 
 /**
  * Draws an emoji centred at (x, y), `size` px tall.
@@ -22,16 +38,15 @@ const emojiCache = new Map<string, HTMLCanvasElement>();
 export function drawEmoji(ctx: CanvasRenderingContext2D, emoji: string, x: number, y: number, size: number) {
   let tile = emojiCache.get(emoji);
   if (!tile) {
-    tile = document.createElement('canvas');
-    tile.width = tile.height = EMOJI_BASE * 1.25;
-    const t = tile.getContext('2d')!;
-    t.textAlign = 'center';
-    t.textBaseline = 'middle';
-    t.font = `${EMOJI_BASE}px ${EMOJI_FONT}`;
-    t.fillText(emoji, tile.width / 2, tile.height / 2 + EMOJI_BASE * 0.06);
+    for (const base of EMOJI_SIZES) {
+      tile = emojiTile(emoji, base) ?? undefined;
+      if (tile) break;
+    }
+    // nothing rendered at any size (no emoji font): keep an empty tile rather than retrying every time
+    tile ??= Object.assign(document.createElement('canvas'), { width: 80, height: 80 });
     emojiCache.set(emoji, tile);
   }
-  const s = (size * 1.25 * tile.width) / (EMOJI_BASE * 1.25);
+  const s = size * 1.25;
   ctx.save();
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(tile, x - s / 2, y - s / 2, s, s);
@@ -46,6 +61,94 @@ function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
   ctx.arcTo(x, y + h, x, y, r);
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
+}
+
+/**
+ * Arrow icons drawn as shapes, not font glyphs: the display font has no ⇄/⇆, so the browser used to borrow
+ * thin, uneven arrows from some system font. Each icon is thick shafts (stroked) plus solid arrowheads.
+ */
+export type ArrowIcon = 'rev' | 'swap';
+export const ARROW_ICONS: readonly string[] = ['rev', 'swap'];
+
+/** Each arrow as one closed outline (shaft and head together), so the rim runs round it without seams. */
+function arrowOutlines(kind: ArrowIcon, r: number): Path2D[] {
+  const out: Path2D[] = [];
+  if (kind === 'rev') {
+    // two arrows chasing each other round a circle: the classic reverse
+    const R = r * 0.6;
+    const w = r * 0.14; // half the shaft width
+    const half = r * 0.34; // half the head width
+    const headA = (r * 0.5) / R; // head length, as an angle
+    for (const k of [0, 1]) {
+      const a0 = k * Math.PI + 0.3;
+      const tipA = k * Math.PI + Math.PI - 0.3;
+      const baseA = tipA - headA;
+      const p = new Path2D();
+      p.arc(0, 0, R + w, a0, baseA);
+      p.lineTo(Math.cos(baseA) * (R + half), Math.sin(baseA) * (R + half));
+      // the tip sits on the circle, a little ahead of the base
+      p.lineTo(Math.cos(tipA) * R, Math.sin(tipA) * R);
+      p.lineTo(Math.cos(baseA) * (R - half), Math.sin(baseA) * (R - half));
+      p.arc(0, 0, R - w, baseA, a0, true);
+      p.closePath();
+      out.push(p);
+    }
+  } else {
+    // two straight arrows passing each other: hands swapped
+    const y = r * 0.33;
+    const w = r * 0.13;
+    const half = r * 0.32;
+    const tail = r * 0.8;
+    const tip = r * 0.88;
+    const base = r * 0.36;
+    for (const s of [1, -1]) {
+      const cy = -y * s;
+      const p = new Path2D();
+      p.moveTo(-tail * s, cy - w);
+      p.lineTo(base * s, cy - w);
+      p.lineTo(base * s, cy - half);
+      p.lineTo(tip * s, cy);
+      p.lineTo(base * s, cy + half);
+      p.lineTo(base * s, cy + w);
+      p.lineTo(-tail * s, cy + w);
+      p.closePath();
+      out.push(p);
+    }
+  }
+  return out;
+}
+
+/**
+ * Draws an arrow icon centred at the origin, `r` its half-size, in layers like the card numbers:
+ * an optional dark offset shadow, a dark rim, the colour on top.
+ */
+export function drawArrowIcon(
+  ctx: CanvasRenderingContext2D,
+  kind: ArrowIcon,
+  r: number,
+  o: { fill: string | CanvasGradient; rim: string; rimWidth: number; shadow?: string; shadowOffset?: [number, number] },
+) {
+  const paths = arrowOutlines(kind, r);
+  ctx.save();
+  ctx.lineJoin = 'round';
+  const solid = (color: string | CanvasGradient, rim: number) => {
+    ctx.fillStyle = color;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = rim * 2;
+    for (const p of paths) {
+      if (rim > 0) ctx.stroke(p);
+      ctx.fill(p);
+    }
+  };
+  if (o.shadow) {
+    ctx.save();
+    ctx.translate(...(o.shadowOffset ?? [5, 7]));
+    solid(o.shadow, o.rimWidth);
+    ctx.restore();
+  }
+  solid(o.rim, o.rimWidth);
+  solid(o.fill, 0);
+  ctx.restore();
 }
 
 function oval(ctx: CanvasRenderingContext2D) {
@@ -137,7 +240,15 @@ export function drawCard(ctx: CanvasRenderingContext2D, card: Card | null, theme
   // big centre symbol: a dark extruded shadow, a crisp outline, the colour on top
   ctx.save();
   ctx.translate(W / 2, H / 2 + 6);
-  if (emoji) {
+  if (ARROW_ICONS.includes(card.type)) {
+    ctx.rotate(-0.12);
+    drawArrowIcon(ctx, card.type as ArrowIcon, 66, {
+      fill: wild ? EDGE : col,
+      rim: wild ? HEX.black : ink,
+      rimWidth: wild ? 7 : 5,
+      shadow: ink,
+    });
+  } else if (emoji) {
     ctx.shadowColor = 'rgba(0,0,0,.3)';
     ctx.shadowBlur = 8;
     ctx.shadowOffsetY = 4;
@@ -159,7 +270,8 @@ export function drawCard(ctx: CanvasRenderingContext2D, card: Card | null, theme
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(rot);
-    if (emoji) drawEmoji(ctx, sym, 0, 0, 34);
+    if (ARROW_ICONS.includes(card.type)) drawArrowIcon(ctx, card.type as ArrowIcon, 19, { fill: EDGE, rim: ink, rimWidth: 3.5 });
+    else if (emoji) drawEmoji(ctx, sym, 0, 0, 34);
     else {
       ctx.font = `900 ${sym.length > 1 ? 30 : 40}px ${DISPLAY}`;
       ctx.lineWidth = 6;
@@ -430,7 +542,7 @@ export function cardTexture(card: Card | null, theme: ThemeId = 'classic'): THRE
     drawCard(ctx, card, theme);
     t = new THREE.CanvasTexture(cv);
     t.colorSpace = THREE.SRGBColorSpace;
-    t.anisotropy = 8;
+    t.anisotropy = 16; // clamped to what the GPU supports
     texCache.set(key, t);
     texSource.set(key, { card, theme });
   }

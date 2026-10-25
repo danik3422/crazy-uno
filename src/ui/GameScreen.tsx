@@ -47,9 +47,11 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
   const scored = useRef<GameView | null>(null);
   const local = game instanceof Game ? game : null;
   const { glKey, onCreated } = useGlRecovery();
-  // render resolution: up to 1.5× the CSS pixels, lowered automatically on a struggling device
-  const maxDpr = Math.min(1.5, typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1);
+  // render resolution: up to 2× the CSS pixels (phones are 2–3×); a struggling device steps down 2 → 1.5 → 1.25
+  const maxDpr = Math.min(2, typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1);
   const [dpr, setDpr] = useState(maxDpr);
+  const lower = () => setDpr(d => (d > 1.5 ? 1.5 : 1.25));
+  const raise = () => setDpr(d => Math.min(maxDpr, d < 1.5 ? 1.5 : 2));
 
   const toast = useCallback((text: string, big = false) => {
     const id = Math.random();
@@ -319,10 +321,10 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
         {!locked && (
           <PerformanceMonitor
             bounds={hz => [hz * 0.7, hz * 0.92]}
-            onDecline={() => setDpr(1)}
-            onIncline={() => setDpr(maxDpr)}
+            onDecline={lower}
+            onIncline={raise}
             flipflops={3}
-            onFallback={() => setDpr(1)}
+            onFallback={() => setDpr(1.25)}
           />
         )}
         <GameScene

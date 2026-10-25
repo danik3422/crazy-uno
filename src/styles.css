@@ -1328,11 +1328,7 @@ html.gate-on, html.gate-on body { background: #2a0c52; }
 }
 
 /* the start bar, once it sticks to the bottom: solid, with a soft fade above so nothing shows through */
-.lb-start.stuck { background: #2a0810; backdrop-filter: none; box-shadow: 0 -10px 24px rgba(20, 2, 8, 0.6); }
-.lb-start.stuck::before {
-  content: ''; position: absolute; left: 0; right: 0; bottom: 100%; height: 28px; pointer-events: none;
-  background: linear-gradient(to top, #2a0810, rgba(42, 8, 16, 0));
-}
+.lb-start.stuck { background: #2a0810; backdrop-filter: none; box-shadow: 0 -6px 16px rgba(20, 2, 8, 0.35); }
 .lb-start.stuck .lb-start-hint { margin-bottom: 8px; font-size: 12.5px; text-wrap: balance; }
 
 /* home menu on a phone lying on its side: everything on one screen, never a scroll */
@@ -1408,3 +1404,5 @@ body::before {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35); transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .swipe-back.ready { background: linear-gradient(180deg, #fff09a, #ffc61a); color: #3a1d00; border-color: transparent; }
+.dirIcon { display: inline-grid; place-items: center; }
+.dirIcon svg { display: block; }

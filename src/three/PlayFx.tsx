@@ -5,7 +5,7 @@ import { HEX, SPECIAL } from '../game/content';
 import type { Card, CardType } from '../game/types';
 import { fxState, nowSec, shake } from './fxState';
 import type { Vec3 } from './layout';
-import { drawEmoji } from './textures';
+import { drawArrowIcon, drawEmoji } from './textures';
 
 const DISPLAY = '"Unbounded", "Arial Black", system-ui, sans-serif';
 // +2 and +4 are shown by StackFx with the running total instead
@@ -48,21 +48,9 @@ function symbolTexture(card: Card): THREE.CanvasTexture {
       ctx.beginPath(); ctx.arc(0, 0, 150, 0, Math.PI * 2); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(-105, 105); ctx.lineTo(105, -105); ctx.stroke();
     }
-  } else if (card.type === 'rev') {
-    for (const [w, c] of [[58, '#1a1a1a'], [38, fill()], [8, '#ffffff99']] as const) {
-      ctx.lineWidth = w;
-      ctx.strokeStyle = c as string;
-      ctx.beginPath(); ctx.arc(0, 0, 140, Math.PI * 1.1, Math.PI * 1.85); ctx.stroke();
-      ctx.beginPath(); ctx.arc(0, 0, 140, Math.PI * 0.1, Math.PI * 0.85); ctx.stroke();
-    }
-    ctx.fillStyle = '#1a1a1a';
-    const head = (x: number, y: number, r: number) => {
-      ctx.save(); ctx.translate(x, y); ctx.rotate(r);
-      ctx.beginPath(); ctx.moveTo(0, -60); ctx.lineTo(55, 20); ctx.lineTo(-55, 20); ctx.closePath();
-      ctx.fill(); ctx.fillStyle = fill(); ctx.scale(0.62, 0.62); ctx.fill(); ctx.restore(); ctx.fillStyle = '#1a1a1a';
-    };
-    head(66, -125, 1.15);
-    head(-66, 125, 1.15 + Math.PI);
+  } else if (card.type === 'rev' || card.type === 'swap') {
+    // the same arrows as on the card, big, with a soft dark drop
+    drawArrowIcon(ctx, card.type, 170, { fill: fill(), rim: '#1a1a1a', rimWidth: 13, shadow: '#00000055', shadowOffset: [8, 12] });
   } else {
     const sym = card.type === 'num' ? String(card.value) : SPECIAL[card.type].sym;
     const emoji = /\p{Extended_Pictographic}/u.test(sym);

@@ -57,7 +57,12 @@ export function Hud({ game, toasts, bombLeft, online, locked, roundLeft }: Props
         <div className="status">
           <span className="swatch" style={{ background: HEX[s.color] }} />
           <span className="cname">{CNAME[s.color]}</span>
-          <span className={`dirIcon ${s.dir < 0 ? 'ccw' : ''}`} title="Направление игры">↻</span>
+          <span className={`dirIcon ${s.dir < 0 ? 'ccw' : ''}`} title={s.dir < 0 ? 'Против часовой' : 'По часовой'}>
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
+              <path d="M19 12a7 7 0 1 1-2.05-4.95" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+              <path d="M19.5 3.5v4.6h-4.6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
           {s.pending > 0 && <span className="pen">+{s.pending}</span>}
           {roundLeft != null && (
             <span className={`round-clock ${roundLeft <= 30 ? 'hot' : ''}`} title="До конца раунда">
