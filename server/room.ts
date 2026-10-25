@@ -267,7 +267,13 @@ export class Room {
       case 'act':
         return this.act(m, msg.act);
       case 'ready':
-        return this.markReady(m, Number(msg.round));
+        return this.markReady(m, Number(msg.round), msg.upright === true);
+      case 'orient':
+        return this.markOrient(m, Number(msg.round), msg.upright === true);
+      case 'dealNow':
+        if (!needHost()) return;
+        this.maybeDeal(true);
+        return this.flush();
       case 'join':
       case 'create':
       case 'ping':
@@ -279,19 +285,49 @@ export class Room {
    * Round start: everybody's screen first draws the table and reports 'ready',
    * then all of them see the deal at the same moment, and only then can anybody move.
    */
-  private warm: { ready: Set<string>; dealAt: number | null; dealEnd: number | null; timer: ReturnType<typeof setTimeout> | null } | null = null;
+  private warm: {
+    ready: Set<string>;
+    /** loaded, but the phone is still held upright: the deal waits until it lies on its side */
+    upright: Set<string>;
+    dealAt: number | null;
+    dealEnd: number | null;
+    timer: ReturnType<typeof setTimeout> | null;
+    /** waited long enough for slow screens: from now on only upright phones hold the table */
+    slowOk?: boolean;
+  } | null = null;
 
   private warming() {
     const w = this.warm;
     return !!w && (w.dealEnd === null || Date.now() < w.dealEnd);
   }
 
-  private markReady(m: Member, round: number) {
+  private markReady(m: Member, round: number, upright: boolean) {
     const w = this.warm;
     if (!w || round !== this.round || w.dealAt !== null) return;
     w.ready.add(m.id);
+    if (upright) w.upright.add(m.id);
+    else w.upright.delete(m.id);
     this.maybeDeal();
     this.flush();
+  }
+
+  private markOrient(m: Member, round: number, upright: boolean) {
+    const w = this.warm;
+    if (!w || round !== this.round || w.dealAt !== null) return;
+    if (upright) w.upright.add(m.id);
+    else w.upright.delete(m.id);
+    this.maybeDeal();
+    this.flush();
+  }
+
+  /** Seated, online, table drawn, but still holding the phone upright. */
+  private turning(): string[] {
+    const w = this.warm;
+    if (!w) return [];
+    return this.seats.filter(id => {
+      const m = this.members.find(x => x.id === id);
+      return !!m && !m.bot && !!m.sock && w.ready.has(id) && w.upright.has(id);
+    });
   }
 
   /** Seated people who are online and have not reported yet. Bots and dropped players never hold the table. */
@@ -307,7 +343,7 @@ export class Room {
   private maybeDeal(force = false) {
     const w = this.warm;
     if (!w || w.dealAt !== null || !this.game) return;
-    if (!force && this.notReady().length) return;
+    if (!force && ((this.notReady().length && !w.slowOk) || this.turning().length)) return;
     if (w.timer) clearTimeout(w.timer);
     w.timer = null;
     // a moment to settle, the shuffle, then the deal
@@ -397,9 +433,12 @@ export class Room {
       theme: this.theme,
       table: this.table,
     });
-    this.warm = { ready: new Set(), dealAt: null, dealEnd: null, timer: null };
+    this.warm = { ready: new Set(), upright: new Set(), dealAt: null, dealEnd: null, timer: null };
     this.warm.timer = setTimeout(() => {
-      this.maybeDeal(true);
+      // a slow phone that never finished loading does not hold the table; one that is loaded but upright does
+      // (its player is right there and only has to turn it; the host can still deal without them)
+      if (this.warm) this.warm.slowOk = true;
+      this.maybeDeal();
       this.flush();
     }, WARMUP_MAX_MS);
     this.unsub = this.game.subscribe(() => this.flush());
@@ -538,6 +577,7 @@ export class Room {
       deckCount: s.deck.length,
       warmup: {
         waiting: this.notReady().map(id => this.seats.indexOf(id)).filter(i => i >= 0),
+        turning: this.turning().map(id => this.seats.indexOf(id)).filter(i => i >= 0),
         dealAt: this.warm?.dealAt ?? null,
         dealEnd: this.warm?.dealEnd ?? null,
       },

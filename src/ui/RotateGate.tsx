@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { canFullscreen, enterFullscreen, isIOS, usePhone } from './phone';
 
 /** A phone outline that turns on its side, with the table glowing on its screen. */
@@ -28,15 +29,24 @@ function PhoneTurn() {
  * On a phone the table is played lying on its side. Held upright, the game is covered by this screen:
  * turn the phone, and (where the browser can) open it full screen, which on Android also turns it for you.
  */
-export function RotateGate() {
+export function RotateGate({ waiting = false }: { waiting?: boolean }) {
   const { phone, portrait, fullscreen } = usePhone();
-  if (!phone || !portrait) return null;
+  const on = phone && portrait;
+  // the page behind takes the gate's colour too: on an iPhone home-screen app the strip under the
+  // home indicator shows the page background, not a fixed layer
+  useEffect(() => {
+    if (!on) return;
+    document.documentElement.classList.add('gate-on');
+    return () => document.documentElement.classList.remove('gate-on');
+  }, [on]);
+  if (!on) return null;
   const fs = canFullscreen() && !fullscreen;
-  return (
+  // straight into <body>: no game container (overflow, transforms) can cut it short
+  return createPortal(
     <div className="rotate-gate" role="dialog" aria-modal="true" aria-labelledby="rg-title">
       <PhoneTurn />
       <h2 id="rg-title">Поверни телефон горизонтально</h2>
-      <p>Играем только лёжа на боку: так виден весь стол, все соперники и твои карты.</p>
+      <p>{waiting ? 'Раздача начнётся, как только все повернут телефоны.' : 'Играем только лёжа на боку: так виден весь стол, все соперники и твои карты.'}</p>
       {fs && (
         <button type="button" className="btn big rg-btn" onClick={() => void enterFullscreen()}>
           <FullscreenIcon /> Открыть на весь экран
@@ -47,7 +57,8 @@ export function RotateGate() {
           Совет для iPhone: «Поделиться» <ShareIcon /> → «На экран Домой». Игра откроется без панелей Safari, на весь экран.
         </p>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
 

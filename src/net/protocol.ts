@@ -52,6 +52,8 @@ export interface PlayerView {
 export interface Warmup {
   /** player indices whose screen is not ready yet */
   waiting: number[];
+  /** player indices whose table is drawn but whose phone is still held upright */
+  turning?: number[];
   dealAt: number | null;
   dealEnd: number | null;
 }
@@ -72,6 +74,8 @@ export function dealTiming(players: number, handSize = 7) {
 export const dealMs = (players: number, handSize = 7) => dealTiming(players, handSize).totalMs;
 /** Nobody waits longer than this for a slow phone. */
 export const WARMUP_MAX_MS = 12_000;
+/** after this long the host may deal without the phones that are still upright */
+export const UPRIGHT_GRACE_MS = 15_000;
 
 export type Action =
   | { a: 'play'; id: number }
@@ -103,8 +107,12 @@ export type ClientMsg =
   | { t: 'again'; off?: boolean; force?: boolean }
   | { t: 'toLobby' }
   | { t: 'act'; act: Action }
-  /** this screen has drawn the table for `round` and is ready for the deal */
-  | { t: 'ready'; round: number }
+  /** this screen has drawn the table for `round`; upright: a phone still held upright (the deal waits for it to turn) */
+  | { t: 'ready'; round: number; upright?: boolean }
+  /** a phone turned (or was turned back) while the table waits for the deal */
+  | { t: 'orient'; round: number; upright: boolean }
+  /** host: deal now, without waiting for phones that are still upright */
+  | { t: 'dealNow' }
   | { t: 'ping' };
 
 export type ErrorCode = 'no-room' | 'full' | 'bad-request' | 'not-host' | 'kicked' | 'replaced' | 'too-few' | 'slow-down';

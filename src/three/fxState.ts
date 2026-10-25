@@ -62,4 +62,6 @@ export function shake(amp: number, dur: number) {
 export const METEOR_FALL = 0.9;
 export const SPIN_TIME = 1.3;
 
-if (import.meta.env.DEV && typeof window !== 'undefined') (window as unknown as { __fx: typeof fxState }).__fx = fxState;
+/** dev builds, or any build opened with ?debug: the game, effects and renderer are reachable from the console */
+export const DEBUG = import.meta.env.DEV || (typeof location !== 'undefined' && /[?&]debug\b/.test(location.search));
+if (DEBUG && typeof window !== 'undefined') (window as unknown as { __fx: typeof fxState }).__fx = fxState;

@@ -168,14 +168,16 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
     });
   });
 
-  // the pile: a messy fan of the last cards, newest on top
+  // the pile: a messy fan of the last cards, newest on top; only the top few are drawn (the rest are covered),
+  // and they rest on the table, not on the hidden ones
   const dl = s.discard.length;
+  const PILE_SHOWN = 10;
   s.discard.forEach((c, i) => {
-    const layer = Math.max(0, i - (dl - 40));
+    const layer = Math.max(0, i - (dl - PILE_SHOWN));
     out.set(c.id, {
       pos: [A.discard[0] + (hash(c.id) - 0.5) * 0.55, 0.02 + layer * 0.016, A.discard[2] + (hash(c.id + 3) - 0.5) * 0.4],
       rot: [-PI / 2, (hash(c.id + 5) - 0.5) * 1.3, 0],
-      zone: 'discard', interactive: false, dim: false, delay: dealDelay(c.dealIdx), hidden: i < dl - 24,
+      zone: 'discard', interactive: false, dim: false, delay: dealDelay(c.dealIdx), hidden: i < dl - PILE_SHOWN,
     });
   });
 

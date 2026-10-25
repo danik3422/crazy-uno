@@ -16,6 +16,7 @@ export class RemoteGame implements GameView {
   you: number | null = null;
   warmup: Warmup = { waiting: [], dealAt: null, dealEnd: null };
   private readySent = 0;
+  private uprightSent = false;
   /** the server view last applied, to skip re-applying the same one */
   src: PlayerView | null = null;
   private version = 0;
@@ -56,10 +57,23 @@ export class RemoteGame implements GameView {
   playable(c: Card) { return !c.hidden && this.you === this.s.cur && playableCard(this.s, c); }
 
   /** Tell the server this screen has drawn the table for the round. */
-  ready() {
+  ready(upright = false) {
     if (this.readySent === this.s.round) return;
     this.readySent = this.s.round;
-    this.conn.send({ t: 'ready', round: this.s.round });
+    this.uprightSent = upright;
+    this.conn.send({ t: 'ready', round: this.s.round, upright });
+  }
+
+  /** The phone turned while the table waits for the deal. */
+  orient(upright: boolean) {
+    if (this.readySent !== this.s.round || this.uprightSent === upright) return;
+    this.uprightSent = upright;
+    this.conn.send({ t: 'orient', round: this.s.round, upright });
+  }
+
+  /** host: deal without the phones that are still upright */
+  dealNow() {
+    this.conn.send({ t: 'dealNow' });
   }
 
   play(id: number) { this.conn.act({ a: 'play', id }); }

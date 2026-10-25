@@ -116,7 +116,7 @@ export async function createUnoServer(opts: ServerOptions) {
       res.writeHead(404).end();
       return;
     }
-    const type = FILES[url.pathname];
+    const type = FILES[url.pathname] ?? (/^\/splash\/splash-\d+x\d+\.jpg$/.test(url.pathname) ? 'image/jpeg' : undefined);
     if (type) {
       const file = await loadFile(url.pathname);
       if (!file) return void res.writeHead(404).end();

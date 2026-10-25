@@ -276,6 +276,31 @@ describe('online rooms', () => {
     guest.close();
   });
 
+  it('waits for every phone to be turned on its side, and lets the host deal without one', async () => {
+    const [host, guest, third] = await openRoom(['Хост', 'Телефон', 'Упрямый']);
+    host.auto = guest.auto = third.auto = false;
+    guest.readyFor = third.readyFor = 1; // both phones report themselves below
+    host.send({ t: 'start' });
+    await host.until(() => !!host.view && host.view.warmup.waiting.length === 2);
+    guest.send({ t: 'ready', round: 1, upright: true });
+    third.send({ t: 'ready', round: 1, upright: true });
+    await host.until(() => (host.view!.warmup.turning ?? []).length === 2 && host.view!.warmup.waiting.length === 0);
+    expect(host.view!.warmup.dealAt).toBeNull();
+    // one turns: still waiting for the other
+    guest.send({ t: 'orient', round: 1, upright: false });
+    await host.until(() => (host.view!.warmup.turning ?? []).length === 1);
+    expect(host.view!.warmup.dealAt).toBeNull();
+    // only the host may skip the wait
+    third.send({ t: 'dealNow' });
+    await third.until(() => third.errors.includes('not-host'));
+    expect(host.view!.warmup.dealAt).toBeNull();
+    host.send({ t: 'dealNow' });
+    await host.until(() => host.view!.warmup.dealAt !== null);
+    host.close();
+    guest.close();
+    third.close();
+  });
+
   it('starts the next round only when everyone has pressed "again", after a countdown', async () => {
     const [host, guest] = await openRoom(['Хост', 'Гость']);
     host.send({ t: 'start' });

@@ -14,6 +14,15 @@ const start = () => {
   if (started) return;
   started = true;
   createRoot(document.getElementById('root')!).render(<App />);
+  // the launch splash (drawn by index.html) fades out once the app has painted its first frame
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      const splash = document.getElementById('splash');
+      if (!splash) return;
+      splash.classList.add('sp-gone');
+      setTimeout(() => splash.remove(), 600);
+    }),
+  );
 };
 fonts.then(start);
 setTimeout(() => {

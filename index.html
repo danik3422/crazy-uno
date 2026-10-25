@@ -13,6 +13,31 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Безумное UNO" />
+    <!-- iPhone launch screens: the same splash, so the home-screen app never opens on a black screen -->
+    <link rel="apple-touch-startup-image" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-1320x2868.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="/splash/splash-2868x1320.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-1206x2622.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="/splash/splash-2622x1206.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-1290x2796.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="/splash/splash-2796x1290.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-1179x2556.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="/splash/splash-2556x1179.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-1284x2778.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="/splash/splash-2778x1284.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-1170x2532.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="/splash/splash-2532x1170.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-1125x2436.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="/splash/splash-2436x1125.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-1242x2688.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="/splash/splash-2688x1242.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/splash/splash-828x1792.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="/splash/splash-1792x828.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/splash/splash-750x1334.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="/splash/splash-1334x750.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-1242x2208.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="/splash/splash-2208x1242.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/splash/splash-640x1136.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="/splash/splash-1136x640.jpg" />
     <meta name="description" content="UNO для компании с бомбами, фантами и метеоритом на +10. Создай комнату, кинь ссылку — и играйте каждый со своего телефона." />
     <!-- link previews in Telegram, WhatsApp, VK… The server fills in absolute URLs and the room code. -->
     <meta property="og:type" content="website" />
@@ -26,11 +51,56 @@
     <meta property="og:image:alt" content="Веер карт UNO и надпись «Безумное UNO»" />
     <meta property="og:url" content="/" />
     <meta name="twitter:card" content="summary_large_image" />
+    <!-- the launch splash: drawn by the browser before any script runs, so the app never opens on a blank screen -->
+    <style>
+      html, body { margin: 0; height: 100%; background: #b81d16; }
+      #splash {
+        position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
+        background: radial-gradient(ellipse at 50% 42%, #ffb347 0%, #f26b1d 28%, #c8231a 62%, #6e0a0e 100%);
+        font-family: "Unbounded", "Arial Black", "Helvetica Neue", system-ui, sans-serif; color: #fff;
+        transition: opacity 0.45s ease, visibility 0.45s; -webkit-user-select: none; user-select: none;
+      }
+      #splash.sp-gone { opacity: 0; visibility: hidden; }
+      .sp-cards { position: relative; width: 150px; height: 112px; margin-bottom: 10px; }
+      .sp-cards i {
+        position: absolute; left: 50%; bottom: 0; width: 62px; height: 92px; margin-left: -31px; border-radius: 10px;
+        border: 4px solid #fffdf6; box-shadow: 0 10px 20px rgba(60, 0, 0, 0.35); transform-origin: 50% 150%;
+        animation: sp-fan 1.6s cubic-bezier(.45, 0, .2, 1) infinite;
+      }
+      .sp-cards i::before {
+        content: ""; position: absolute; left: 50%; top: 50%; width: 34px; height: 64px; margin: -32px 0 0 -17px;
+        border-radius: 50%; background: #fffdf6; transform: rotate(24deg);
+      }
+      .sp-cards i:nth-child(1) { background: #2f6fde; --r: -22deg; animation-delay: 0s; }
+      .sp-cards i:nth-child(2) { background: #f5b800; --r: 0deg; animation-delay: 0.08s; }
+      .sp-cards i:nth-child(3) { background: #e5413a; --r: 22deg; animation-delay: 0.16s; }
+      .sp-cards i:nth-child(3)::after {
+        content: "UNO"; position: absolute; inset: 0; display: grid; place-items: center; transform: rotate(-24deg);
+        font-weight: 900; font-size: 15px; color: #e5413a; letter-spacing: -0.02em;
+      }
+      @keyframes sp-fan {
+        0%, 100% { transform: rotate(0deg) translateY(0); }
+        35%, 70% { transform: rotate(var(--r)) translateY(-6px); }
+      }
+      .sp-title { display: flex; flex-direction: column; align-items: center; line-height: 0.95; text-shadow: 0 3px 0 rgba(90, 0, 0, 0.35); }
+      .sp-title small { font-size: 15px; font-weight: 900; letter-spacing: 0.14em; opacity: 0.95; }
+      .sp-title b { font-size: 54px; font-weight: 900; letter-spacing: -0.03em; transform: rotate(-4deg); text-shadow: 0 4px 0 #c41a10, 0 7px 0 #7a0a04; }
+      .sp-bar { width: 132px; height: 6px; border-radius: 999px; background: rgba(0, 0, 0, 0.22); overflow: hidden; }
+      .sp-bar span { display: block; width: 40%; height: 100%; border-radius: inherit; background: #ffd84a; animation: sp-bar 1.1s ease-in-out infinite; }
+      @keyframes sp-bar { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
+      @media (orientation: landscape) and (max-height: 520px) { #splash { gap: 14px; } .sp-title b { font-size: 44px; } }
+      @media (prefers-reduced-motion: reduce) { .sp-cards i { animation: none; transform: rotate(var(--r)); } .sp-bar span { animation: none; width: 100%; } }
+    </style>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;900&family=Rubik:wght@400;500;700&display=swap" />
   </head>
   <body>
+    <div id="splash" aria-hidden="true">
+      <div class="sp-cards"><i></i><i></i><i></i></div>
+      <div class="sp-title"><small>БЕЗУМНОЕ</small><b>UNO</b></div>
+      <div class="sp-bar"><span></span></div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

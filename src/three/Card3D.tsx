@@ -65,6 +65,7 @@ interface Flight {
   flip: boolean;
 }
 const NORMAL = new THREE.Vector3();
+const TO_CAM = new THREE.Vector3();
 const FLIP = new THREE.Quaternion().setFromAxisAngle(Y_AXIS, Math.PI);
 /** which side of a card the camera sees: > 0 the face, < 0 the back */
 function faceSide(q: THREE.Quaternion) {
@@ -102,6 +103,8 @@ interface Props {
 export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
   const ref = useRef<THREE.Group>(null!);
   const frontMat = useRef<THREE.MeshStandardMaterial>(null!);
+  const frontRef = useRef<THREE.Mesh>(null!);
+  const backRef = useRef<THREE.Mesh>(null!);
   const hovered = useRef(false);
   const startAt = useRef<number | null>(null);
   const placed = useRef(false);
@@ -184,6 +187,15 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
         e.quat[0] = q.x; e.quat[1] = q.y; e.quat[2] = q.z; e.quat[3] = q.w;
         e.zone = lastZone.current;
       } else lastPlace.set(card.id, { pos: [g.position.x, g.position.y, g.position.z], quat: [q.x, q.y, q.z, q.w], zone: lastZone.current });
+    }
+    // the camera only ever sees one side of a card: skip drawing the other (half the face draw calls).
+    // Decided from last frame's pose, with a wide margin so a fast flip never hides the side coming into view.
+    if (placed.current) {
+      NORMAL.set(0, 0, 1).applyQuaternion(g.quaternion);
+      TO_CAM.subVectors(camera.position, g.position);
+      const facing = NORMAL.dot(TO_CAM) / (TO_CAM.length() || 1);
+      frontRef.current.visible = facing > -0.3;
+      backRef.current.visible = facing < 0.3;
     }
     const inHandZone = tt.zone === 'hand' || tt.zone === 'opp';
     const bombing = fxState.drop.until > now && inHandZone;
@@ -447,10 +459,10 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
       }}
     >
       <mesh geometry={body} material={edgeMat} castShadow />
-      <mesh geometry={plane} position-z={THICK / 2 + 0.0015}>
+      <mesh ref={frontRef} geometry={plane} position-z={THICK / 2 + 0.0015}>
         <meshStandardMaterial ref={frontMat} map={front} alphaTest={0.5} roughness={0.38} metalness={0} />
       </mesh>
-      <mesh geometry={plane} position-z={-THICK / 2 - 0.0015} rotation={[0, Math.PI, Math.PI]}>
+      <mesh ref={backRef} geometry={plane} position-z={-THICK / 2 - 0.0015} rotation={[0, Math.PI, Math.PI]}>
         <meshStandardMaterial map={back} alphaTest={0.5} roughness={0.38} />
       </mesh>
     </group>

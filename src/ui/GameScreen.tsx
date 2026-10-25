@@ -3,9 +3,9 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExter
 import { sound } from '../audio/sound';
 import { Game } from '../game/engine';
 import type { GameView } from '../game/view';
-import { DEAL_STEP_MS, SHUFFLE_MS, dealMs } from '../net/protocol';
+import { DEAL_STEP_MS, SHUFFLE_MS, UPRIGHT_GRACE_MS, dealMs } from '../net/protocol';
 import { RemoteGame } from '../net/remoteGame';
-import { BOMB_FALL, BOMB_RELEASE, METEOR_FALL, SPIN_TIME, fxState, nowSec, shake, summonMascot } from '../three/fxState';
+import { BOMB_FALL, BOMB_RELEASE, DEBUG, METEOR_FALL, SPIN_TIME, fxState, nowSec, shake, summonMascot } from '../three/fxState';
 import { lastPlace, spawn } from '../three/layout';
 import { GameScene } from '../three/Scene';
 import { useGlRecovery } from '../three/useGlRecovery';
@@ -15,6 +15,8 @@ import { EventBanner, type Banner } from './EventBanner';
 import { Hud, type Toast } from './Hud';
 import { useKeyboardPlay } from './useKeyboardPlay';
 import { RotateGate } from './RotateGate';
+import { usePhone } from './phone';
+import { PerformanceMonitor } from '@react-three/drei';
 import { Overlays, type OnlineCtx } from './Overlays';
 
 interface Props {
@@ -45,6 +47,9 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
   const scored = useRef<GameView | null>(null);
   const local = game instanceof Game ? game : null;
   const { glKey, onCreated } = useGlRecovery();
+  // render resolution: up to 1.5× the CSS pixels, lowered automatically on a struggling device
+  const maxDpr = Math.min(1.5, typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1);
+  const [dpr, setDpr] = useState(maxDpr);
 
   const toast = useCallback((text: string, big = false) => {
     const id = Math.random();
@@ -52,7 +57,7 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 1900);
   }, []);
 
-  if (import.meta.env.DEV) (window as unknown as { __uno?: GameView }).__uno = game;
+  if (DEBUG) (window as unknown as { __uno?: GameView }).__uno = game;
 
   useEffect(() => () => { fxState.upsideUntil = 0; }, []);
 
@@ -99,16 +104,42 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
     });
   }, []);
 
+  // a phone held upright holds the deal: the game only starts once it lies on its side (online: for everybody)
+  const { phone, portrait } = usePhone();
+  const upright = phone && portrait;
+  const uprightRef = useRef(upright);
+  uprightRef.current = upright;
+  const [sceneReady, setSceneReady] = useState(false);
+  useLayoutEffect(() => setSceneReady(false), [game]);
+
   const onSceneReady = useCallback(() => {
-    if (game instanceof RemoteGame) return game.ready();
+    if (game instanceof RemoteGame) return game.ready(uprightRef.current);
+    setSceneReady(true);
+  }, [game]);
+  useEffect(() => {
+    if (game instanceof RemoteGame) game.orient(upright);
+  }, [game, upright]);
+  // on one device: deal as soon as the table is drawn and the phone (if it is one) is turned
+  useEffect(() => {
+    if (game instanceof RemoteGame || !sceneReady || upright || Number.isFinite(fxState.dealAt)) return;
     const ms = dealMs(game.s.players.length, game.s.table.handSize);
     const at = nowSec() + 0.6 + SHUFFLE_MS / 1000;
     local?.holdClock(ms + 600 + SHUFFLE_MS);
     startDeal(at, at + ms / 1000);
-  }, [game, local, startDeal]);
+  }, [game, local, startDeal, sceneReady, upright]);
 
   // online: the server says when the deal starts for everybody
   const warm = game instanceof RemoteGame ? game.warmup : null;
+  const turning = warm?.turning ?? [];
+  // someone keeps their phone upright for a while: the host may deal without them
+  const [turningLong, setTurningLong] = useState(false);
+  const anyTurning = turning.length > 0;
+  useEffect(() => {
+    setTurningLong(false);
+    if (!anyTurning) return;
+    const t = setTimeout(() => setTurningLong(true), UPRIGHT_GRACE_MS);
+    return () => clearTimeout(t);
+  }, [anyTurning]);
   useEffect(() => {
     if (!warm || warm.dealAt === null || warm.dealEnd === null) return;
     // server ms -> this screen's animation clock
@@ -282,7 +313,18 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
 
   return (
     <div className="game">
-      <Canvas key={glKey} onCreated={onCreated} shadows dpr={[1, 1.5]} camera={{ fov: 42, position: [0, 9, 10] }} gl={{ antialias: true }}>
+      <Canvas key={glKey} onCreated={onCreated} shadows dpr={dpr} camera={{ fov: 42, position: [0, 9, 10] }} gl={{ antialias: true, powerPreference: 'high-performance' }}>
+        {/* a device that can't keep up renders at 1× and goes back up when it can; watched only once the
+            cards are dealt, so loading hiccups (shaders, textures) don't count against it */}
+        {!locked && (
+          <PerformanceMonitor
+            bounds={hz => [hz * 0.7, hz * 0.92]}
+            onDecline={() => setDpr(1)}
+            onIncline={() => setDpr(maxDpr)}
+            flipflops={3}
+            onFallback={() => setDpr(1)}
+          />
+        )}
         <GameScene
           key={s.round}
           game={game}
@@ -305,27 +347,39 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
       {flashOn && <div key={`flash-${flash}`} className="flash" />}
       {banner && <EventBanner key={`event-${banner.id}`} banner={banner} onDone={() => setBanner(b => (b?.id === banner.id ? null : b))} />}
       <Overlays game={game} version={version} score={score} onAgain={onAgain} onMenu={onMenu} online={online} locked={locked} />
-      <RotateGate />
+      <RotateGate waiting={stage === 'loading'} />
       {curtain && (
         <div className={`loading-screen ${stage === 'loading' ? '' : 'leaving'}`}>
           <CardLoader
             theme={s.theme}
             title="Раскладываем стол"
-            sub={warm && warm.waiting.length ? 'Ждём, пока у всех загрузится игра' : 'Ещё секунду…'}
+            sub={
+              turning.length
+                ? 'Ждём, пока все повернут телефоны горизонтально'
+                : warm && warm.waiting.length
+                  ? 'Ждём, пока у всех загрузится игра'
+                  : 'Ещё секунду…'
+            }
           >
             {warm && (
               <ul className="ready-list">
                 {s.players.map((p, i) => {
                   const wait = warm.waiting.includes(i);
+                  const turn = turning.includes(i);
                   return (
-                    <li key={i} className={wait ? '' : 'ok'}>
+                    <li key={i} className={wait ? '' : turn ? 'turn' : 'ok'}>
                       <AvatarImg id={p.avatar} name={p.name} bot={p.bot} size={28} />
                       {p.name}
-                      <span className="st">{wait ? <span className="dot-pulse" /> : '✓'}</span>
+                      <span className="st">{wait ? <span className="dot-pulse" /> : turn ? <span className="turn-ic" title="Поворачивает телефон">📱</span> : '✓'}</span>
                     </li>
                   );
                 })}
               </ul>
+            )}
+            {online?.isHost && turningLong && (
+              <button type="button" className="btn deal-now" onClick={() => (game as RemoteGame).dealNow()}>
+                Начать без них
+              </button>
             )}
           </CardLoader>
         </div>

@@ -91,10 +91,12 @@ const rankOf = (order: number[]) => {
 export function DeckStack({ at, center, theme, slideAt, portrait }: { at: Vec3; center: Vec3; theme: ThemeId; slideAt: number; portrait: boolean }) {
   const group = useRef<THREE.Group>(null!);
   const turn = useRef<THREE.Group>(null!);
+  // all layers are one instanced mesh: two draw calls for the whole stack instead of two per layer
+  const slabs = useRef<THREE.InstancedMesh>(null!);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
   // on a narrow phone the halves part along the screen's long side, so they stay clear of the side plates;
   // the deck turns back to its usual angle on the way to its spot
   const yawMid = portrait ? -Math.PI / 2 + 0.2 : REST_YAW;
-  const slabRefs = useRef<THREE.Mesh[]>([]);
   const live = useMemo(() => new THREE.Vector3(), []);
 
   const materials = useMemo(() => {
@@ -157,8 +159,6 @@ export function DeckStack({ at, center, theme, slideAt, portrait }: { at: Vec3; 
     const done = Number.isFinite(dealAt) && t >= SHUFFLE;
 
     for (let i = 0; i < LAYERS; i++) {
-      const m = slabRefs.current[i];
-      if (!m) continue;
       const j = jitter[i];
       let x = 0;
       let y: number;
@@ -193,26 +193,18 @@ export function DeckStack({ at, center, theme, slideAt, portrait }: { at: Vec3; 
         // 4. square up: a light tap that settles the stack
         if (p > 0.88) y += Math.sin(((p - 0.88) / 0.12) * Math.PI) * 0.012 * (slot / LAYERS);
       }
-      m.position.set(x + j.dx, y, j.dz);
-      m.rotation.set(0, j.rot + yaw, 0);
+      dummy.position.set(x + j.dx, y, j.dz);
+      dummy.rotation.set(0, j.rot + yaw, 0);
+      dummy.updateMatrix();
+      slabs.current.setMatrixAt(i, dummy.matrix);
     }
+    slabs.current.instanceMatrix.needsUpdate = true;
   });
 
   return (
     <group ref={group} position={[at[0], 0, at[2]]}>
       <group ref={turn} rotation-y={REST_YAW}>
-        {jitter.map((j, i) => (
-          <mesh
-            key={i}
-            ref={m => { if (m) slabRefs.current[i] = m; }}
-            geometry={slabGeometry}
-            material={materials}
-            position={[j.dx, ranks[0][i] * H, j.dz]}
-            rotation-y={j.rot}
-            castShadow
-            receiveShadow
-          />
-        ))}
+        <instancedMesh ref={slabs} args={[slabGeometry, materials, LAYERS]} castShadow receiveShadow frustumCulled={false} />
       </group>
     </group>
   );
