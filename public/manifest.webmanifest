@@ -1,0 +1,17 @@
+{
+  "name": "Безумное UNO",
+  "short_name": "Безумное UNO",
+  "description": "UNO для компании с бомбами, фантами и метеоритом на +10.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#2a0c52",
+  "theme_color": "#c8231a",
+  "lang": "ru",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

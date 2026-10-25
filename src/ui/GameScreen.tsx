@@ -14,6 +14,7 @@ import { CardLoader } from './CardLoader';
 import { EventBanner, type Banner } from './EventBanner';
 import { Hud, type Toast } from './Hud';
 import { useKeyboardPlay } from './useKeyboardPlay';
+import { RotateGate } from './RotateGate';
 import { Overlays, type OnlineCtx } from './Overlays';
 
 interface Props {
@@ -304,6 +305,7 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
       {flashOn && <div key={`flash-${flash}`} className="flash" />}
       {banner && <EventBanner key={`event-${banner.id}`} banner={banner} onDone={() => setBanner(b => (b?.id === banner.id ? null : b))} />}
       <Overlays game={game} version={version} score={score} onAgain={onAgain} onMenu={onMenu} online={online} locked={locked} />
+      <RotateGate />
       {curtain && (
         <div className={`loading-screen ${stage === 'loading' ? '' : 'leaving'}`}>
           <CardLoader

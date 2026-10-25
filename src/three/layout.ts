@@ -22,6 +22,8 @@ export interface Target {
 
 export interface View {
   portrait: boolean;
+  /** a phone lying on its side: wide and very short */
+  compact?: boolean;
 }
 
 const PI = Math.PI;

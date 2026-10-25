@@ -8,6 +8,8 @@ import { RulesPanel } from './RulesPanel';
 import { TablePanel } from './TablePanel';
 import { ThemePicker } from './ThemePicker';
 import { Legend } from './Legend';
+import { SMALL_SCREEN, enterFullscreen, useMedia } from './phone';
+import { PhoneTip } from './RotateGate';
 
 interface Props {
   cfg: Config;
@@ -24,6 +26,7 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
   const humans = players.filter(p => !p.bot).length;
   const table = cfg.table ?? DEFAULT_TABLE;
   const teamsWrong = table.teams ? teamsProblem(players.length) : null;
+  const small = useMedia(SMALL_SCREEN);
 
   return (
     <div className={`setup-page page-${cfg.theme ?? 'classic'}`}>
@@ -57,9 +60,11 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
                 />
                 <button
                   className="btn tog"
+                  title={p.bot ? 'Бот — нажми, чтобы стал человеком' : 'Человек — нажми, чтобы стал ботом'}
                   onClick={() => update(i, p.bot ? { bot: false, avatar: undefined } : { bot: true, avatar: undefined, name: /^Бот/.test(p.name) ? p.name : freeBot() })}
                 >
-                  {p.bot ? '🤖 Бот' : '🙂 Человек'}
+                  <span aria-hidden>{p.bot ? '🤖' : '🙂'}</span>
+                  <span className="tog-label">{p.bot ? 'Бот' : 'Человек'}</span>
                 </button>
                 <button
                   className="btn x"
@@ -88,7 +93,8 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
               : 'Добавь людей, и игра будет прятать карты между ходами.'}
           </small>
           {teamsWrong && <p className="table-warn">{teamsWrong}: добавь игрока или бота.</p>}
-          <button className="btn big" disabled={!!teamsWrong} onClick={onStart}>Раздавай!</button>
+          <PhoneTip />
+          <button className="btn big" disabled={!!teamsWrong} onClick={() => { void enterFullscreen(); onStart(); }}>Раздавай!</button>
         </section>
 
         <section className="panel">
@@ -101,16 +107,18 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
 
       <section className="panel">
         <h2>Оформление</h2>
-        <ThemePicker value={cfg.theme ?? 'classic'} onChange={theme => setCfg(c => ({ ...c, theme }))} />
+        <ThemePicker compact={small} value={cfg.theme ?? 'classic'} onChange={theme => setCfg(c => ({ ...c, theme }))} />
       </section>
 
-      <section className="panel">
-        <h2>Что за карты</h2>
+      {/* the reference is long: folded away on phones, open on a big screen */}
+      <details className="panel ref-panel" open={!small || undefined}>
+        <summary>
+          <h2>Что за карты и события</h2>
+          <span className="ref-count">17 карт · 13 событий</span>
+          <svg className="chev" viewBox="0 0 24 24" width="18" height="18" aria-hidden><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </summary>
         <Legend />
-      </section>
-
-      <section className="panel">
-        <h2>Безумные события</h2>
+        <h3 className="ref-sub">Безумные события</h3>
         <small className="muted">Случаются сами, в случайный момент, примерно раз в 4–13 ходов.</small>
         <div className="legend">
           {Object.entries(EVENTS).map(([id, e]) => (
@@ -123,7 +131,7 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
             </div>
           ))}
         </div>
-      </section>
+      </details>
     </div>
   );
 }

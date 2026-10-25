@@ -7,6 +7,7 @@ import { Legend } from './Legend';
 import { RematchVote } from './RematchVote';
 import type { MemberInfo, Rematch } from '../net/protocol';
 import { IconCards, IconMenu } from './Icons';
+import { FullscreenButton } from './RotateGate';
 import { SoundMenu } from './SoundMenu';
 
 /** Extra context when the game is an online room. */
@@ -201,6 +202,7 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
   return (
     <>
       <div className="corner-btns">
+        <FullscreenButton />
         <SoundMenu />
         <button className="btn glass icon-btn labeled" onClick={() => setHelp(true)} title="Что за карты">
           <IconCards /><span>Карты</span>

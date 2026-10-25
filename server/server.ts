@@ -87,9 +87,20 @@ export async function createUnoServer(opts: ServerOptions) {
     return page;
   };
 
-  // the link-preview picture, read once
-  let ogImage: Promise<Buffer | null> | null = null;
-  const loadOg = () => (ogImage ??= readFile(path.join(opts.staticDir!, 'og.jpg')).catch(() => null));
+  // the few files next to the page (link preview, app icons, the install manifest), each read once
+  const FILES: Record<string, string> = {
+    '/og.jpg': 'image/jpeg',
+    '/icon-192.png': 'image/png',
+    '/icon-512.png': 'image/png',
+    '/apple-touch-icon.png': 'image/png',
+    '/manifest.webmanifest': 'application/manifest+json',
+  };
+  const files = new Map<string, Promise<Buffer | null>>();
+  const loadFile = (name: string) => {
+    let f = files.get(name);
+    if (!f) files.set(name, (f = readFile(path.join(opts.staticDir!, name.slice(1))).catch(() => null)));
+    return f;
+  };
 
   let vite: { middlewares: http.RequestListener; close(): Promise<void> } | null = null;
 
@@ -105,11 +116,12 @@ export async function createUnoServer(opts: ServerOptions) {
       res.writeHead(404).end();
       return;
     }
-    if (url.pathname === '/og.jpg') {
-      const img = await loadOg();
-      if (!img) return void res.writeHead(404).end();
-      res.writeHead(200, { 'content-type': 'image/jpeg', 'content-length': img.length, 'cache-control': 'public, max-age=86400' });
-      res.end(req.method === 'HEAD' ? undefined : img);
+    const type = FILES[url.pathname];
+    if (type) {
+      const file = await loadFile(url.pathname);
+      if (!file) return void res.writeHead(404).end();
+      res.writeHead(200, { 'content-type': type, 'content-length': file.length, 'cache-control': 'public, max-age=86400' });
+      res.end(req.method === 'HEAD' ? undefined : file);
       return;
     }
     // single-file build: every page route gets index.html (?room=CODE links included)

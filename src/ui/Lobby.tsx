@@ -9,6 +9,8 @@ import { TEAM_NAMES, teamsProblem } from '../game/content';
 import { RulesPanel } from './RulesPanel';
 import { TablePanel } from './TablePanel';
 import { ThemePicker } from './ThemePicker';
+import { enterFullscreen } from './phone';
+import { PhoneTip } from './RotateGate';
 
 interface Props {
   conn: Connection;
@@ -107,6 +109,7 @@ export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
           {isHost && <ThemePicker compact value={room.theme} onChange={t => conn.send({ t: 'theme', theme: t })} />}
         </section>
 
+        <PhoneTip />
         {isHost ? (
           <StartBar canStart={canStart} hint={startHint} onStart={() => conn.send({ t: 'start' })} />
         ) : (
@@ -135,7 +138,7 @@ function StartBar({ canStart, hint, onStart }: { canStart: boolean; hint: string
   return (
     <div ref={ref} className={`lb-start ${stuck ? 'stuck' : ''}`}>
       {!canStart && hint && <p className="lb-start-hint">{hint}</p>}
-      <button className="btn big start-btn" disabled={!canStart} onClick={onStart}>Начать игру</button>
+      <button className="btn big start-btn" disabled={!canStart} onClick={() => { void enterFullscreen(); onStart(); }}>Начать игру</button>
     </div>
   );
 }

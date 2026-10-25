@@ -35,7 +35,9 @@ interface Props {
 export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dealing = false }: Props) {
   const size = useThree(s => s.size);
   const portrait = size.width / size.height < 0.9;
-  const view: View = useMemo(() => ({ portrait }), [portrait]);
+  // a phone lying on its side: wide but very short, so the HUD and plates get compact
+  const compact = !portrait && size.height < 520;
+  const view: View = useMemo(() => ({ portrait, compact }), [portrait, compact]);
   const targets = useMemo(() => computeTargets(game, view), [game, version, view]);
   const s = game.s;
   const A = arena(view);
@@ -47,7 +49,7 @@ export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dea
 
   return (
     <>
-      <CameraRig portrait={portrait} finale={s.phase === 'over'} focus={A.discard} />
+      <CameraRig portrait={portrait} compact={compact} finale={s.phase === 'over'} focus={A.discard} />
       <ReadySignal onReady={onReady} />
       <ambientLight intensity={0.75} />
       <directionalLight
@@ -93,7 +95,7 @@ export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dea
 
 const finePointer = typeof matchMedia !== 'undefined' && matchMedia('(hover: hover) and (pointer: fine)').matches;
 
-function CameraRig({ portrait, finale, focus }: { portrait: boolean; finale: boolean; focus: [number, number, number] }) {
+function CameraRig({ portrait, compact, finale, focus }: { portrait: boolean; compact: boolean; finale: boolean; focus: [number, number, number] }) {
   const { camera } = useThree();
   const look = useMemo(() => new THREE.Vector3(), []);
   const roll = useRef(0);
@@ -125,7 +127,8 @@ function CameraRig({ portrait, finale, focus }: { portrait: boolean; finale: boo
     cam.position.y += (base[1] + py + sy - cam.position.y) * Math.min(1, dt * 3);
     cam.position.z += (tz - cam.position.z) * Math.min(1, dt * 3);
     // on phones the results sheet takes the lower half, so aim low and lift the podium up the screen
-    if (finale) look.lerp(new THREE.Vector3(focus[0], portrait ? -1.2 : 0.75, focus[2]), Math.min(1, dt * 2.5));
+    // lying on its side the results sit on the right, so the podium moves into the left half
+    if (finale) look.lerp(new THREE.Vector3(focus[0] + (compact ? 2.1 : 0), portrait ? -1.2 : compact ? 0.9 : 0.75, focus[2]), Math.min(1, dt * 2.5));
     else look.lerp(new THREE.Vector3(0, 0, portrait ? 1.4 : 0.55), Math.min(1, dt * 4));
     cam.lookAt(look);
     // "upside down" event: roll the whole view over
@@ -272,13 +275,13 @@ function PlayerPlates({ game, view, dealing }: { game: GameView; view: View; dea
         const sub = standIn(p.name);
         return (
           <Html key={i} position={pos} center zIndexRange={[20, 0]} pointerEvents="none">
-            <div className={`oplate ${cur ? 'cur' : ''} ${i === s.winner ? 'win' : ''} ${p.offline ? 'off' : ''} ${s.teams ? `team t${s.teams[i]}` : ''} ${view.portrait ? 'small' : ''} ${view.portrait && s.players.length > 3 ? 'tiny' : ''}`} title={p.name}>
+            <div className={`oplate ${cur ? 'cur' : ''} ${i === s.winner ? 'win' : ''} ${p.offline ? 'off' : ''} ${s.teams ? `team t${s.teams[i]}` : ''} ${view.portrait || view.compact ? 'small' : ''} ${(view.portrait && s.players.length > 3) || (view.compact && s.players.length > 5) ? 'tiny' : ''}`} title={p.name}>
               {s.teams && (
                 <span className="oplate-team">{s.teams[i] === s.teams[game.seat()] ? '🤝 напарник' : TEAM_NAMES[s.teams[i]]}</span>
               )}
               <span className="ava-wrap swap-in" key={p.offline ? 'bot' : 'me'}>
                 {/* someone dropped out: a bot sits in under its own name and face until they are back */}
-                <AvatarImg id={p.offline ? sub.avatar : p.avatar} name={p.offline ? sub.name : p.name} bot={p.bot} size={view.portrait ? 40 : 54} className="oplate-ava" />
+                <AvatarImg id={p.offline ? sub.avatar : p.avatar} name={p.offline ? sub.name : p.name} bot={p.bot} size={view.portrait ? 40 : view.compact ? 34 : 54} className="oplate-ava" />
                 {cur && !dealing && s.turnDeadline !== null && (
                   <TurnRing key={s.turn} deadline={s.turnDeadline} total={s.turnTotal} offset={game.clockOffset} />
                 )}
