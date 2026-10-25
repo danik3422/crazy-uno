@@ -1,15 +1,16 @@
 import { useState, useSyncExternalStore } from 'react';
 import { sound } from '../audio/sound';
+import { IconMusic, IconMute, IconSound } from './Icons';
 
 /** Speaker button with two switches: music and sound effects. */
 export function SoundMenu() {
   useSyncExternalStore(sound.subscribe, sound.getVersion);
   const [open, setOpen] = useState(false);
   const { sfx, music } = sound.prefs;
-  const icon = !sfx && !music ? '🔇' : music ? '🎵' : '🔊';
+  const icon = !sfx && !music ? <IconMute /> : music ? <IconMusic /> : <IconSound />;
   return (
     <div className="sound-menu">
-      <button className="btn glass" aria-expanded={open} aria-label="Звук" onClick={() => setOpen(o => !o)}>
+      <button className={`btn glass icon-btn ${open ? 'on' : ''}`} aria-expanded={open} aria-label="Звук" title="Звук" onClick={() => setOpen(o => !o)}>
         {icon}
       </button>
       {open && (

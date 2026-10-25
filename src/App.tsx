@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { DEFAULT_RULES } from './game/content';
 import { Game } from './game/engine';
-import type { Rules, ThemeId } from './game/types';
+import type { Rules, Table, ThemeId } from './game/types';
 import { randomHumanAvatar } from './game/avatars';
 import { Connection, savedAvatar, savedName } from './net/connection';
 import { normalizeCode } from './net/protocol';
@@ -16,6 +16,7 @@ export interface Config {
   players: { name: string; bot: boolean; avatar?: string }[];
   rules: Rules;
   theme?: ThemeId;
+  table?: Table;
 }
 
 const CFG_KEY = 'crazy-uno-cfg-v2';

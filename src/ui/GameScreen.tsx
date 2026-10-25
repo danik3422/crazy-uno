@@ -5,14 +5,15 @@ import { Game } from '../game/engine';
 import type { GameView } from '../game/view';
 import { DEAL_STEP_MS, dealMs } from '../net/protocol';
 import { RemoteGame } from '../net/remoteGame';
-import { BOMBER_DROP, METEOR_FALL, SPIN_TIME, fxState, nowSec, shake, summonMascot } from '../three/fxState';
-import { lastPlace } from '../three/layout';
+import { BOMB_FALL, BOMB_RELEASE, METEOR_FALL, SPIN_TIME, fxState, nowSec, shake, summonMascot } from '../three/fxState';
+import { lastPlace, spawn } from '../three/layout';
 import { GameScene } from '../three/Scene';
 import { useGlRecovery } from '../three/useGlRecovery';
 import { AvatarImg } from './AvatarImg';
 import { CardLoader } from './CardLoader';
 import { EventBanner, type Banner } from './EventBanner';
 import { Hud, type Toast } from './Hud';
+import { useKeyboardPlay } from './useKeyboardPlay';
 import { Overlays, type OnlineCtx } from './Overlays';
 
 interface Props {
@@ -30,6 +31,14 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [banner, setBanner] = useState<Banner | null>(null);
   const [flash, setFlash] = useState(0);
+  // the white flash (lightning, meteor) is shown for half a second and then removed for good
+  const [flashOn, setFlashOn] = useState(false);
+  useEffect(() => {
+    if (!flash) return;
+    setFlashOn(true);
+    const t = setTimeout(() => setFlashOn(false), 500);
+    return () => clearTimeout(t);
+  }, [flash]);
   const version = useSyncExternalStore(game.subscribe, game.getVersion);
   const lastFx = useRef<{ game: GameView | null; id: number }>({ game: null, id: 0 });
   const scored = useRef<GameView | null>(null);
@@ -103,6 +112,15 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
     startDeal(toPerf(warm.dealAt), toPerf(warm.dealEnd));
   }, [warm, game, startDeal, version]);
   const locked = stage !== 'play';
+  const playCard = useCallback(
+    (id: number) => {
+      if (locked) return;
+      if (game.s.phase === 'choose') game.resolveChoice(id);
+      else game.play(id);
+    },
+    [game, locked],
+  );
+  const kb = useKeyboardPlay(game, locked, playCard);
 
   // Music follows the table theme; silence when leaving the table.
   const theme = game.s.theme ?? 'classic';
@@ -178,12 +196,14 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
         fxState.holdUntil = nowSec() + 0.6;
       }
       if (f.kind === 'bomber') {
-        // the plane needs a moment to arrive; cards drawn meanwhile wait inside it
+        // the plane flies in and drops a bomb on the victim; the penalty cards burst out of the blast
         const lead = 0.5;
-        summonMascot('bomber', lead, f.target ?? 0);
-        fxState.drop.at = nowSec() + lead + BOMBER_DROP;
+        const target = f.target ?? 0;
+        summonMascot('bomber', lead, target);
+        const seat = spawn.seats[target] ?? [0, 0.6, 0];
+        fxState.drop.pos = [seat[0], seat[1] + 0.9, seat[2]];
+        fxState.drop.at = nowSec() + lead + BOMB_RELEASE + BOMB_FALL;
         fxState.drop.until = fxState.drop.at + 0.4;
-        setTimeout(() => { shake(0.5, 0.5); sound.play('whoosh'); }, (lead + BOMBER_DROP + 0.4) * 1000);
       }
       if (f.kind === 'spin') fxState.spinUntil = nowSec() + SPIN_TIME;
       if (f.kind === 'upside') fxState.upsideUntil = nowSec() + 30;
@@ -192,7 +212,10 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
     }
     if (s.phase === 'over' && scored.current !== game && s.winner !== null) {
       scored.current = game;
-      onOver?.(s.players[s.winner].name);
+      // in teams every member of the winning team scores
+      s.players.forEach((p, i) => {
+        if (i === s.winner || (s.teams && s.teams[i] === s.teams[s.winner!])) onOver?.(p.name);
+      });
     }
     if (!locked && local && local.cp().bot && (s.phase === 'play' || s.phase === 'choose')) {
       // let an event banner and its animation finish before the bot moves
@@ -216,13 +239,15 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
   const [now, setNow] = useState(Date.now());
   const deadline = game.s.bombDeadline;
   const turnDeadline = game.s.turnDeadline;
+  const endsAt = game.s.phase === 'over' ? null : game.s.endsAt;
   useEffect(() => {
-    if (deadline === null && turnDeadline === null) return;
+    if (deadline === null && turnDeadline === null && endsAt === null) return;
     let lastTick = -1;
     const t = setInterval(() => {
       setNow(Date.now());
       local?.checkBomb();
       local?.timeoutTurn();
+      local?.checkTimeLimit();
       // tick through the last five seconds of my own clock
       const g = game;
       const dl = g.s.bombDeadline ?? g.s.turnDeadline;
@@ -235,7 +260,8 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
       }
     }, 100);
     return () => clearInterval(t);
-  }, [game, local, deadline, turnDeadline]);
+  }, [game, local, deadline, turnDeadline, endsAt]);
+  const roundLeft = endsAt === null ? null : Math.max(0, Math.ceil((endsAt - now - game.clockOffset) / 1000));
   const left = deadline === null ? 0 : Math.max(0, Math.ceil((deadline - now - game.clockOffset) / 1000));
 
   const s = game.s;
@@ -252,17 +278,20 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
           version={version}
           canDraw={canDraw}
           onReady={onSceneReady}
+          dealing={locked}
           onDeck={() => { if (!locked) game.draw(); }}
-          onCard={id => {
-            if (locked) return;
-            if (game.s.phase === 'choose') game.resolveChoice(id);
-            else game.play(id);
-          }}
+          onCard={playCard}
         />
       </Canvas>
-      <Hud game={game} version={version} toasts={toasts} bombLeft={left} online={online} locked={locked} />
+      <Hud game={game} version={version} toasts={toasts} bombLeft={left} roundLeft={locked ? null : roundLeft} online={online} locked={locked} />
       {stage === 'dealing' && <div className="deal-banner">Раздаём карты…</div>}
-      {flash > 0 && <div key={`flash-${flash}`} className="flash" />}
+      <p className="sr-only" aria-live="polite">{kb.said}</p>
+      {kb.active && (
+        <p className="kb-hint" aria-hidden>
+          <kbd>←</kbd><kbd>→</kbd> выбрать · <kbd>Enter</kbd> сходить · <kbd>D</kbd> взять · <kbd>U</kbd> UNO · <kbd>P</kbd> пас
+        </p>
+      )}
+      {flashOn && <div key={`flash-${flash}`} className="flash" />}
       {banner && <EventBanner key={`event-${banner.id}`} banner={banner} onDone={() => setBanner(b => (b?.id === banner.id ? null : b))} />}
       <Overlays game={game} version={version} score={score} onAgain={onAgain} onMenu={onMenu} online={online} locked={locked} />
       {stage === 'loading' && (

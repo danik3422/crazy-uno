@@ -2,7 +2,8 @@ import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef, type RefObject } from 'react';
 import * as THREE from 'three';
 import { sound } from '../audio/sound';
-import { BOMBER_DROP, BOMBER_TIME, fxState, nowSec } from './fxState';
+import { BOMBER_TIME, BOMB_RELEASE, fxState, nowSec } from './fxState';
+import { bomberRoute, pickRoute, type Route } from './mascotRoutes';
 import { spawn } from './layout';
 
 const PI = Math.PI;
@@ -153,19 +154,11 @@ interface Props {
   portrait?: boolean;
 }
 
-const FLY_TIME = 6.5;
 const LOOP_TIME = 10;
 const ORBIT_TILT = 0.42; // the menu ring dips in front of the cards and rises behind them
 
-function bezier(p: THREE.Vector3[], u: number, out: THREE.Vector3) {
-  const v = 1 - u;
-  return out
-    .copy(p[0]).multiplyScalar(v * v * v)
-    .addScaledVector(p[1], 3 * v * v * u)
-    .addScaledVector(p[2], 3 * v * u * u)
-    .addScaledVector(p[3], u * u * u);
-}
 
+const Y_UP = new THREE.Vector3(0, 1, 0);
 const smooth = (x: number) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
 
 /** Stunts: a barrel roll (spin around the nose) or a loop (a full vertical circle). */
@@ -193,17 +186,26 @@ export function Mascot({ mode = 'auto', scale = 1, orbit = [3.2, 1.4], portrait 
     [],
   );
   const dummy = useMemo(() => new THREE.Object3D(), []);
-  const path = useMemo(() => [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()], []);
-  const pathFor = useRef(-1);
   const stunt = useRef<Stunt | null>(null);
   const nextStunt = useRef(4 + Math.random() * 3);
   const bank = useRef(0);
+  const route = useRef<Route | null>(null);
+  const routeFor = useRef(-1);
+  const bombed = useRef(false);
+  /** first frame of a new appearance: jump straight to the pose instead of turning into it */
+  const snap = useRef(true);
+  const bombRef = useRef<THREE.Group>(null!);
+  const targetQ = useMemo(() => new THREE.Quaternion(), []);
 
   useFrame((st, dt) => {
     const now = nowSec();
     const clock = st.clock.elapsedTime;
     prop.current.rotation.z += dt * 45;
     let active = false;
+    let onGround = false;
+    let bankTarget = 0;
+    let growScale = 1;
+    let carrying = false;
     // where the plane is on its base path, a point a bit ahead, and a bit behind (for curvature)
     const { pos, ahead, behind, fwd, up, toC, tmp, m, side } = v;
     up.set(0, 1, 0);
@@ -225,58 +227,56 @@ export function Mascot({ mode = 'auto', scale = 1, orbit = [3.2, 1.4], portrait 
     } else {
       const f = fxState.mascot;
       const t = now - f.at;
-      if (f.mode === 'fly' && t >= 0 && t < FLY_TIME) {
-        if (pathFor.current !== f.at) {
-          // low over the table, in front of the opponents, so it is always in frame
-          pathFor.current = f.at;
-          const s = f.seed > 0.5 ? 1 : -1;
-          const w = portrait ? 0.62 : 1;
-          // stays over the middle of the table: well inside the frame, clear of the camera and the hand
-          path[0].set(-12 * s * w, 2.6, portrait ? 1.0 : -0.5);
-          path[1].set(-4 * s * w, 3.0, portrait ? -2.0 : -1.8);
-          path[2].set(4 * s * w, 2.3, portrait ? 2.0 : 0.9);
-          path[3].set(12 * s * w, 2.8, portrait ? -0.5 : -0.8);
-          // most swoops include one stunt in the middle
-          stunt.current = f.seed % 0.5 < 0.35 ? { kind: f.seed % 0.25 < 0.12 ? 'loop' : 'roll', at: clock + 2.2, dur: 1.5 } : null;
-        }
-        const u = t / FLY_TIME;
-        bezier(path, u, pos);
-        bezier(path, Math.min(1, u + 0.012), ahead);
-        bezier(path, Math.max(0, u - 0.012), behind);
-        // bank into the curve: the sideways bend of the path tilts the wings
-        fwd.subVectors(ahead, pos).normalize();
-        tmp.subVectors(ahead, pos).sub(behind.clone().sub(pos).negate());
-        side.crossVectors(fwd, new THREE.Vector3(0, 1, 0));
-        up.set(0, 1, 0).addScaledVector(side, THREE.MathUtils.clamp(tmp.dot(side) * 40, -0.9, 0.9)).normalize();
-        active = true;
-      } else if (f.mode === 'bomber' && t >= 0 && t < BOMBER_TIME) {
-        // bombing run: dive in from the side, pass right over the victim, climb away
-        if (pathFor.current !== f.at) {
-          pathFor.current = f.at;
-          const T = spawn.seats[f.target] ?? [0, 0.6, 0];
-          const s = T[0] > 0.5 ? -1 : 1; // come in from the far side of the victim
-          // low enough to stay in frame even over the far seats; over your own hand it keeps a
-          // respectful distance from the camera
-          const y = T[1] + 1.6;
-          // phones: a narrow screen and the event banner on top, so pass lower down the table and tighter
-          const z = portrait ? Math.min(T[2] + 2.4, 2.0) : Math.min(T[2] + 1.0, 1.4);
-          const w = portrait ? 0.5 : 1;
-          path[0].set(T[0] - 14 * s * w, y + 1.8, z - 3 * w);
-          path[1].set(T[0] - 6 * s * w, y - 0.3, z + 0.6 * w);
-          path[2].set(T[0] + 6 * s * w, y - 0.3, z - 0.6 * w);
-          path[3].set(T[0] + 14 * s * w, y + 2.2, z + 2 * w);
+      const isBomber = f.mode === 'bomber';
+      if ((f.mode === 'fly' || isBomber) && t >= 0) {
+        if (routeFor.current !== f.at) {
+          // a new appearance: pick a route (or build the bombing run toward the victim)
+          routeFor.current = f.at;
+          bombed.current = false;
+          snap.current = true;
           stunt.current = null;
+          const deck = spawn.pos;
+          if (isBomber) {
+            const T = spawn.seats[f.target] ?? ([0, 0.6, 0] as [number, number, number]);
+            route.current = { name: 'bomber', curve: bomberRoute(T, portrait), dur: BOMBER_TIME, warp: (p: number) => p, stunts: [] };
+          } else {
+            route.current = pickRoute(Math.floor(f.seed * 233280), { w: portrait ? 0.55 : 1, portrait, deck: [deck[0], 0.45, deck[2]], pile: [0.25, 0, -0.15] });
+          }
         }
-        const u = t / BOMBER_TIME;
-        bezier(path, u, pos);
-        bezier(path, Math.min(1, u + 0.012), ahead);
-        up.set(0, 1, 0);
-        // wobble the wings while the cargo bay is open
-        const near = Math.abs(t - BOMBER_DROP);
-        if (near < 0.6) up.x += Math.sin(t * 30) * 0.15 * (1 - near / 0.6);
-        up.normalize();
-        fxState.drop.pos = [pos.x, pos.y - 0.7, pos.z];
-        active = true;
+        const R = route.current!;
+        if (t < R.dur) {
+          const p = t / R.dur;
+          const u = THREE.MathUtils.clamp(R.warp(p), 0, 1);
+          R.curve.getPointAt(u, pos);
+          R.curve.getTangentAt(u, fwd);
+          ahead.copy(pos).add(fwd);
+          onGround = !!R.ground && p > R.ground[0] && p < R.ground[1];
+          // bank into the turn: how the path bends sideways a little further on
+          R.curve.getTangentAt(Math.min(1, u + 0.015), tmp);
+          side.crossVectors(fwd, Y_UP).normalize();
+          bankTarget = onGround ? 0 : THREE.MathUtils.clamp(tmp.sub(fwd).dot(side) * 22, -0.95, 0.95);
+          // straight up out of the deck: "up" can't be the sky then
+          if (Math.abs(fwd.y) > 0.92) up.set(0, 0, 1);
+          // scripted stunts along the route
+          for (const st of R.stunts) {
+            const start = st.at * R.dur;
+            if (!stunt.current && t >= start && t < start + 0.1) stunt.current = { kind: st.kind, at: clock, dur: st.dur };
+          }
+          if (R.growIn) growScale = smooth(p / R.growIn);
+          if (isBomber) {
+            carrying = !bombed.current;
+            if (!bombed.current && t >= BOMB_RELEASE) {
+              // bombs away: it keeps the plane's speed and falls onto the victim
+              bombed.current = true;
+              const T = spawn.seats[f.target] ?? ([0, 0.6, 0] as [number, number, number]);
+              fxState.bombFall = { at: now, from: [pos.x, pos.y - 0.5 * scale, pos.z], to: [T[0], T[1] + 0.3, T[2]] };
+              sound.play('whistle');
+            }
+            // the plane is lighter after the drop: a little hop
+            if (bombed.current) pos.y += Math.min(1, (t - BOMB_RELEASE) / 0.4) * 0.35;
+          }
+          active = true;
+        }
       } else if (f.mode === 'loop' && t >= 0 && t < LOOP_TIME) {
         // victory laps: a tight circle above and behind the podium, clear of the camera
         const at = (a: number, out: THREE.Vector3) => out.set(Math.cos(a) * 3.4, 3.4 + Math.sin(a * 2) * 0.3, Math.sin(a) * 1.4 - 2.4);
@@ -291,10 +291,11 @@ export function Mascot({ mode = 'auto', scale = 1, orbit = [3.2, 1.4], portrait 
     }
 
     root.current.visible = active;
+    if (!active) snap.current = true;
     // the propeller gets louder the closer the plane is to the camera
     if (mode === 'auto') sound.propeller(active ? 1.4 - st.camera.position.distanceTo(pos) / 16 : 0);
     if (import.meta.env.DEV && mode === 'auto') {
-      (window as unknown as { __mascot: unknown }).__mascot = { active, p: pos.toArray().map(x => +x.toFixed(2)) };
+      (window as unknown as { __mascot: unknown }).__mascot = { active, route: route.current?.name, p: pos.toArray().map(x => +x.toFixed(2)) };
     }
     if (!active) {
       if (mode === 'auto') stunt.current = null;
@@ -322,16 +323,22 @@ export function Mascot({ mode = 'auto', scale = 1, orbit = [3.2, 1.4], portrait 
           }
         }
       }
-      // nose along the path: Matrix4.lookAt(target, eye) points +z from eye to target
+      // nose along the path: Matrix4.lookAt(target, eye) points +z from eye to target.
+      // The heading is eased (not set) every frame, so sharp bits of a path never jerk the plane round.
       m.lookAt(ahead, pos, up);
-      root.current.quaternion.setFromRotationMatrix(m);
+      targetQ.setFromRotationMatrix(m);
+      if (snap.current) root.current.quaternion.copy(targetQ);
+      else root.current.quaternion.slerp(targetQ, 1 - Math.exp(-dt * 9));
+      snap.current = false;
       root.current.position.copy(pos);
       // smaller on victory laps, so it decorates the podium instead of hiding it
-      root.current.scale.setScalar(mode === 'auto' && fxState.mascot.mode === 'loop' ? scale * 0.7 : scale);
-      bank.current = THREE.MathUtils.lerp(bank.current, 0, Math.min(1, dt * 3));
+      root.current.scale.setScalar((mode === 'auto' && fxState.mascot.mode === 'loop' ? scale * 0.7 : scale) * growScale);
+      bank.current += (bankTarget - bank.current) * (1 - Math.exp(-dt * 4));
       body.current.rotation.set(pitch, 0, roll + bank.current);
-      body.current.position.y = Math.sin(now * 5) * 0.04;
-      if (mode === 'auto' && now - lastPuff.current > 0.07) {
+      // a gentle bob in the air; dead still while taxiing on the table
+      body.current.position.y = onGround ? 0 : Math.sin(now * 5) * 0.04;
+      bombRef.current.visible = carrying;
+      if (mode === 'auto' && !onGround && now - lastPuff.current > 0.07) {
         lastPuff.current = now;
         const d = puffData[next.current++ % PUFFS];
         body.current.localToWorld(d.p.set(0, 0, -1.05));
@@ -357,6 +364,17 @@ export function Mascot({ mode = 'auto', scale = 1, orbit = [3.2, 1.4], portrait 
       <group ref={root} scale={scale} visible={false}>
         <group ref={body}>
           <BarrelPlane prop={prop} />
+          {/* the bomb it carries on a bombing run */}
+          <group ref={bombRef} position={[0, -0.62, 0.05]} visible={false}>
+            <mesh rotation-x={Math.PI / 2}>
+              <capsuleGeometry args={[0.16, 0.32, 6, 14]} />
+              <meshStandardMaterial color="#26262c" metalness={0.5} roughness={0.35} />
+            </mesh>
+            <mesh position-z={-0.36} rotation-x={Math.PI / 2}>
+              <coneGeometry args={[0.17, 0.2, 4]} />
+              <meshStandardMaterial color="#e5413a" />
+            </mesh>
+          </group>
         </group>
       </group>
       {mode === 'auto' && (

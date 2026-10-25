@@ -23,6 +23,8 @@ export interface Player {
   hand: Card[];
   /** preset avatar id (see avatars.ts) */
   avatar?: string;
+  /** online: the room member sitting here; the evening's score is kept by this id, not by name */
+  member?: string;
   /** online only: the player's connection dropped (autopilot may be playing) */
   offline?: boolean;
 }
@@ -45,6 +47,21 @@ export interface Rules {
 export type EventId =
   | 'meteor' | 'recolor' | 'mono' | 'carousel' | 'robin' | 'upside'
   | 'blind' | 'blitz' | 'lightning' | 'jackpot' | 'group' | 'coin' | 'bomber';
+
+/** How the table plays, beyond the rules: format and the numbers. */
+export interface Table {
+  /** 2 on 2 (or 3 on 3, 4 on 4): partners alternate around the table, so they sit opposite with 4 players */
+  teams: boolean;
+  /** 5 cards, 15 seconds a turn, and the round ends after 5 minutes */
+  quick: boolean;
+  handSize: number;
+  turnSec: number;
+  bombSec: number;
+  unoPenalty: number;
+  /** minutes; 0 = no limit */
+  roundMin: number;
+  events: 'rare' | 'normal' | 'often';
+}
 
 /** Table look picked by the host. Card faces stay the same in every theme, so they are always easy to read. */
 export type ThemeId = 'classic' | 'neon' | 'space' | 'halloween';
@@ -82,6 +99,14 @@ export interface Fx {
 
 export interface State {
   round: number;
+  table: Table;
+  /** team index per player (teams format), otherwise null */
+  teams: number[] | null;
+  winTeam: number | null;
+  /** quick round / round limit: server time the round ends; null = no limit */
+  endsAt: number | null;
+  /** the round ended on time: the fewest cards won */
+  timeUp: boolean;
   theme: ThemeId;
   players: Player[];
   rules: Rules;

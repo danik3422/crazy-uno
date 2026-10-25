@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { BOT_AVATARS, isAvatarId } from '../src/game/avatars';
-import { BOTNAMES, DEFAULT_RULES, RULES, isTheme } from '../src/game/content';
+import { BOTNAMES, DEFAULT_RULES, DEFAULT_TABLE, RULES, cleanTable, isTheme, teamsProblem } from '../src/game/content';
 import { Game } from '../src/game/engine';
-import type { Card, Rules, ThemeId } from '../src/game/types';
+import type { Card, Rules, Table, ThemeId } from '../src/game/types';
 import {
   MAX_MEMBERS, MAX_PLAYERS, REMATCH_COUNTDOWN_MS, WARMUP_MAX_MS, cleanName, dealMs,
   type Action, type ClientMsg, type ErrorCode, type PlayerView, type RoomInfo, type ServerMsg,
@@ -49,6 +49,8 @@ export class Room {
   hostId = '';
   rules: Rules = { ...DEFAULT_RULES };
   theme: ThemeId = 'classic';
+  table: Table = { ...DEFAULT_TABLE };
+  /** wins this evening, by member id (two people may use the same name one after another) */
   score: Record<string, number> = {};
   game: Game | null = null;
   /** member id for every engine player index */
@@ -203,12 +205,7 @@ export class Room {
       case 'profile': {
         if (isAvatarId(msg.avatar)) m.avatar = msg.avatar;
         const name = cleanName(msg.name) || m.name;
-        const old = m.name;
         m.name = this.uniqueName(name, m);
-        if (this.score[old] !== undefined && old !== m.name) {
-          this.score[m.name] = this.score[old];
-          delete this.score[old];
-        }
         this.syncNames();
         this.broadcastRoom();
         return this.flush();
@@ -244,6 +241,10 @@ export class Room {
         this.rules = next;
         return this.broadcastRoom();
       }
+      case 'table':
+        if (!needHost() || !inLobby) return;
+        this.table = cleanTable(msg.table);
+        return this.broadcastRoom();
       case 'theme':
         // cosmetic, so the host may switch it any time; a running round picks it up at once
         if (!needHost() || !isTheme(msg.theme)) return;
@@ -377,6 +378,11 @@ export class Room {
       this.sendTo(by.sock, { t: 'error', code: 'too-few', msg: 'Нужно хотя бы 2 игрока. Позови друзей или добавь бота' });
       return;
     }
+    const teamsWrong = this.table.teams ? teamsProblem(lineup.length) : null;
+    if (teamsWrong) {
+      this.sendTo(by.sock, { t: 'error', code: 'too-few', msg: `${teamsWrong}. Добавь бота или выключи «2 на 2»` });
+      return;
+    }
     this.endGame();
     this.round++;
     this.seats = lineup.map(x => x.id);
@@ -388,6 +394,7 @@ export class Room {
       round: this.round,
       online: true,
       theme: this.theme,
+      table: this.table,
     });
     this.warm = { ready: new Set(), dealAt: null, dealEnd: null, timer: null };
     this.warm.timer = setTimeout(() => {
@@ -451,7 +458,9 @@ export class Room {
       })),
       rules: this.rules,
       theme: this.theme,
-      score: this.score,
+      table: this.table,
+      // only people still in the room: whoever left takes their wins with them
+      score: Object.fromEntries(Object.entries(this.score).filter(([id]) => this.members.some(x => x.id === id))),
       started: this.game !== null,
       rematch: this.rematch
         ? {
@@ -514,6 +523,7 @@ export class Room {
         name: p.name,
         bot: p.bot,
         avatar: p.avatar,
+        member: this.seats[i],
         // a person who dropped out: a bot is playing their seat until they come back
         offline: !!mem && !mem.bot && !mem.sock,
         // hidden hands are sorted by their opaque numbers, so the order tells nothing either
@@ -570,8 +580,11 @@ export class Room {
       }
       if (g.s.phase === 'over' && g.s.winner !== null && !this.scored.has(g)) {
         this.scored.add(g);
-        const name = g.s.players[g.s.winner].name;
-        this.score[name] = (this.score[name] ?? 0) + 1;
+        // in teams every member of the winning team scores
+        g.s.players.forEach((p, i) => {
+          const id = this.seats[i];
+          if (id && (i === g.s.winner || g.sameTeam(i, g.s.winner!))) this.score[id] = (this.score[id] ?? 0) + 1;
+        });
         this.broadcastRoom();
       }
       for (const m of this.members) this.sendState(m);
@@ -596,7 +609,11 @@ export class Room {
     this.catchTimer = setTimeout(() => g.catchUno(by), c.botDelay * this.opts.botSpeed);
   }
 
+  private limitTimer: ReturnType<typeof setTimeout> | null = null;
+
   private clearTimers() {
+    if (this.limitTimer) clearTimeout(this.limitTimer);
+    this.limitTimer = null;
     if (this.timer) clearTimeout(this.timer);
     if (this.bombTimer) clearTimeout(this.bombTimer);
     this.timer = this.bombTimer = null;
@@ -618,6 +635,9 @@ export class Room {
     if (s.bombDeadline !== null) {
       this.bombTimer = setTimeout(() => g.checkBomb(), Math.max(0, s.bombDeadline - Date.now()) + 30);
     }
+    // quick round / round limit: when time is up, the fewest cards win
+    if (this.limitTimer) clearTimeout(this.limitTimer);
+    this.limitTimer = s.endsAt !== null ? setTimeout(() => g.checkTimeLimit(), Math.max(0, s.endsAt - Date.now()) + 30) : null;
     const p = g.cp();
     const mem = this.members.find(x => x.id === this.seats[s.cur]);
     const eventWait = Math.max(0, this.eventAt + EVENT_PAUSE_MS - Date.now()) * this.opts.botSpeed;

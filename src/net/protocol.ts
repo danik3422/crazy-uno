@@ -1,4 +1,4 @@
-import type { Rules, State, ThemeId } from '../game/types';
+import type { Rules, State, Table, ThemeId } from '../game/types';
 
 /** Shared between the browser client and the Node server. */
 
@@ -19,6 +19,7 @@ export interface RoomInfo {
   members: MemberInfo[];
   rules: Rules;
   theme: ThemeId;
+  table: Table;
   score: Record<string, number>;
   started: boolean;
   /** after a round: who pressed "Ещё раунд", and when the next round starts once everyone has */
@@ -85,6 +86,7 @@ export type ClientMsg =
   | { t: 'kick'; id: string }
   | { t: 'rules'; rules: Rules }
   | { t: 'theme'; theme: ThemeId }
+  | { t: 'table'; table: Table }
   | { t: 'start' }
   /** vote for another round; off: take the vote back; force (host): start without waiting for the rest */
   | { t: 'again'; off?: boolean; force?: boolean }

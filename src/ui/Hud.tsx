@@ -1,6 +1,7 @@
 import { CNAME, HEX } from '../game/content';
 import type { GameView } from '../game/view';
 import { standIn } from '../game/avatars';
+import { TEAM_NAMES } from '../game/content';
 import { AvatarImg } from './AvatarImg';
 import { TurnRing } from './TurnRing';
 import type { OnlineCtx } from './Overlays';
@@ -19,9 +20,11 @@ interface Props {
   online?: OnlineCtx;
   /** round start: the cards are still being dealt */
   locked?: boolean;
+  /** seconds left in a timed round */
+  roundLeft?: number | null;
 }
 
-export function Hud({ game, toasts, bombLeft, online, locked }: Props) {
+export function Hud({ game, toasts, bombLeft, online, locked, roundLeft }: Props) {
   const s = game.s;
   const viewer = game.viewer();
   const seatP = s.players[game.seat()];
@@ -44,6 +47,10 @@ export function Hud({ game, toasts, bombLeft, online, locked }: Props) {
   else if (s.phase === 'choose') hint = `${cur.name} думает…`;
   else if (s.phase !== 'handover') hint = cur.offline ? `Ходит ${standIn(cur.name).name} (за ${cur.name})…` : `Ходит ${cur.name}…`;
 
+  // "Твой ход: перетащи…" -> a big title and a quiet second line
+  const [hintTitle, hintSub] = hint.includes(': ') ? [hint.slice(0, hint.indexOf(': ')), hint.slice(hint.indexOf(': ') + 2)] : [hint, ''];
+  const cap = (t: string) => (t ? t[0].toUpperCase() + t.slice(1) : t);
+
   return (
     <div className="hud">
       <div className="hud-top">
@@ -52,6 +59,14 @@ export function Hud({ game, toasts, bombLeft, online, locked }: Props) {
           <span className="cname">{CNAME[s.color]}</span>
           <span className={`dirIcon ${s.dir < 0 ? 'ccw' : ''}`} title="Направление игры">↻</span>
           {s.pending > 0 && <span className="pen">+{s.pending}</span>}
+          {roundLeft != null && (
+            <span className={`round-clock ${roundLeft <= 30 ? 'hot' : ''}`} title="До конца раунда">
+              ⏱ {Math.floor(roundLeft / 60)}:{String(roundLeft % 60).padStart(2, '0')}
+            </span>
+          )}
+          {s.teams && game.viewer() !== null && (
+            <span className={`team-pill t${s.teams[game.viewer()!]}`} title="Твоя команда">{TEAM_NAMES[s.teams[game.viewer()!]]}</span>
+          )}
           {s.blindTurns > 0 && <span title="Игра вслепую">🕶️</span>}
           {s.blitzTurns > 0 && !bombLeft && <span title="Блиц-круг">⚡</span>}
           {bombLeft > 0 && (
@@ -61,38 +76,50 @@ export function Hud({ game, toasts, bombLeft, online, locked }: Props) {
       </div>
 
       <div className="log" aria-live="polite">
-        {s.log.slice(-3).map((l, i) => (
-          <div key={s.log.length - 3 + i}>{l}</div>
+        {s.log.slice(-3).map((l, i, arr) => (
+          <div key={s.log.length - 3 + i} className={i === arr.length - 1 ? 'new' : ''}>{l}</div>
         ))}
       </div>
 
-      <div className="hud-bottom">
+      <div className={`hud-bottom ${playing ? 'my-turn' : ''}`}>
         <div className="me">
           <div className={`plate me-plate ${s.cur === game.seat() && s.phase !== 'over' ? 'cur' : ''}`}>
             <div className="plate-name">{seatP.name}</div>
             <div className="plate-body">
               <span className="ava-wrap">
                 <AvatarImg id={seatP.avatar} name={seatP.name} bot={seatP.bot} size={58} className="plate-ava" />
-                {s.cur === game.seat() && s.turnDeadline !== null && s.phase !== 'over' && (
+                {!locked && s.cur === game.seat() && s.turnDeadline !== null && s.phase !== 'over' && (
                   <TurnRing key={s.turn} deadline={s.turnDeadline} total={s.turnTotal} offset={game.clockOffset} />
                 )}
               </span>
               <span className="plate-count">{seatP.hand.length}</span>
             </div>
           </div>
-          {hint && <span className="hint">{hint}</span>}
+          {hint && (
+            <span className="hint">
+              <b>{hintTitle}</b>
+              {hintSub && <small>{cap(hintSub)}</small>}
+            </span>
+          )}
         </div>
         <div className="actions">
           {playing && s.rules.uno && cur.hand.length === 2 && anyPlay && (
-            <button className={`btn unobtn ${s.unoCalled ? 'done' : ''}`} onClick={() => game.callUno()}>
+            <button className={`btn act unobtn ${s.unoCalled ? 'done' : ''}`} onClick={() => game.callUno()}>
               {s.unoCalled ? 'UNO! ✓' : 'Крикнуть UNO!'}
             </button>
           )}
           {playing && s.drawn && s.pending === 0 && anyPlay && (
-            <button className="btn" onClick={() => game.pass()}>Пас</button>
+            <button className="btn act" onClick={() => game.pass()}>
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden><path d="M5 12h12M13 7l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              Пас
+            </button>
           )}
           {playing && (s.pending > 0 || !s.drawn) && (
-            <button className={`btn ${s.pending ? 'danger' : ''}`} onClick={() => game.draw()}>
+            <button className={`btn act draw ${s.pending ? 'danger' : !anyPlay ? 'primary' : ''}`} onClick={() => game.draw()}>
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
+                <rect x="7" y="3" width="11" height="15" rx="2.2" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.55" />
+                <rect x="4" y="6" width="11" height="15" rx="2.2" fill="currentColor" opacity="0.9" />
+              </svg>
               {s.pending ? `Взять +${s.pending}` : 'Взять карту'}
             </button>
           )}

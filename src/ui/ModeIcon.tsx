@@ -53,6 +53,24 @@ export function ModeIcon({ id, size = 32 }: { id: string; size?: number }) {
           </g>
         </>
       )}
+      {id === 'quick' && (
+        <>
+          {/* a card with a lightning bolt and speed lines */}
+          <path d="M3 12h5M2 17h6M4 22h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" opacity="0.55" />
+          <g transform="translate(19 16) rotate(8)">
+            <rect x="-8" y="-11" width="16" height="22" rx="3.2" fill={Y} stroke={EDGE} strokeWidth="1.8" />
+            <path d="M1.8 -8 L-4 1.2 L-0.2 1.2 L-2 8 L4.4 -1.6 L0.6 -1.6 Z" fill={EDGE} stroke={INK} strokeWidth="0.9" strokeLinejoin="round" />
+          </g>
+        </>
+      )}
+      {id === 'teams' && (
+        <>
+          {/* two cards back to back, red and blue, with a little heart: partners */}
+          <MiniCard x={11} y={17} r={-14} fill={R} />
+          <MiniCard x={21} y={17} r={14} fill={B} />
+          <path d="M16 9.5 C16 7.6 13.4 7 12.6 8.8 C11.8 7 9.2 7.6 9.2 9.5 C9.2 11.6 12.6 13.8 12.6 13.8 C12.6 13.8 16 11.6 16 9.5 Z" transform="translate(3.4 -4.2)" fill="#ffd04a" stroke={INK} strokeWidth="0.8" />
+        </>
+      )}
       {id === 'custom' && (
         <>
           {/* sliders: your own mix */}

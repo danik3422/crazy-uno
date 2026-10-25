@@ -1,5 +1,5 @@
-import { CNAME, COLORS, CPLURAL, DARES, EVENTS, GROUP_DARES, PUNISH, SPECIAL } from './content';
-import type { Card, Choice, Color, EventId, Fx, FxKind, Player, Rules, State, ThemeId } from './types';
+import { CNAME, COLORS, CPLURAL, DARES, DEFAULT_TABLE, EVENTS, GROUP_DARES, PUNISH, SPECIAL, TEAM_NAMES, effectiveTable } from './content';
+import type { Card, Choice, Color, EventId, Fx, FxKind, Player, Rules, State, Table, ThemeId } from './types';
 
 export interface GameConfig {
   players: { name: string; bot: boolean; avatar?: string }[];
@@ -8,6 +8,7 @@ export interface GameConfig {
   /** online room: every human has their own screen, so no hand-over curtain */
   online?: boolean;
   theme?: ThemeId;
+  table?: Table;
 }
 
 export interface GameOptions {
@@ -15,8 +16,6 @@ export interface GameOptions {
   now?: () => number;
 }
 
-export const BOMB_MS = 10_000;
-export const TURN_MS = 30_000;
 export const BLITZ_MS = 7_000;
 
 /** Matching rules, shared by the engine and the online client. */
@@ -74,7 +73,10 @@ export class Game {
     }));
     const n = players.length;
     const deck = this.buildDeck(cfg.rules);
-    for (let k = 0; k < 7; k++) {
+    const table = effectiveTable({ ...DEFAULT_TABLE, ...cfg.table });
+    // teams only make sense on an even table of 4+; partners alternate, so they sit opposite
+    const teams = table.teams && n >= 4 && n % 2 === 0 ? players.map((_, i) => i % 2) : null;
+    for (let k = 0; k < table.handSize; k++) {
       players.forEach((p, i) => {
         const c = deck.pop()!;
         c.dealIdx = k * n + i;
@@ -89,6 +91,11 @@ export class Game {
       theme: cfg.theme ?? 'classic',
       players,
       rules: { ...cfg.rules },
+      table,
+      teams,
+      winTeam: null,
+      endsAt: table.roundMin ? this.now() + table.roundMin * 60_000 : null,
+      timeUp: false,
       deck,
       discard: [first],
       cur: Math.floor(this.rng() * n),
@@ -110,7 +117,7 @@ export class Game {
       dareNext: false,
       dare: null,
       turnDeadline: null,
-      turnTotal: TURN_MS,
+      turnTotal: table.turnSec * 1000,
       unoCatch: null,
       challenge: null,
       phase: 'play',
@@ -218,7 +225,7 @@ export class Game {
     if (!this.catchable() || !s.unoCatch || by === s.unoCatch.victim || !s.players[by]) return;
     const v = s.players[s.unoCatch.victim];
     s.unoCatch = null;
-    this.give(v, 2);
+    this.give(v, s.table.unoPenalty);
     this.say(`🫵 ${s.players[by].name} ловит ${v.name}: забыл(а) крикнуть UNO! +2`);
     this.fx('caught', `🫵 ${s.players[by].name} поймал(а) ${v.name}! +2`);
     this.fx('shake');
@@ -278,6 +285,8 @@ export class Game {
   holdClock(ms: number) {
     const s = this.s;
     if (s.turnDeadline !== null) s.turnDeadline = this.now() + ms + s.turnTotal;
+    // the round clock does not run while the cards are being dealt
+    if (s.endsAt !== null) s.endsAt = this.now() + ms + s.table.roundMin * 60_000;
     this.commit();
   }
 
@@ -319,7 +328,8 @@ export class Game {
       if (s.unoCalled) this.fx('uno', `${p.name}: UNO!`);
       else {
         // forgot to call it: anyone may catch them until the end of the next turn
-        const bots = s.players.map((x, i) => (x.bot && i !== s.cur ? i : -1)).filter(i => i >= 0);
+        // only opponents catch you (a partner keeps quiet)
+        const bots = s.players.map((x, i) => (x.bot && i !== s.cur && !this.sameTeam(i, s.cur) ? i : -1)).filter(i => i >= 0);
         const botCatcher = bots.length && this.rng() < 0.55 ? bots[Math.floor(this.rng() * bots.length)] : null;
         s.unoCatch = { victim: s.cur, until: s.turn + 1, botCatcher, botDelay: 1400 + Math.floor(this.rng() * 2200) };
         this.say(`🤫 ${p.name} осталась одна карта… а «UNO!» никто не слышал`);
@@ -503,11 +513,13 @@ export class Game {
       const pool = nonWild.length ? nonWild : p.hand;
       return pool.reduce((a, b) => ((b.value ?? -1) > (a.value ?? -1) ? b : a)).id;
     }
+    // swap with / dump a card on the opponent with the fewest cards; never pick the partner
     let best = -1;
     s.players.forEach((o, i) => {
-      if (i !== s.cur && (best < 0 || o.hand.length < s.players[best].hand.length)) best = i;
+      if (i === s.cur || this.sameTeam(i, s.cur)) return;
+      if (best < 0 || o.hand.length < s.players[best].hand.length) best = i;
     });
-    return best;
+    return best >= 0 ? best : (s.cur + 1) % s.players.length;
   }
 
   private colorCount(p: Player) {
@@ -637,7 +649,8 @@ export class Game {
     const s = this.s;
     if (s.rules.events && s.turn > 2) {
       const since = s.turn - s.lastEventTurn;
-      if (since >= 4 && (this.rng() < 0.15 || since >= 13)) {
+      const freq = { rare: { gap: 7, p: 0.08, max: 20 }, normal: { gap: 4, p: 0.15, max: 13 }, often: { gap: 3, p: 0.3, max: 7 } }[s.table.events];
+      if (since >= freq.gap && (this.rng() < freq.p || since >= freq.max)) {
         s.lastEventTurn = s.turn;
         if (this.fireEvent()) return;
       }
@@ -800,7 +813,7 @@ export class Game {
     if (s.rules.timer && !p.bot) {
       // the event banner eats a few seconds, give them back
       const grace0 = s.lastEventTurn === s.turn ? 2500 : 0;
-      s.turnTotal = TURN_MS + grace0;
+      s.turnTotal = s.table.turnSec * 1000 + grace0;
       s.turnDeadline = this.now() + s.turnTotal;
     }
     // give humans back the seconds the event banner took
@@ -814,7 +827,7 @@ export class Game {
     }
     s.bombNext = false;
     if (!p.bot) {
-      s.bombDeadline = this.now() + BOMB_MS + grace;
+      s.bombDeadline = this.now() + s.table.bombSec * 1000 + grace;
       s.timerKind = 'bomb';
       return;
     }
@@ -928,20 +941,47 @@ export class Game {
     this.commit();
   }
 
-  private win() {
+  /** Same team (teams format only). */
+  sameTeam(a: number, b: number) {
+    const t = this.s.teams;
+    return !!t && t[a] === t[b];
+  }
+
+  /** Round time is up: whoever has the fewest cards wins (in teams, their team). */
+  checkTimeLimit() {
     const s = this.s;
-    const w = s.players.findIndex(p => p.hand.length === 0);
+    if (s.endsAt === null || s.phase === 'over' || this.now() < s.endsAt) return;
+    let w = 0;
+    s.players.forEach((p, i) => { if (p.hand.length < s.players[w].hand.length) w = i; });
+    s.timeUp = true;
+    this.say(`⏱ Время вышло! Меньше всех карт у ${s.players[w].name}`);
+    this.fx('toast', '⏱ Время вышло!');
+    this.win(w);
+    this.commit();
+  }
+
+  private win(forced?: number) {
+    const s = this.s;
+    const w = forced ?? s.players.findIndex(p => p.hand.length === 0);
     s.phase = 'over';
     s.winner = w;
+    s.winTeam = s.teams ? s.teams[w] : null;
+    s.endsAt = null;
+    s.turnDeadline = null;
     s.bombDeadline = null;
     s.choice = null;
+    // the punishment goes to the worst player of the losing side
     let loser = -1;
     s.players.forEach((p, i) => {
-      if (i !== w && (loser < 0 || p.hand.length > s.players[loser].hand.length)) loser = i;
+      if (i === w || this.sameTeam(i, w)) return;
+      if (loser < 0 || p.hand.length > s.players[loser].hand.length) loser = i;
     });
     s.loser = loser >= 0 ? loser : null;
     s.punishment = s.rules.punish ? this.pick(PUNISH) : null;
-    this.say(`🏆 ${s.players[w].name} побеждает!`);
+    if (s.winTeam !== null) {
+      const names = s.players.filter((_, i) => s.teams![i] === s.winTeam).map(p => p.name).join(' и ');
+      this.say(`🏆 Команда «${TEAM_NAMES[s.winTeam]}» побеждает: ${names}!`);
+    } else this.say(`🏆 ${s.players[w].name} побеждает!`);
     this.fx('win');
   }
 }

@@ -20,3 +20,6 @@ export const drag = {
 export const dropZone = { x: 0, z: 0, radius: 2.4, handZ: 4 };
 
 export const DRAG_HEIGHT = 1.3;
+
+/** Keyboard play: the hand card picked with the arrow keys (lifted like a hovered card). */
+export const keySel = { id: null as number | null };

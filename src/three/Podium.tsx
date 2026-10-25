@@ -80,6 +80,7 @@ function drop(t: number) {
 interface Props {
   players: Player[];
   winner: number;
+  teams?: number[] | null;
   at: Vec3;
   scale: number;
 }
@@ -88,12 +89,16 @@ interface Props {
  * The finale: three steps rise out of the table one after another, the players hop onto them,
  * a crown spins over the winner and a spotlight finds them.
  */
-export function Podium({ players, winner, at, scale }: Props) {
+export function Podium({ players, winner, teams = null, at, scale }: Props) {
   // winner first, then whoever is left with the fewest cards
   const ranking = useMemo(() => {
-    const rest = players.map((p, i) => ({ p, i })).filter(x => x.i !== winner).sort((a, b) => a.p.hand.length - b.p.hand.length);
+    // in teams the partner stands next to the winner
+    const rest = players
+      .map((p, i) => ({ p, i }))
+      .filter(x => x.i !== winner)
+      .sort((a, b) => (teams ? Number(teams[b.i] === teams[winner]) - Number(teams[a.i] === teams[winner]) : 0) || a.p.hand.length - b.p.hand.length);
     return [{ p: players[winner], i: winner }, ...rest].slice(0, 3);
-  }, [players, winner]);
+  }, [players, winner, teams]);
   const start = useRef(fxState.winAt > 0 ? fxState.winAt : nowSec());
   // the spotlight aims at an object that has to live in the scene graph
   const aim = useMemo(() => new THREE.Object3D(), []);

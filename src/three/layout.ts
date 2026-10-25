@@ -16,6 +16,8 @@ export interface Target {
   delay: number;
   /** buried deep in the deck or the pile: not drawn at all */
   hidden?: boolean;
+  /** smaller cards for big hands, so they still fit on screen */
+  scale?: number;
 }
 
 export interface View {
@@ -30,8 +32,8 @@ export const DECK_SHOWN = 3;
 /** Arena geometry: deck up-left of the pile, opponents along the far arc, you at the near edge. */
 export function arena(v: View) {
   return v.portrait
-    ? { deck: [-1.35, 0, -0.95] as Vec3, discard: [0.75, 0, -0.45] as Vec3, rx: 2.85, rz: 4.5, hand: { y: 2.75, z: 6.75, maxW: 4.2, sp: 0.6, tilt: -0.85 } }
-    : { deck: [-2.45, 0, -1.25] as Vec3, discard: [0.25, 0, -0.15] as Vec3, rx: 6.1, rz: 3.5, hand: { y: 1.15, z: 4.35, maxW: 8.6, sp: 0.86, tilt: -0.55 } };
+    ? { deck: [0.35, 0, -3.35] as Vec3, discard: [0.75, 0, -0.45] as Vec3, rx: 2.85, rz: 4.5, hand: { y: 2.75, z: 6.75, maxW: 4.2, sp: 0.6, tilt: -0.85 } }
+    : { deck: [-1.9, 0, -2.6] as Vec3, discard: [0.25, 0, -0.15] as Vec3, rx: 6.1, rz: 3.5, hand: { y: 1.15, z: 4.35, maxW: 8.6, sp: 0.86, tilt: -0.55 } };
 }
 
 /**
@@ -135,9 +137,23 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
       const h = A.hand;
       // blind event: you still play, but you cannot see what
       const faceUp = (viewer === seat && s.blindTurns === 0) || over;
-      const sp = Math.min(h.sp, h.maxW / Math.max(m - 1, 1));
+      // a big hand goes into two rows (the back row a little higher), so every card stays readable
+      const rows = m > (v.portrait ? 11 : 20) ? 2 : 1;
+      const backN = rows === 2 ? Math.ceil(m / 2) : m;
+      const tilt = h.tilt;
+      // the card face normal and its "up" direction: rows and layers move along them
+      const ny = -Math.sin(tilt);
+      const nz = Math.cos(tilt);
+      const uy = Math.cos(tilt);
+      const uz = Math.sin(tilt);
       p.hand.forEach((c, k) => {
-        const off = k - (m - 1) / 2;
+        const row = rows === 2 && k >= backN ? 1 : 0;
+        const inRow = row ? k - backN : k;
+        const rowN = row ? m - backN : backN;
+        // two rows: smaller cards and a narrower spread, so both rows fit on screen
+        const cs = rows === 2 ? (v.portrait ? 0.86 : 0.8) : 1;
+        const sp = Math.min(h.sp * cs, (h.maxW - (rows === 2 ? (v.portrait ? 0.9 : 1.2) : 0)) / Math.max(rowN - 1, 1));
+        const off = inRow - (rowN - 1) / 2;
         const x = off * sp;
         let interactive = false;
         let dim = false;
@@ -147,18 +163,16 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
             dim = !interactive;
           } else if (s.phase === 'choose' && s.choice?.kind === 'card') interactive = true;
         }
-        const tilt = h.tilt;
-        // the card face normal: everything that must sit "in front" moves along it
-        const ny = -Math.sin(tilt);
-        const nz = Math.cos(tilt);
         const lift = interactive ? 0.3 : 0;
-        const layer = k * 0.02 + lift * 0.5;
+        // each card strictly in front of its left neighbour; the front row in front of the back row.
+        // The step shrinks for big hands so the whole fan never comes too close to the camera.
+        const layer = inRow * Math.min(0.02, 0.3 / rowN) + row * 0.32 + lift * 0.5;
+        // two rows sit a bit higher, so the front row clears the bottom panel
+        const up = rows === 2 ? (row ? -0.38 : 0.42) * cs + (v.portrait ? 0.1 : 0.32) : 0;
         out.set(c.id, {
-          // the fan curves downward only; depth comes from the layer alone, so each card is strictly in
-          // front of its left neighbour and their edges never cut into each other
-          pos: [x, h.y + lift + ny * layer - Math.abs(off) * sp * 0.02, h.z + nz * layer],
-          rot: [faceUp ? tilt : tilt + PI, 0, -off * Math.min(0.035, 0.4 / m)],
-          zone: 'hand', interactive, dim, delay: dealDelay(c.dealIdx),
+          pos: [x, h.y + lift + ny * layer + uy * up - Math.abs(off) * sp * 0.02, h.z + nz * layer + uz * up],
+          rot: [faceUp ? tilt : tilt + PI, 0, -off * Math.min(0.035, 0.4 / rowN)],
+          zone: 'hand', interactive, dim, delay: dealDelay(c.dealIdx), scale: cs,
         });
       });
       return;
@@ -192,15 +206,21 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
       });
       return;
     }
+    // a held fan of fixed width: more cards squeeze closer together instead of growing a huge arc
+    // side seats fan toward the camera, so they get a narrower fan and smaller cards than the far seat
+    const half = Math.min(((m - 1) / 2) * sp, v.portrait ? 0.8 : 1.15) * (1 - side * 0.45);
+    const oscale = (m > 10 ? 0.85 : 1) * (1 - side * (v.portrait ? 0.22 : 0.12));
+    const spread = Math.min(0.42, 0.035 * ((m - 1) / 2));
+    const step = Math.min(0.022, 0.3 / Math.max(m, 1)) * (1 - side * 0.5);
     p.hand.forEach((c, k) => {
-      const off = k - (m - 1) / 2;
-      const bend = off * off * 0.01;
-      const stack = k * 0.022; // each next card a hair closer to the viewer, so the fan overlaps cleanly
+      const u = m > 1 ? (k - (m - 1) / 2) / ((m - 1) / 2) : 0; // -1 … 1 across the fan
+      const bend = u * u * 0.14;
+      const stack = k * step; // each next card a hair closer to the viewer, so the fan overlaps cleanly
       out.set(c.id, {
-        pos: [base[0] + lx[0] * off * sp + nx * bend + bx * stack, 0.8, base[2] + lx[2] * off * sp + nz * bend + bz * stack],
+        pos: [base[0] + lx[0] * u * half + nx * bend + bx * stack, 0.8, base[2] + lx[2] * u * half + nz * bend + bz * stack],
         // the back texture is drawn for cards lying on the table; standing ones turn it upright
-        rot: [0.2, face, off * 0.035 + PI],
-        zone: 'opp', interactive: false, dim: false, delay: dealDelay(c.dealIdx),
+        rot: [0.2, face, u * spread + PI],
+        zone: 'opp', interactive: false, dim: false, delay: dealDelay(c.dealIdx), scale: oscale,
       });
     });
   });

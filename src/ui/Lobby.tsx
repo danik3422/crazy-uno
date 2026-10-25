@@ -5,7 +5,9 @@ import type { Connection } from '../net/connection';
 import { MAX_PLAYERS, type MemberInfo, type RoomInfo } from '../net/protocol';
 import { AvatarImg, AvatarPicker } from './AvatarImg';
 import { FitLetter } from './FitLetter';
+import { TEAM_NAMES, teamsProblem } from '../game/content';
 import { RulesPanel } from './RulesPanel';
+import { TablePanel } from './TablePanel';
 import { ThemePicker } from './ThemePicker';
 
 interface Props {
@@ -34,7 +36,10 @@ export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
   const watchers = room.members.filter(m => m.spectator);
   const [picking, setPicking] = useState(false);
   const theme = THEMES_LIST.find(t => t.id === room.theme);
-  const canStart = isHost && players.length >= 2;
+  // teams alternate in seat order, so the list shows exactly who plays with whom
+  const teamsWrong = room.table.teams ? teamsProblem(players.length) : null;
+  const canStart = isHost && players.length >= 2 && !teamsWrong;
+  const startHint = players.length < 2 ? 'Нужен ещё хотя бы один игрок: позови друга или добавь бота.' : teamsWrong ? `${teamsWrong}: добавь бота или выключи «2 на 2».` : null;
 
   return (
     <div className={`lobby page-${room.theme}`}>
@@ -51,9 +56,10 @@ export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
             Игроки <span className="lb-count">{players.length} из {MAX_PLAYERS}</span>
           </h2>
           <ul className="players">
-            {players.map(m => (
+            {players.map((m, i) => (
               <Player
                 key={m.id}
+                team={room.table.teams ? i % 2 : null}
                 m={m}
                 me={m.id === room.you}
                 picking={picking}
@@ -89,6 +95,11 @@ export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
           <RulesPanel rules={room.rules} onChange={isHost ? rules => conn.send({ t: 'rules', rules }) : undefined} />
         </section>
 
+        <section className="lb-section" aria-labelledby="lb-format">
+          <h2 className="lb-h" id="lb-format">Формат</h2>
+          <TablePanel table={room.table} players={players.length} onChange={isHost ? table => conn.send({ t: 'table', table }) : undefined} />
+        </section>
+
         <section className="lb-section lb-theme" aria-labelledby="lb-theme">
           <h2 className="lb-h" id="lb-theme">
             Стол {!isHost && <span className="lb-count">{theme?.name}</span>}
@@ -97,7 +108,7 @@ export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
         </section>
 
         {isHost ? (
-          <StartBar canStart={canStart} onStart={() => conn.send({ t: 'start' })} />
+          <StartBar canStart={canStart} hint={startHint} onStart={() => conn.send({ t: 'start' })} />
         ) : (
           <p className="lb-waiting">
             <span className="lb-dot" aria-hidden />
@@ -110,7 +121,7 @@ export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
 }
 
 /** The host's start button. Sticks to the bottom of the screen when the page is long (rules open, phones). */
-function StartBar({ canStart, onStart }: { canStart: boolean; onStart: () => void }) {
+function StartBar({ canStart, hint, onStart }: { canStart: boolean; hint: string | null; onStart: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [stuck, setStuck] = useState(false);
   useEffect(() => {
@@ -123,20 +134,20 @@ function StartBar({ canStart, onStart }: { canStart: boolean; onStart: () => voi
   }, []);
   return (
     <div ref={ref} className={`lb-start ${stuck ? 'stuck' : ''}`}>
-      {!canStart && <p className="lb-start-hint">Нужен ещё хотя бы один игрок: позови друга или добавь бота.</p>}
+      {!canStart && hint && <p className="lb-start-hint">{hint}</p>}
       <button className="btn big start-btn" disabled={!canStart} onClick={onStart}>Начать игру</button>
     </div>
   );
 }
 
 /** One player: avatar card, name under it. Host has a crown; the host can remove anyone else. */
-function Player({ m, me, picking, canKick, onKick, onAvatar }: {
-  m: MemberInfo; me: boolean; picking: boolean; canKick: boolean; onKick: () => void; onAvatar: () => void;
+function Player({ m, me, picking, canKick, onKick, onAvatar, team }: {
+  m: MemberInfo; me: boolean; picking: boolean; canKick: boolean; onKick: () => void; onAvatar: () => void; team: number | null;
 }) {
   const ava = <AvatarImg id={m.avatar} name={m.name} bot={m.bot} size={56} />;
   const sub = !m.bot && !m.connected ? 'нет связи' : me ? 'это ты' : m.bot ? 'бот' : m.host ? 'хост' : '';
   return (
-    <li className={`pl ${me ? 'me' : ''} ${!m.bot && !m.connected ? 'away' : ''}`}>
+    <li className={`pl ${me ? 'me' : ''} ${!m.bot && !m.connected ? 'away' : ''} ${team !== null ? `team-${team}` : ''}`}>
       <span className="pl-ava-wrap">
         {me ? (
           <button className="pl-ava" onClick={onAvatar} aria-expanded={picking} aria-label="Сменить аватар" title="Сменить аватар">
@@ -153,6 +164,7 @@ function Player({ m, me, picking, canKick, onKick, onAvatar }: {
           </button>
         )}
       </span>
+      {team !== null && <span className={`pl-team t${team}`}>{TEAM_NAMES[team]}</span>}
       <span className="pl-name" title={m.name}>{m.name}</span>
       {sub && <span className={`pl-sub ${sub === 'нет связи' ? 'warn' : ''}`}>{sub}</span>}
     </li>

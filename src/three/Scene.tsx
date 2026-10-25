@@ -4,13 +4,15 @@ import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import type { GameView } from '../game/view';
 import { standIn } from '../game/avatars';
+import { TEAM_NAMES } from '../game/content';
 import { AvatarImg } from '../ui/AvatarImg';
+import { IconStack } from '../ui/Icons';
 import { TurnRing } from '../ui/TurnRing';
 import { Card3D } from './Card3D';
 import { DeckStack } from './DeckStack';
 import { drag } from './drag';
 import { Arena, PALETTES } from './Environment';
-import { GoldBurst, Lightning, Meteor } from './EventFx';
+import { BombDrop, GoldBurst, Lightning, Meteor } from './EventFx';
 import { fxState, nowSec } from './fxState';
 import { arena, computeTargets, seatAngle, type View } from './layout';
 import { Mascot } from './Mascot';
@@ -25,9 +27,11 @@ interface Props {
   canDraw: boolean;
   /** the table has been drawn a few times (textures uploaded, shaders compiled) */
   onReady?: () => void;
+  /** the table is still loading or the cards are being dealt: no turn clock yet */
+  dealing?: boolean;
 }
 
-export function GameScene({ game, version, onCard, onDeck, canDraw, onReady }: Props) {
+export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dealing = false }: Props) {
   const size = useThree(s => s.size);
   const portrait = size.width / size.height < 0.9;
   const view: View = useMemo(() => ({ portrait }), [portrait]);
@@ -65,7 +69,7 @@ export function GameScene({ game, version, onCard, onDeck, canDraw, onReady }: P
       <DeckStack at={A.deck} theme={theme} />
       <DeckHit active={canDraw} onClick={onDeck} pending={s.pending} at={A.deck} />
       {/* during the finale the podium shows everyone, so the seat plates step aside */}
-      {s.phase !== 'over' && <PlayerPlates game={game} view={view} />}
+      {s.phase !== 'over' && <PlayerPlates game={game} view={view} dealing={dealing} />}
       {top && <PlayFx top={top} at={A.discard} />}
       <DropZone at={A.discard} radius={portrait ? 2.2 : 2.6} />
       {s.bombDeadline !== null && s.timerKind === 'bomb' && <Bomb deadline={s.bombDeadline} offset={game.clockOffset} />}
@@ -73,10 +77,11 @@ export function GameScene({ game, version, onCard, onDeck, canDraw, onReady }: P
       <Meteor game={game} view={view} />
       <Lightning game={game} view={view} />
       <GoldBurst game={game} view={view} />
+      <BombDrop />
       <Mascot scale={portrait ? 0.6 : 0.72} portrait={portrait} />
       {s.phase === 'over' && <Confetti />}
       {s.phase === 'over' && s.winner !== null && (
-        <Podium players={s.players} winner={s.winner} at={A.discard} scale={portrait ? 0.8 : 1} />
+        <Podium players={s.players} winner={s.winner} teams={s.teams} at={A.discard} scale={portrait ? 0.8 : 1} />
       )}
     </>
   );
@@ -162,26 +167,63 @@ function DirectionArrows({ dir, at }: { dir: 1 | -1; at: [number, number, number
   );
 }
 
+let glowTex: THREE.CanvasTexture | null = null;
+/** A soft round glow that fades to nothing at the edge (no hard ellipse on the floor). */
+function softGlow() {
+  if (glowTex) return glowTex;
+  const S = 256;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = S;
+  const ctx = cv.getContext('2d')!;
+  const g = ctx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+  g.addColorStop(0, 'rgba(255,240,190,0.9)');
+  g.addColorStop(0.45, 'rgba(255,220,140,0.35)');
+  g.addColorStop(1, 'rgba(255,200,100,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, S, S);
+  glowTex = new THREE.CanvasTexture(cv);
+  glowTex.colorSpace = THREE.SRGBColorSpace;
+  return glowTex;
+}
+
+/** Whose turn it is: a soft pool of light under them and a thin ring of light dashes going round. */
 function TurnMarker({ game, view, version }: { game: GameView; view: View; version: number }) {
-  const ref = useRef<THREE.Mesh>(null!);
-  const mat = useRef<THREE.MeshBasicMaterial>(null!);
+  const ref = useRef<THREE.Group>(null!);
+  const glow = useRef<THREE.MeshBasicMaterial>(null!);
+  const ringMat = useRef<THREE.MeshBasicMaterial>(null!);
+  const ring = useRef<THREE.Mesh>(null!);
   const s = game.s;
   const seat = game.seat();
   const target = useMemo(() => {
     const A = arena(view);
-    if (s.cur === seat) return new THREE.Vector3(0, 0.012, A.hand.z - 0.6);
+    if (s.cur === seat) return new THREE.Vector3(0, 0.012, A.hand.z - 0.9);
     const a = seatAngle(game, s.cur);
-    return new THREE.Vector3(Math.cos(a) * A.rx, 0.012, Math.sin(a) * A.rz);
+    return new THREE.Vector3(Math.cos(a) * A.rx * 0.95, 0.012, Math.sin(a) * A.rz);
   }, [version, view]);
+  const mine = s.cur === seat;
   useFrame((st, dt) => {
-    ref.current.position.lerp(target, Math.min(1, dt * 5));
-    mat.current.opacity = s.phase === 'over' ? 0 : 0.45 + Math.sin(st.clock.elapsedTime * 4) * 0.15;
+    ref.current.position.lerp(target, 1 - Math.exp(-dt * 6));
+    const k = 1 - Math.exp(-dt * 8);
+    const show = s.phase === 'over' ? 0 : 1;
+    const breathe = 0.5 + Math.sin(st.clock.elapsedTime * 2.4) * 0.5;
+    glow.current.opacity += ((mine ? 0.42 : 0.55) * show * (0.75 + breathe * 0.25) - glow.current.opacity) * k;
+    ringMat.current.opacity += (0.5 * show - ringMat.current.opacity) * k;
+    ring.current.rotation.z -= dt * 0.6;
+    const sc = mine ? 1.35 : 1;
+    ref.current.scale.x += (sc * 1.7 - ref.current.scale.x) * k;
+    ref.current.scale.z += (sc - ref.current.scale.z) * k;
   });
   return (
-    <mesh ref={ref} rotation-x={-Math.PI / 2} scale={[1.8, 1, 1]}>
-      <circleGeometry args={[1.25, 48]} />
-      <meshBasicMaterial ref={mat} color="#fff2a8" transparent depthWrite={false} toneMapped={false} blending={THREE.AdditiveBlending} />
-    </mesh>
+    <group ref={ref} scale={[1.7, 1, 1]}>
+      <mesh rotation-x={-Math.PI / 2}>
+        <planeGeometry args={[3, 3]} />
+        <meshBasicMaterial ref={glow} map={softGlow()} transparent opacity={0} depthWrite={false} toneMapped={false} blending={THREE.AdditiveBlending} />
+      </mesh>
+      <mesh ref={ring} rotation-x={-Math.PI / 2} position-y={0.002}>
+        <ringGeometry args={[1.02, 1.07, 64, 1, 0, Math.PI * 1.6]} />
+        <meshBasicMaterial ref={ringMat} color="#fff6d0" transparent opacity={0} depthWrite={false} toneMapped={false} />
+      </mesh>
+    </group>
   );
 }
 
@@ -210,7 +252,7 @@ function DeckHit({ active, onClick, pending, at }: { active: boolean; onClick: (
 }
 
 /** Avatar plates above each opponent's fan: name ribbon, portrait, card counter. */
-function PlayerPlates({ game, view }: { game: GameView; view: View }) {
+function PlayerPlates({ game, view, dealing }: { game: GameView; view: View; dealing: boolean }) {
   const s = game.s;
   const seat = game.seat();
   const A = arena(view);
@@ -219,24 +261,32 @@ function PlayerPlates({ game, view }: { game: GameView; view: View }) {
       {s.players.map((p, i) => {
         if (i === seat) return null;
         const a = seatAngle(game, i);
-        const pos: [number, number, number] = [Math.cos(a) * A.rx * 1.02, view.portrait ? 2.1 : 2.25, Math.sin(a) * A.rz * 1.02 - 0.2];
+        // side seats: pull the plate in toward the middle, so it stays on screen with its fan
+        const side = Math.abs(Math.cos(a));
+        const pos: [number, number, number] = [Math.cos(a) * A.rx * (1.02 - side * 0.3), view.portrait ? 2.1 : 2.25, Math.sin(a) * A.rz * 1.02 - 0.2];
         const cur = i === s.cur && s.phase !== 'over';
         const sub = standIn(p.name);
         return (
           <Html key={i} position={pos} center zIndexRange={[20, 0]} pointerEvents="none">
-            <div className={`plate ${cur ? 'cur' : ''} ${i === s.winner ? 'win' : ''} ${p.offline ? 'off' : ''}`}>
-              {/* someone dropped out: a bot sits in under its own name and face until they are back */}
-              <div className="plate-name" key={p.offline ? 'bot' : 'me'}>{p.offline ? sub.name : p.name}</div>
-              {p.offline && <span className="plate-away">за {p.name} · нет связи</span>}
-              <div className="plate-body">
-                <span className="ava-wrap swap-in" key={p.offline ? 'bot' : 'me'}>
-                  <AvatarImg id={p.offline ? sub.avatar : p.avatar} name={p.offline ? sub.name : p.name} bot={p.bot} size={view.portrait ? 44 : 64} className="plate-ava" />
-                  {cur && s.turnDeadline !== null && (
-                    <TurnRing key={s.turn} deadline={s.turnDeadline} total={s.turnTotal} offset={game.clockOffset} />
-                  )}
-                </span>
-                <span className="plate-count" aria-label={`${p.hand.length} карт`}>{p.hand.length}</span>
-              </div>
+            <div className={`oplate ${cur ? 'cur' : ''} ${i === s.winner ? 'win' : ''} ${p.offline ? 'off' : ''} ${s.teams ? `team t${s.teams[i]}` : ''} ${view.portrait ? 'small' : ''} ${view.portrait && s.players.length > 3 ? 'tiny' : ''}`} title={p.name}>
+              {s.teams && (
+                <span className="oplate-team">{s.teams[i] === s.teams[game.seat()] ? '🤝 напарник' : TEAM_NAMES[s.teams[i]]}</span>
+              )}
+              <span className="ava-wrap swap-in" key={p.offline ? 'bot' : 'me'}>
+                {/* someone dropped out: a bot sits in under its own name and face until they are back */}
+                <AvatarImg id={p.offline ? sub.avatar : p.avatar} name={p.offline ? sub.name : p.name} bot={p.bot} size={view.portrait ? 40 : 54} className="oplate-ava" />
+                {cur && !dealing && s.turnDeadline !== null && (
+                  <TurnRing key={s.turn} deadline={s.turnDeadline} total={s.turnTotal} offset={game.clockOffset} />
+                )}
+              </span>
+              <span className="oplate-info">
+                <span className="plate-name" key={p.offline ? 'bot' : 'me'}>{p.offline ? sub.name : p.name}</span>
+                {p.offline ? (
+                  <span className="oplate-away">за {p.name} · нет связи</span>
+                ) : (
+                  <span className="oplate-count" aria-label={`${p.hand.length} карт`}><IconStack />{p.hand.length}</span>
+                )}
+              </span>
               {p.hand.length === 1 && s.phase !== 'over' && <span className="plate-uno">UNO!</span>}
             </div>
           </Html>

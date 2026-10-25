@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { CNAME, COLORS, HEX } from '../game/content';
+import { CNAME, COLORS, HEX, TEAM_NAMES } from '../game/content';
 import type { GameView } from '../game/view';
 import { CoinFlip } from './CoinFlip';
 import { Legend } from './Legend';
 import { RematchVote } from './RematchVote';
 import type { MemberInfo, Rematch } from '../net/protocol';
+import { IconCards, IconMenu } from './Icons';
 import { SoundMenu } from './SoundMenu';
 
 /** Extra context when the game is an online room. */
@@ -146,13 +147,23 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
       </Modal>
     );
   } else if (s.phase === 'over' && showEnd && s.winner !== null) {
-    const rows = [...new Set(s.players.map(x => x.name))]
-      .map(n => [n, score[n] ?? 0] as const)
+    // online the score is kept by member id, locally by name
+    const rows = s.players
+      .map(x => [x.name, score[x.member ?? x.name] ?? 0] as const)
       .sort((a, b) => b[1] - a[1]);
     const loser = s.loser !== null ? s.players[s.loser] : null;
     modal = (
       <Modal sheet>
-        <h2>🏆 {s.players[s.winner].name} побеждает!</h2>
+        <h2>
+          🏆{' '}
+          {s.winTeam !== null && s.teams
+            ? `Команда «${TEAM_NAMES[s.winTeam]}» побеждает!`
+            : `${s.players[s.winner].name} побеждает!`}
+        </h2>
+        {s.winTeam !== null && s.teams && (
+          <p className="muted">{s.players.filter((_, i) => s.teams![i] === s.winTeam).map(p => p.name).join(' и ')}</p>
+        )}
+        {s.timeUp && <p className="muted small">⏱ Время раунда вышло: побеждает тот, у кого меньше всех карт</p>}
         {s.punishment && loser && (
           <>
             <p className="muted">Больше всех карт у {loser.name} ({loser.hand.length}). Наказание:</p>
@@ -191,8 +202,12 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
     <>
       <div className="corner-btns">
         <SoundMenu />
-        <button className="btn glass" onClick={() => setHelp(true)}>Карты</button>
-        <button className="btn glass" onClick={() => setMenu(true)}>Меню</button>
+        <button className="btn glass icon-btn labeled" onClick={() => setHelp(true)} title="Что за карты">
+          <IconCards /><span>Карты</span>
+        </button>
+        <button className="btn glass icon-btn labeled" onClick={() => setMenu(true)} title="Меню">
+          <IconMenu /><span>Меню</span>
+        </button>
       </div>
       {modal}
       {help && (

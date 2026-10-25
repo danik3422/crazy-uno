@@ -7,7 +7,7 @@ import type { ThemeId } from '../game/types';
 
 export type Sfx =
   | 'card' | 'draw' | 'shuffle' | 'boom' | 'thunder' | 'uno' | 'event' | 'win' | 'whoosh'
-  | 'turn' | 'tick' | 'caught' | 'penalty' | 'challenge' | 'click';
+  | 'turn' | 'tick' | 'caught' | 'penalty' | 'challenge' | 'click' | 'whistle';
 
 const PREFS_KEY = 'crazy-uno-sound';
 
@@ -223,6 +223,10 @@ class SoundEngine {
       case 'challenge':
         [48, 55, 60, 63].forEach(n => this.tone(o, t, midi(n), 0.9, 0.12, 'sawtooth'));
         this.burst(o, t, 0.6, 'lowpass', 500, 0.6, 0.7, 90);
+        break;
+      case 'whistle':
+        // a falling bomb: a long descending whistle
+        this.tone(o, t, 1900, 0.62, 0.16, 'sine', 420, 0.03);
         break;
       case 'click':
         this.tone(o, t, 900, 0.025, 0.08, 'triangle');

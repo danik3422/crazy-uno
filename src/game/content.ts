@@ -1,4 +1,4 @@
-import type { CardType, Color, EventId, Rules, ThemeId } from './types';
+import type { CardType, Color, EventId, Rules, Table, ThemeId } from './types';
 
 export const COLORS: Color[] = ['red', 'yellow', 'green', 'blue'];
 
@@ -178,3 +178,49 @@ export const PRESETS: { id: string; icon: string; name: string; desc: string; ru
 export function presetOf(r: Rules) {
   return PRESETS.find(p => (Object.keys(p.rules) as (keyof Rules)[]).every(k => p.rules[k] === r[k])) ?? null;
 }
+
+export const DEFAULT_TABLE: Table = { teams: false, quick: false, handSize: 7, turnSec: 30, bombSec: 10, unoPenalty: 2, roundMin: 0, events: 'normal' };
+
+/** The quick round overrides these numbers. */
+export const QUICK = { handSize: 5, turnSec: 15, roundMin: 5 };
+
+/** The allowed values for each number, shown as small segmented choices. */
+export const TABLE_CHOICES = {
+  handSize: [5, 7, 10],
+  turnSec: [15, 30, 60],
+  bombSec: [5, 10, 15],
+  unoPenalty: [2, 4],
+  roundMin: [0, 5, 10],
+  events: ['rare', 'normal', 'often'] as const,
+};
+
+/** What a table actually plays with (quick round wins over the individual numbers). */
+export function effectiveTable(t: Table): Table {
+  return t.quick ? { ...t, ...QUICK } : t;
+}
+
+/** Keep only known keys and allowed values (anything else falls back to the default). */
+export function cleanTable(raw: unknown): Table {
+  const r = (raw ?? {}) as Partial<Record<keyof Table, unknown>>;
+  const pick = <K extends keyof typeof TABLE_CHOICES>(k: K) =>
+    ((TABLE_CHOICES[k] as readonly unknown[]).includes(r[k]) ? r[k] : DEFAULT_TABLE[k]) as Table[K];
+  return {
+    teams: r.teams === true,
+    quick: r.quick === true,
+    handSize: pick('handSize'),
+    turnSec: pick('turnSec'),
+    bombSec: pick('bombSec'),
+    unoPenalty: pick('unoPenalty'),
+    roundMin: pick('roundMin'),
+    events: pick('events'),
+  };
+}
+
+/** Teams need an even table of at least 4. */
+export function teamsProblem(players: number): string | null {
+  if (players < 4) return 'Для игры командами нужно 4 игрока или больше';
+  if (players % 2) return 'Для игры командами нужно чётное число игроков';
+  return null;
+}
+
+export const TEAM_NAMES = ['Красные', 'Синие'];

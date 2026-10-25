@@ -25,14 +25,20 @@ export const fxState = {
   dealEnd: Infinity,
   /** barrel-plane mascot: a swoop across the arena, victory laps, or a bombing run on one player */
   mascot: { at: -100, mode: 'fly' as MascotMode, seed: 0, target: 0 },
-  /** bombing run: cards that land in a hand during [at, until) fall out of the plane instead of leaving the deck */
+  /** bombing run: cards that land in a hand during [at, until) burst out of the explosion instead of leaving the deck */
   drop: { at: -100, until: -100, pos: [0, 4, 0] as [number, number, number] },
+  /** the falling bomb: released at `at` from `from`, hits `to` BOMB_FALL seconds later */
+  bombFall: { at: -100, from: [0, 0, 0] as [number, number, number], to: [0, 0, 0] as [number, number, number] },
 };
 
 export type MascotMode = 'fly' | 'loop' | 'bomber';
-export const BOMBER_TIME = 3.6;
+export const BOMBER_TIME = 4.2;
 /** the plane is right above its target halfway through the run */
 export const BOMBER_DROP = BOMBER_TIME / 2;
+/** the bomb leaves the plane a moment before it is overhead (it keeps the plane's forward speed) */
+export const BOMB_RELEASE = BOMBER_DROP - 0.3;
+/** seconds from release to impact */
+export const BOMB_FALL = 0.62;
 
 export function summonMascot(mode: MascotMode = 'fly', delay = 0, target = 0) {
   fxState.mascot = { at: nowSec() + delay, mode, seed: Math.random(), target };

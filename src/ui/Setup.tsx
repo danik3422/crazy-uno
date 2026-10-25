@@ -3,7 +3,9 @@ import { BOT_AVATARS, HUMAN_AVATARS, avatarOf } from '../game/avatars';
 import { BOTNAMES, EVENTS } from '../game/content';
 import { AvatarImg } from './AvatarImg';
 import { Hero } from './Hero';
+import { DEFAULT_TABLE, teamsProblem } from '../game/content';
 import { RulesPanel } from './RulesPanel';
+import { TablePanel } from './TablePanel';
 import { ThemePicker } from './ThemePicker';
 import { Legend } from './Legend';
 
@@ -20,6 +22,8 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
     setCfg(c => ({ ...c, players: c.players.map((p, k) => (k === i ? { ...p, ...patch } : p)) }));
   const freeBot = () => BOTNAMES.find(n => !players.some(p => p.name === n)) ?? `Бот №${players.length + 1}`;
   const humans = players.filter(p => !p.bot).length;
+  const table = cfg.table ?? DEFAULT_TABLE;
+  const teamsWrong = table.teams ? teamsProblem(players.length) : null;
 
   return (
     <div className={`setup-page page-${cfg.theme ?? 'classic'}`}>
@@ -83,12 +87,15 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
               ? 'Людей несколько: перед каждым ходом карты прячутся, пока устройство не передадут.'
               : 'Добавь людей, и игра будет прятать карты между ходами.'}
           </small>
-          <button className="btn big" onClick={onStart}>Раздавай!</button>
+          {teamsWrong && <p className="table-warn">{teamsWrong}: добавь игрока или бота.</p>}
+          <button className="btn big" disabled={!!teamsWrong} onClick={onStart}>Раздавай!</button>
         </section>
 
         <section className="panel">
           <h2>Правила</h2>
           <RulesPanel rules={cfg.rules} onChange={rules => setCfg(c => ({ ...c, rules }))} />
+          <h2 style={{ marginTop: 8 }}>Формат</h2>
+          <TablePanel table={table} players={players.length} onChange={t => setCfg(c => ({ ...c, table: t }))} />
         </section>
       </div>
 

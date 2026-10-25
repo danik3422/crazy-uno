@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_RULES, EVENTS } from './content';
+import { DEFAULT_RULES, DEFAULT_TABLE, EVENTS } from './content';
 import { Game } from './engine';
 import type { EventId, Rules } from './types';
 
@@ -39,11 +39,11 @@ function humanAct(g: Game, rnd: () => number) {
 }
 
 /** Plays a full game, checking invariants after every step. */
-function simulate(seed: number, n: number, rules: Rules, humans = 0) {
+function simulate(seed: number, n: number, rules: Rules, humans = 0, table = DEFAULT_TABLE) {
   let clock = 0;
   const rnd = seeded(seed * 7 + 1);
   const g = new Game(
-    { players: Array.from({ length: n }, (_, i) => ({ name: `P${i}`, bot: i >= humans })), rules },
+    { players: Array.from({ length: n }, (_, i) => ({ name: `P${i}`, bot: i >= humans })), rules, table },
     { rng: seeded(seed), now: () => clock },
   );
   const total = g.totalCards();
@@ -60,6 +60,7 @@ function simulate(seed: number, n: number, rules: Rules, humans = 0) {
     g.checkBomb();
     if (rnd() < 0.2) clock += 30_000;
     g.timeoutTurn();
+    g.checkTimeLimit();
     steps++;
     expect(g.totalCards()).toBe(total);
     const ids = new Set([...g.s.deck, ...g.s.discard, ...g.s.players.flatMap(p => p.hand)].map(c => c.id));
@@ -190,10 +191,63 @@ describe('Game engine', () => {
     expect(g.s.turnDeadline).not.toBeNull();
     clock += 29_000;
     g.timeoutTurn();
+    g.checkTimeLimit();
     expect(g.s.cur).toBe(who);
     clock += 2_000;
     g.timeoutTurn();
+    g.checkTimeLimit();
     expect(g.s.cur !== who || g.s.phase === 'over').toBe(true);
+  });
+
+  it('plays 2v2 with partners opposite, and the team wins together', () => {
+    let teamWins = 0;
+    for (let seed = 1; seed <= 120; seed++) {
+      const n = [4, 6, 8][seed % 3];
+      const { g } = simulate(seed, n, DEFAULT_RULES, seed % 2, { ...DEFAULT_TABLE, teams: true });
+      expect(g.s.phase).toBe('over');
+      expect(g.s.teams).toEqual(Array.from({ length: n }, (_, i) => i % 2));
+      expect(g.s.winTeam).toBe(g.s.teams![g.s.winner!]);
+      // the punishment never lands on the winning side
+      if (g.s.loser !== null) expect(g.s.teams![g.s.loser]).not.toBe(g.s.winTeam);
+      teamWins++;
+    }
+    expect(teamWins).toBe(120);
+    // an odd table cannot play teams
+    const odd = new Game({ players: Array.from({ length: 5 }, (_, i) => ({ name: `P${i}`, bot: true })), rules: DEFAULT_RULES, table: { ...DEFAULT_TABLE, teams: true } });
+    expect(odd.s.teams).toBeNull();
+  });
+
+  it('runs a quick round: 5 cards, 15 s turns, and the fewest cards win when time is up', () => {
+    let clock = 0;
+    const g = new Game(
+      { players: [{ name: 'A', bot: false }, { name: 'B', bot: true }, { name: 'C', bot: true }], rules: { ...DEFAULT_RULES, events: false }, table: { ...DEFAULT_TABLE, quick: true } },
+      { rng: seeded(21), now: () => clock },
+    );
+    expect(g.s.players.every(p => p.hand.length === 5)).toBe(true);
+    expect(g.s.table.turnSec).toBe(15);
+    expect(g.s.endsAt).toBe(5 * 60_000);
+    g.s.players[2].hand.splice(1);
+    clock = 5 * 60_000 + 1;
+    g.checkTimeLimit();
+    expect(g.s.phase).toBe('over');
+    expect(g.s.timeUp).toBe(true);
+    expect(g.s.winner).toBe(2);
+  });
+
+  it('uses the table numbers: hand size, bomb time, UNO penalty', () => {
+    let clock = 0;
+    const g = new Game(
+      { players: [{ name: 'A', bot: false }, { name: 'B', bot: false }, { name: 'C', bot: true }], rules: { ...DEFAULT_RULES, events: false }, table: { ...DEFAULT_TABLE, handSize: 10, bombSec: 5, unoPenalty: 4 } },
+      { rng: seeded(4), now: () => clock },
+    );
+    expect(g.s.players[0].hand.length).toBe(10);
+    g.confirmHandover();
+    const s = g.s;
+    s.players[s.cur].hand = [{ id: 9100, color: s.color, type: 'num', value: 3 }, { id: 9101, color: 'wild', type: 'wild' }];
+    const victim = s.cur;
+    g.play(9100);
+    g.catchUno((victim + 1) % 3);
+    expect(s.players[victim].hand.length).toBe(5);
   });
 
   it('rejects illegal moves and stacks penalties', () => {

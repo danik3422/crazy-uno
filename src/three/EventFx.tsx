@@ -2,7 +2,8 @@ import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import type { GameView } from '../game/view';
-import { METEOR_FALL, fxState, nowSec } from './fxState';
+import { sound } from '../audio/sound';
+import { BOMB_FALL, METEOR_FALL, fxState, nowSec, shake } from './fxState';
 import { arena, seatPos, type View } from './layout';
 
 /** Where an effect aimed at player i lands on the table. */
@@ -159,5 +160,100 @@ export function GoldBurst({ game, view }: FxProps) {
       <cylinderGeometry args={[0.12, 0.12, 0.03, 16]} />
       <meshStandardMaterial color="#ffd04a" emissive="#c98a00" emissiveIntensity={0.6} metalness={0.8} roughness={0.25} />
     </instancedMesh>
+  );
+}
+
+/**
+ * The bomber's bomb: falls from the plane in an arc onto the victim (spinning, nose down),
+ * then blows up with a flash, a shock ring and a shower of sparks. The penalty cards burst out of it.
+ */
+export function BombDrop() {
+  const bomb = useRef<THREE.Group>(null!);
+  const flash = useRef<THREE.Mesh>(null!);
+  const flashMat = useRef<THREE.MeshBasicMaterial>(null!);
+  const ring = useRef<THREE.Mesh>(null!);
+  const ringMat = useRef<THREE.MeshBasicMaterial>(null!);
+  const light = useRef<THREE.PointLight>(null!);
+  const sparks = useRef<THREE.InstancedMesh>(null!);
+  const boomed = useRef(-1);
+  const N = 46;
+  const dirs = useMemo(
+    () => Array.from({ length: N }, () => new THREE.Vector3(Math.random() - 0.5, Math.random() * 0.9 + 0.3, Math.random() - 0.5).normalize().multiplyScalar(2.5 + Math.random() * 3.5)),
+    [],
+  );
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const vel = useMemo(() => new THREE.Vector3(), []);
+  const look = useMemo(() => new THREE.Vector3(), []);
+
+  useFrame(() => {
+    const b = fxState.bombFall;
+    const t = nowSec() - b.at;
+    const [fx, fy, fz] = b.from;
+    const [tx, ty, tz] = b.to;
+    // falling
+    const falling = t >= 0 && t < BOMB_FALL;
+    bomb.current.visible = falling;
+    if (falling) {
+      const p = t / BOMB_FALL;
+      bomb.current.position.set(fx + (tx - fx) * p, fy + (ty - fy) * p * p, fz + (tz - fz) * p);
+      // nose along the velocity: forward speed constant, falling faster and faster
+      vel.set(tx - fx, (ty - fy) * 2 * p, tz - fz);
+      look.copy(bomb.current.position).add(vel);
+      bomb.current.lookAt(look);
+      bomb.current.rotateZ(t * 14);
+    }
+    // impact
+    const e = t - BOMB_FALL;
+    if (e >= 0 && boomed.current !== b.at) {
+      boomed.current = b.at;
+      shake(1.0, 0.7);
+      sound.play('boom');
+    }
+    const on = e >= 0 && e < 0.9;
+    flash.current.visible = ring.current.visible = sparks.current.visible = on;
+    light.current.intensity = on ? 90 * Math.max(0, 1 - e / 0.5) : 0;
+    if (!on) return;
+    flash.current.position.set(tx, ty + 0.2, tz);
+    flash.current.scale.setScalar(0.3 + Math.sqrt(e) * 2.6);
+    flashMat.current.opacity = Math.max(0, 1 - e / 0.55);
+    ring.current.position.set(tx, 0.05, tz);
+    ring.current.scale.setScalar(0.4 + e * 7);
+    ringMat.current.opacity = 0.9 * (1 - e / 0.9);
+    light.current.position.set(tx, ty + 1, tz);
+    dirs.forEach((d, i) => {
+      dummy.position.set(tx + d.x * e, Math.max(0.05, ty + d.y * e - 5 * e * e), tz + d.z * e);
+      dummy.scale.setScalar(Math.max(0, 1 - e / 0.9));
+      dummy.updateMatrix();
+      sparks.current.setMatrixAt(i, dummy.matrix);
+    });
+    sparks.current.instanceMatrix.needsUpdate = true;
+  });
+
+  return (
+    <>
+      <group ref={bomb} visible={false}>
+        <mesh rotation-x={Math.PI / 2}>
+          <capsuleGeometry args={[0.2, 0.4, 6, 14]} />
+          <meshStandardMaterial color="#26262c" metalness={0.5} roughness={0.35} />
+        </mesh>
+        <mesh position-z={-0.42} rotation-x={-Math.PI / 2}>
+          <coneGeometry args={[0.22, 0.26, 4]} />
+          <meshStandardMaterial color="#e5413a" />
+        </mesh>
+      </group>
+      <mesh ref={flash} visible={false}>
+        <sphereGeometry args={[0.6, 24, 16]} />
+        <meshBasicMaterial ref={flashMat} color="#ffb23a" transparent toneMapped={false} depthWrite={false} />
+      </mesh>
+      <mesh ref={ring} rotation-x={-Math.PI / 2} visible={false}>
+        <ringGeometry args={[0.5, 0.68, 48]} />
+        <meshBasicMaterial ref={ringMat} color="#fff2a8" transparent toneMapped={false} depthWrite={false} />
+      </mesh>
+      <instancedMesh ref={sparks} args={[undefined, undefined, N]} visible={false} frustumCulled={false}>
+        <sphereGeometry args={[0.07, 6, 4]} />
+        <meshBasicMaterial color="#ffd04a" toneMapped={false} />
+      </instancedMesh>
+      <pointLight ref={light} color="#ff9a3c" distance={12} intensity={0} />
+    </>
   );
 }

@@ -326,6 +326,56 @@ describe('online rooms', () => {
     guest.close();
   });
 
+  it('plays 2v2 and quick rounds with the host table settings', async () => {
+    const [host, guest] = await openRoom(['Хост', 'Гость']);
+    host.auto = guest.auto = false;
+    host.send({ t: 'table', table: { teams: true, quick: true, handSize: 999, turnSec: 30, bombSec: 5, unoPenalty: 4, roundMin: 0, events: 'often' } as never });
+    await guest.until(() => !!guest.room?.table.teams);
+    expect(guest.room!.table.handSize).toBe(7); // invalid value falls back
+    guest.send({ t: 'table', table: { ...guest.room!.table, teams: false } });
+    await guest.until(() => guest.errors.includes('not-host'));
+    // 2 players cannot play teams
+    host.send({ t: 'start' });
+    await host.until(() => host.errors.includes('too-few'));
+    host.send({ t: 'addBot' });
+    host.send({ t: 'addBot' });
+    await host.until(() => host.room!.members.length === 4);
+    host.send({ t: 'start' });
+    await guest.until(() => !!guest.view);
+    const s = guest.view!.state;
+    expect(s.teams).toEqual([0, 1, 0, 1]);
+    expect(s.players[guest.view!.you!].hand.length).toBe(5); // quick round: 5 cards
+    expect(s.table.turnSec).toBe(15);
+    expect(s.endsAt).not.toBeNull();
+    host.auto = guest.auto = true;
+    host.send({ t: 'ping' });
+    await host.until(() => over(host), 30_000);
+    expect(host.view!.state.winTeam).toBe(host.view!.state.teams![host.view!.state.winner!]);
+    host.close();
+    guest.close();
+  });
+
+  it('keeps the score per person, not per name', async () => {
+    const [host, guest] = await openRoom(['Хост', 'Гость']);
+    host.send({ t: 'start' });
+    await host.until(() => over(host), 30_000);
+    await host.until(() => Object.values(host.room!.score).reduce((a, b) => a + b, 0) === 1);
+    const scoredId = Object.keys(host.room!.score)[0];
+    // the guest leaves; a new person comes in under the same name: they start from zero
+    guest.auto = false;
+    guest.send({ t: 'leave' });
+    await host.until(() => host.room!.members.length === 1);
+    const twin = new TestClient('Гость');
+    twin.auto = false;
+    await twin.connect();
+    twin.send({ t: 'join', code: host.code, name: 'Гость' });
+    await twin.until(() => !!twin.room);
+    if (scoredId !== host.room!.you) expect(twin.room!.score[twin.room!.you] ?? 0).toBe(0);
+    expect(Object.keys(twin.room!.score).every(id => twin.room!.members.some(m => m.id === id))).toBe(true);
+    host.close();
+    twin.close();
+  });
+
   it('lets only the host switch the theme, also mid-round', async () => {
     const [host, guest] = await openRoom(['Хост', 'Гость']);
     host.auto = guest.auto = false;

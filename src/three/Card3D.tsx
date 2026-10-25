@@ -2,7 +2,7 @@ import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { memo, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import type { Card, ThemeId } from '../game/types';
-import { DRAG_HEIGHT, drag, dropZone } from './drag';
+import { DRAG_HEIGHT, drag, dropZone, keySel } from './drag';
 import { SPIN_TIME, fxState, nowSec } from './fxState';
 import { lastPlace, spawn, type Target } from './layout';
 import { cardTexture } from './textures';
@@ -247,7 +247,7 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
       rx = drag.over ? -1.35 : -0.95;
       ry = 0;
       rz = 0;
-    } else if (hovered.current && tt.interactive) {
+    } else if ((hovered.current || keySel.id === card.id) && tt.interactive) {
       // lift toward the viewer along the card's own normal, never sideways into its neighbours
       y += 0.3;
       z += 0.16;
@@ -274,7 +274,7 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
       if (p >= 1) flight.current = null;
       const sinceSlam = now - slamAt.current;
       const slam = sinceSlam > 0 && sinceSlam < 0.5 ? Math.sin((sinceSlam / 0.5) * Math.PI) * 0.18 : 0;
-      g.scale.setScalar(smoothDamp(g.scale.x, 1 + Math.sin(Math.PI * e) * 0.12 + slam, vel.s, 0.06, dt));
+      g.scale.setScalar(smoothDamp(g.scale.x, (tt.scale ?? 1) + Math.sin(Math.PI * e) * 0.12 + slam, vel.s, 0.06, dt));
       const shade = tt.dim ? 0.45 : 1;
       const c = frontMat.current.color;
       c.setScalar(c.r + (shade - c.r) * Math.min(1, dt * 8));
@@ -303,11 +303,12 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     // a played card lands with a little slam: it grows in flight and settles on the pile
     const sinceSlam = now - slamAt.current;
     const slam = sinceSlam > 0 && sinceSlam < 0.5 ? Math.sin((sinceSlam / 0.5) * Math.PI) * 0.18 : 0;
-    const sTarget = (dragging ? (drag.over ? 1.25 : 1.12) : hovered.current && tt.interactive ? 1.12 : 1) + slam;
+    const base = tt.scale ?? 1;
+    const sTarget = (dragging ? (drag.over ? 1.25 : 1.12) : (hovered.current || keySel.id === card.id) && tt.interactive ? base * 1.12 : base) + slam;
     g.scale.setScalar(smoothDamp(g.scale.x, sTarget, vel.s, slam ? 0.06 : 0.12, dt));
 
     // playable cards are simply raised (see layout); the rest are dimmed
-    const shade = tt.dim ? 0.45 : 1;
+    const shade = tt.dim ? 0.62 : 1;
     const c = frontMat.current.color;
     c.setScalar(c.r + (shade - c.r) * k);
   });
