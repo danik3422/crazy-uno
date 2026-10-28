@@ -100,6 +100,33 @@ describe('No Mercy cards', () => {
     expect(g.s.pending).toBe(4);
   });
 
+  it('Wild Reverse +4 with two players: the opponent faces +4, not the one who played it', () => {
+    const g = game(2);
+    const me = g.s.cur;
+    play(g, card('wildRev4', 'wild'));
+    g.resolveChoice('green');
+    expect(g.s.cur).not.toBe(me);
+    expect(g.s.pending).toBe(4);
+    const victim = g.s.cur;
+    const before = g.s.players[victim].hand.length;
+    g.draw();
+    expect(g.s.players[victim].hand.length).toBe(before + 4);
+    expect(g.s.cur).toBe(me);
+  });
+
+  it('a Reverse with two players left (the rest knocked out) works like a skip', () => {
+    const g = game(3);
+    const me = g.s.cur;
+    const other = g.nextIdx();
+    const third = g.nextIdx(other);
+    // the third player is out of the game
+    g.s.players[third].out = 1;
+    g.s.deck.unshift(...g.s.players[third].hand);
+    g.s.players[third].hand = [];
+    play(g, card('rev', g.s.color));
+    expect(g.s.cur).toBe(me);
+  });
+
   it('Colour Roulette: the next player names a colour and draws until it comes up', () => {
     const g = game(3);
     play(g, card('roulette', 'wild'));
