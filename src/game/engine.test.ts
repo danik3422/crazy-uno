@@ -63,7 +63,7 @@ function simulate(seed: number, n: number, rules: Rules, humans = 0, table = DEF
     g.checkTimeLimit();
     steps++;
     expect(g.totalCards()).toBe(total);
-    const ids = new Set([...g.s.deck, ...g.s.discard, ...g.s.players.flatMap(p => p.hand)].map(c => c.id));
+    const ids = new Set([...g.s.deck, ...g.s.discard, ...g.setAside(), ...g.s.players.flatMap(p => p.hand)].map(c => c.id));
     expect(ids.size).toBe(total);
   }
   return { g, steps };
@@ -137,7 +137,7 @@ describe('Game engine', () => {
       s.players[a].hand = [
         { id: 9001, color: 'wild', type: 'wild4' },
         { id: 9002, color: guilty ? s.color : (['red', 'yellow', 'green', 'blue'].find(c => c !== s.color) as never), type: 'num', value: 5 },
-        { id: 9003, color: 'wild', type: 'wild' },
+        { id: 9003, color: (['red', 'yellow', 'green', 'blue'].find(c => c !== s.color) as never), type: 'num', value: 7 },
       ];
       expect(g.play(9001)).toBe(true);
       g.resolveChoice('red');

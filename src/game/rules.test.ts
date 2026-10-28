@@ -42,6 +42,20 @@ describe('Classic is the official UNO', () => {
     expect(canPlayCard(g.s, card({ color: 'blue', type: 'draw2', value: undefined }))).toBe(false);
     expect(canPlayCard(g.s, card({ color: 'wild', type: 'wild4', value: undefined }))).toBe(false);
   });
+
+  it('a +4 laid while holding a plain Wild is a bluff that can be caught (official rule)', () => {
+    for (const [other, guilty] of [[card({ id: 9101, color: 'wild', type: 'wild', value: undefined }), true], [card({ id: 9102, color: 'wild', type: 'wild4', value: undefined }), false]] as const) {
+      const g = new Game({ players: [{ name: 'A', bot: true }, { name: 'B', bot: true }], rules: classic, online: true });
+      const p = g.cp();
+      // nothing of the colour in play, only the other wild card
+      p.hand = [card({ id: 9100, color: 'wild', type: 'wild4', value: undefined }), other, card({ id: 9103, color: g.s.color === 'red' ? 'blue' : 'red', value: 3 })];
+      g.s.pending = 0;
+      g.s.drawn = false;
+      g.play(9100);
+      g.resolveChoice('green');
+      expect(g.s.challenge?.guilty).toBe(guilty);
+    }
+  });
 });
 
 describe('matching', () => {

@@ -27,7 +27,7 @@ function play(level: BotLevel, rules: Rules, players: number, seed: number) {
     // imagined games never leak into the real one
     expect(g.s.log.slice(before).every(l => !l.includes('🏆') || g.s.phase === 'over')).toBe(true);
   }
-  const ids = new Set([...g.s.deck, ...g.s.discard, ...g.s.players.flatMap(p => p.hand)].map(c => c.id));
+  const ids = new Set([...g.s.deck, ...g.s.discard, ...g.setAside(), ...g.s.players.flatMap(p => p.hand)].map(c => c.id));
   expect(ids.size).toBe(total);
   return g;
 }

@@ -24,8 +24,8 @@ function openings(rules: Rules, n = 4) {
   return found;
 }
 
-describe('the first card (official start)', () => {
-  const found = openings({ ...rulesOf('classic'), events: false });
+describe('the first card ("Первая карта действует")', () => {
+  const found = openings({ ...rulesOf('classic'), startAction: true, events: false });
 
   it('turns up every kind of classic card but a +4', () => {
     expect([...found.keys()].sort()).toEqual(['draw2', 'num', 'rev', 'skip', 'wild']);
@@ -64,9 +64,12 @@ describe('the first card (official start)', () => {
     expect(g.s.log.at(-1)).toMatch(/Цвет теперь/);
   });
 
-  it('with the rule off the pile always starts with a number', () => {
-    const off = openings({ ...rulesOf('party'), events: false });
-    expect([...off.keys()]).toEqual(['num']);
+  it('with the rule off the pile always starts with a number (Classic, as in the 2023 Mattel rules)', () => {
+    expect(rulesOf('classic').startAction).toBe(false);
+    for (const mode of ['classic', 'party']) {
+      const off = openings({ ...rulesOf(mode), events: false });
+      expect([...off.keys()]).toEqual(['num']);
+    }
   });
 
   it('games that open with an action card play to the end without losing a card', () => {

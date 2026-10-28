@@ -60,6 +60,8 @@ export class Game extends Observable {
    * Hard bots use it to imagine the hidden hands more accurately.
    */
   private lacks = new WeakMap<Card[], Set<Color>>();
+  /** No Mercy: the hands of knocked-out players, out of play until the deck runs out and is reshuffled */
+  private aside: Card[] = [];
   private online: boolean;
   private rng: Rng;
   private now: () => number;
@@ -154,7 +156,7 @@ export class Game extends Observable {
   }
 
   /**
-   * Turns up the first card of the pile. Normally the top number card of the deck; with the official start
+   * Turns up the first card of the pile. Normally the top number card of the deck (current Mattel rules); with the old-style start
    * whatever is on top, except a +4 (and cards the official game does not have), which go back into the deck.
    */
   private firstCard(deck: Card[], rules: Rules): Card {
@@ -168,7 +170,7 @@ export class Game extends Observable {
     return deck.splice(i, 1)[0];
   }
 
-  /** The official start: an action card turned up first works on the first player. */
+  /** The old-style start: an action card turned up first works on the first player. */
   private openWith(first: Card) {
     const s = this.s;
     if (!s.rules.startAction || first.type === 'num') return;
@@ -210,8 +212,10 @@ export class Game extends Observable {
   humans() { return this.s.players.map((p, i) => (p.bot ? -1 : i)).filter(i => i >= 0); }
   /** Cards in the game, wherever they are. Never changes during a round. */
   totalCards() {
-    return this.s.deck.length + this.s.discard.length + this.s.players.reduce((a, p) => a + p.hand.length, 0);
+    return this.s.deck.length + this.s.discard.length + this.aside.length + this.s.players.reduce((a, p) => a + p.hand.length, 0);
   }
+  /** No Mercy: the hands of knocked-out players, out of play until the next reshuffle. */
+  setAside(): readonly Card[] { return this.aside; }
   canPlay(c: Card) { return canPlayCard(this.s, c); }
   playable(c: Card) { return playableCard(this.s, c); }
   sameTeam(a: number, b: number) { return sameTeam(this.s, a, b); }
@@ -244,8 +248,8 @@ export class Game extends Observable {
     if (idx < 0 || !this.playable(p.hand[idx])) return false;
     const card = p.hand.splice(idx, 1)[0];
     if (card.color !== 'wild') this.lacks.get(p.hand)?.delete(card.color);
-    // a +4 is "guilty" when laid while holding a card of the colour in play
-    const guilty = card.type === 'wild4' && p.hand.some(c => c.color === s.color);
+    // a +4 may only be laid with no card of the colour in play; per the official rules a plain Wild counts as a match too
+    const guilty = card.type === 'wild4' && p.hand.some(c => c.color === s.color || (c.color === 'wild' && c.type !== 'wild4'));
     s.discard.push(card);
     s.bombDeadline = null;
     s.timerKind = null;
@@ -479,7 +483,7 @@ export class Game extends Observable {
       this.give(offender, 4);
       s.pending = Math.max(0, s.pending - 4);
       if (!s.pending) s.pendingType = null;
-      this.say(`⚖️ ${me.name} оспаривает +4 и прав(а)! У ${offender.name} был нужный цвет — тянет 4`);
+      this.say(`⚖️ ${me.name} оспаривает +4 и прав(а)! У ${offender.name} было чем сходить — тянет 4`);
       this.fx('challenge', `⚖️ Попался! ${offender.name} тянет 4`);
       this.fx('shake');
       this.emitChange();
@@ -847,7 +851,8 @@ export class Game extends Observable {
     const e = s.effect!;
     const card = e.card;
     const p = this.cp();
-    const n = s.players.length;
+    // players still in the game (No Mercy knocks some out): with two left, a reverse works like a skip
+    const n = activeSeats(s).length;
     const nextName = s.players[this.nextIdx()].name;
     switch (card.type) {
       case 'num':
@@ -877,9 +882,10 @@ export class Game extends Observable {
       case 'wild10':
         return this.ask({ kind: 'color', title: `+${drawValue(card)}! Какой цвет?` });
       case 'wildRev4':
-        // reverse first: the +4 goes to whoever now moves next (with two players, that is you again)
+        // reverse first: the +4 goes to whoever moves next in the new direction. With two players the official
+        // rule is that it skips the other player and YOU draw 4 (unless you stack it back at them)
         this.reverse();
-        if (activeSeats(s).length === 2) e.steps = 2;
+        if (n === 2) e.steps = 2;
         this.say('⇄ Разворот +4! Едем в другую сторону');
         return this.ask({ kind: 'color', title: 'Разворот +4! Какой цвет?' });
       case 'skipAll':
@@ -1062,11 +1068,11 @@ export class Game extends Observable {
     s.pendingType = card.type === 'draw2' ? 'draw2' : 'wild4';
   }
 
-  /** The mercy rule: too many cards and you are out. Their cards go under the deck. */
+  /** The mercy rule: too many cards and you are out. Their cards are set aside until the deck runs out. */
   private knockOut(p: Player) {
     const s = this.s;
     p.out = s.players.filter(x => x.out).length + 1;
-    s.deck.unshift(...p.hand);
+    this.aside.push(...p.hand);
     p.hand = [];
     this.say(`💀 ${p.name} набирает ${MERCY_LIMIT}+ карт и выбывает. Пощады нет!`);
     this.fx('knockout', `💀 ${p.name} выбывает!`);
@@ -1108,10 +1114,11 @@ export class Game extends Observable {
   /** The deck ran out: shuffle the pile (all but its top card) back into it. */
   private refill() {
     const s = this.s;
-    if (s.discard.length < 2) return;
+    if (s.discard.length < 2 && !this.aside.length) return;
     const top = s.discard.pop()!;
-    // fresh ids: online players saw these faces in the discard pile and must not track them
-    s.deck = shuffle(s.discard, this.rng).map(c => ({ ...c, id: this.nextCardId++, dealIdx: undefined }));
+    // the pile and any knocked-out hands set aside; fresh ids, so nobody can track a card they saw before
+    s.deck = shuffle([...s.discard, ...this.aside], this.rng).map(c => ({ ...c, id: this.nextCardId++, dealIdx: undefined }));
+    this.aside = [];
     s.discard = [top];
     this.say('Колода кончилась, перемешали сброс 🔄');
   }

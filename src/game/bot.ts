@@ -1,6 +1,6 @@
 import { COLORS } from './content';
 import type { Rng } from './random';
-import { drawValue, nextSeat, sameTeam } from './rules';
+import { activeSeats, drawValue, nextSeat, sameTeam } from './rules';
 import type { BotLevel, Card, Choice, Color, State } from './types';
 
 /**
@@ -67,6 +67,8 @@ function pickNormal(s: State, options: Card[], rng: Rng): Card {
     if (s.pending) r -= drawValue(c) / 2;
     if (c.type === 'swap') r += fewestElsewhere < me.hand.length - 2 ? 8 : -8;
     if (c.type === 'mirror' && s.pending) r += 20;
+    // with two players a Wild Reverse +4 lands on whoever plays it: only a last resort
+    if (c.type === 'wildRev4' && activeSeats(s).length === 2) r -= 30;
     return r;
   };
   options.sort((a, b) => score(b) - score(a));

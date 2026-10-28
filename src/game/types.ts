@@ -52,7 +52,7 @@ export interface Rules {
    */
   noMercy: boolean;
   /**
-   * The official start: if the first card turned up is an action card, it works on the first player
+   * The old official start: if the first card turned up is an action card, it works on the first player
    * (Skip: they miss the turn, Reverse: the dealer starts the other way, +2: they draw 2, Wild: they pick the colour).
    * A +4 goes back into the deck. Off: the pile always starts with a number.
    */

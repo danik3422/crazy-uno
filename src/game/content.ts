@@ -28,7 +28,7 @@ export const SPECIAL: Record<Exclude<CardType, 'num'>, { sym: string; name: stri
   draw4: { sym: '+4', name: '+4', desc: 'Цветная +4: следующий тянет 4 и пропускает ход' },
   skipAll: { sym: '⊘', name: 'Пропуск всех', desc: 'Все пропускают ход, ты ходишь ещё раз' },
   discardAll: { sym: '🗑️', name: 'Сброс цвета', desc: 'Сбрасываешь все свои карты этого цвета' },
-  wildRev4: { sym: '⇄', name: 'Разворот +4', desc: 'Игра идёт обратно, и тот, кто теперь ходит, тянет 4' },
+  wildRev4: { sym: '⇄', name: 'Разворот +4', desc: 'Игра идёт обратно, и тот, кто теперь ходит, тянет 4. Вдвоём тянешь ты сам, если не отобьёшься' },
   wild6: { sym: '+6', name: '+6', desc: 'Выбираешь цвет, следующий тянет 6' },
   wild10: { sym: '+10', name: '+10', desc: 'Выбираешь цвет, следующий тянет 10' },
   roulette: { sym: '🎡', name: 'Рулетка', desc: 'Следующий называет цвет и тянет карты, пока не попадётся этот цвет' },
@@ -50,11 +50,11 @@ export const RULES: { id: keyof Rules; name: string; desc: string; def: boolean 
   { id: 'dares', name: 'Фанты', desc: 'Карта 🎭 даёт следующему игроку смешное задание.', def: true },
   { id: 'uno', name: 'Кричи «UNO!»', desc: 'Остался с одной картой и не крикнул «UNO!» — любой может нажать «Поймал!», и ты тянешь 2.', def: true },
   { id: 'timer', name: 'Таймер хода', desc: 'Ограниченное время на ход. Не успел — тянешь карту и пропускаешь ход (или ходит автопилот, если он включён).', def: true },
-  { id: 'challenge', name: 'Оспорить +4', desc: 'Если +4 положили, имея карту нужного цвета, и тебя это бесит — оспорь. Попался — тянет 4 сам. Ошибся — тянешь 6.', def: true },
+  { id: 'challenge', name: 'Оспорить +4', desc: '+4 можно класть, только если нечем сходить в цвет (обычная «Цвет» тоже считается). Думаешь, соврали — оспорь. Попался — тянет 4 сам. Ошибся — тянешь 6.', def: true },
   { id: 'drawPlay', name: 'Тяни до победного', desc: 'Тянешь из колоды, пока не попадётся карта, которой можно сходить.', def: false },
   { id: 'events', name: 'Безумные события', desc: 'В случайный момент случается что-то: метеорит +10, перекраска карт, молния, блиц…', def: true },
   { id: 'punish', name: 'Наказание проигравшему', desc: 'В конце раунда у кого больше всех карт — получает задание.', def: true },
-  { id: 'startAction', name: 'Первая карта действует', desc: 'Открылась первой карта действия — она срабатывает на первого игрока: пропуск, разворот, +2 или выбор цвета. Как в настоящем UNO.', def: false },
+  { id: 'startAction', name: 'Первая карта действует', desc: 'Открылась первой карта действия — она срабатывает на первого игрока: пропуск, разворот, +2 или выбор цвета. Так было в старых правилах UNO.', def: false },
   { id: 'noMercy', name: 'No Mercy', desc: 'Колода UNO Show ’Em No Mercy: +6, +10, рулетка. Перебить штраф можно только картой не меньше. 25 карт — выбываешь.', def: false },
 ];
 
@@ -187,9 +187,10 @@ export const RULE_GROUPS: { title: string; hint: string; rules: { id: keyof Rule
 /** One-click rule sets. */
 export const PRESETS: { id: string; icon: string; name: string; desc: string; rules: Rules }[] = [
   {
-    // the official rules of UNO: no stacking, +4 can be challenged, draw one card and play it if it fits
+    // the official rules of UNO (Mattel, 2023): no stacking, +4 only without a card to match (can be challenged),
+    // draw one card and play it if it fits, and the pile starts with a number
     id: 'classic', icon: '🎴', name: 'Классика', desc: 'Настоящие правила UNO, без сюрпризов',
-    rules: { stack: false, sevenZero: false, crazy: false, dares: false, uno: true, drawPlay: false, punish: false, events: false, timer: true, challenge: true, noMercy: false, startAction: true },
+    rules: { stack: false, sevenZero: false, crazy: false, dares: false, uno: true, drawPlay: false, punish: false, events: false, timer: true, challenge: true, noMercy: false, startAction: false },
   },
   {
     // the official rules of UNO Show 'Em No Mercy, nothing added

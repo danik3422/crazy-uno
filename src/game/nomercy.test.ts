@@ -100,6 +100,33 @@ describe('No Mercy cards', () => {
     expect(g.s.pending).toBe(4);
   });
 
+  it('Wild Reverse +4 with two players: it skips the other player and the one who played it faces +4 (official rule)', () => {
+    const g = game(2);
+    const me = g.s.cur;
+    play(g, card('wildRev4', 'wild'));
+    g.resolveChoice('green');
+    expect(g.s.cur).toBe(me);
+    expect(g.s.pending).toBe(4);
+    // they may stack it back at the other player
+    play(g, card('wild6', 'wild'));
+    g.resolveChoice('red');
+    expect(g.s.cur).not.toBe(me);
+    expect(g.s.pending).toBe(10);
+  });
+
+  it('a Reverse with two players left (the rest knocked out) works like a skip', () => {
+    const g = game(3);
+    const me = g.s.cur;
+    const other = g.nextIdx();
+    const third = g.nextIdx(other);
+    // the third player is out of the game
+    g.s.players[third].out = 1;
+    g.s.deck.unshift(...g.s.players[third].hand);
+    g.s.players[third].hand = [];
+    play(g, card('rev', g.s.color));
+    expect(g.s.cur).toBe(me);
+  });
+
   it('Colour Roulette: the next player names a colour and draws until it comes up', () => {
     const g = game(3);
     play(g, card('roulette', 'wild'));
@@ -137,11 +164,13 @@ describe('mercy rule', () => {
     play(g, card('wild10', 'wild'));
     g.resolveChoice('red');
     g.s.players[victim].hand.push(...g.s.deck.splice(0, MERCY_LIMIT - 10 - g.s.players[victim].hand.length));
+    const deckBefore = g.s.deck.length;
     g.draw();
     expect(g.s.players[victim].out).toBe(1);
     expect(g.s.players[victim].hand).toHaveLength(0);
     expect(g.s.log.some(l => l.includes('выбывает'))).toBe(true);
-    // their cards went back under the deck: nothing lost (the test added one card of its own, the +10)
+    // their cards are set aside, not back in the deck: nothing lost (the test added one card of its own, the +10)
+    expect(g.s.deck.length).toBe(deckBefore - 10);
     expect(g.totalCards()).toBe(total + 1);
     for (let i = 0; i < 6; i++) {
       expect(g.s.cur).not.toBe(victim);
@@ -150,6 +179,28 @@ describe('mercy rule', () => {
       g.s.drawn = true;
       g.pass();
     }
+  });
+
+  it('the set-aside hand comes back only when the deck runs out and is reshuffled', () => {
+    const g = game(3);
+    const victim = g.nextIdx();
+    const p = g.s.players[victim];
+    p.hand.push(...g.s.deck.splice(0, MERCY_LIMIT - p.hand.length - 1));
+    play(g, card('draw2', g.s.color));
+    g.draw();
+    expect(p.out).toBe(1);
+    const aside = g.setAside().length;
+    expect(aside).toBeGreaterThanOrEqual(MERCY_LIMIT);
+    // empty the deck: the next card drawn reshuffles the pile together with the set-aside hand
+    g.s.discard.push(...g.s.deck.splice(0));
+    const total = g.totalCards();
+    g.s.phase = 'play';
+    g.s.drawn = false;
+    g.s.pending = 0;
+    g.draw();
+    expect(g.totalCards()).toBe(total);
+    expect(g.setAside()).toHaveLength(0);
+    expect(g.s.deck.length).toBeGreaterThanOrEqual(aside - 1);
   });
 
   it('the last player standing wins', () => {
