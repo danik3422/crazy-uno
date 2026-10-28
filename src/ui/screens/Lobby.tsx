@@ -1,6 +1,7 @@
 import qrcode from 'qrcode-generator';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { TEAM_NAMES, teamsProblem, THEMES_LIST } from '../../game/content';
+import { TEAM_NAMES, THEMES_LIST } from '../../game/content';
+import { teamsOf, teamsProblem } from '../../game/teams';
 import type { Connection } from '../../net/connection';
 import { MAX_PLAYERS, type MemberInfo, type RoomInfo } from '../../net/protocol';
 import { AvatarImg, AvatarPicker } from '../components/AvatarImg';
@@ -10,6 +11,7 @@ import { SwipeBack } from '../components/SwipeBack';
 import { enterFullscreen } from '../hooks/phone';
 import { RulesPanel } from '../settings/RulesPanel';
 import { TablePanel } from '../settings/TablePanel';
+import { SwapTeamIcon, TeamBox } from '../components/TeamBox';
 import { ThemePicker } from '../settings/ThemePicker';
 
 interface Props {
@@ -38,10 +40,39 @@ export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
   const watchers = room.members.filter(m => m.spectator);
   const [picking, setPicking] = useState(false);
   const theme = THEMES_LIST.find(t => t.id === room.theme);
-  // teams alternate in seat order, so the list shows exactly who plays with whom
-  const teamsWrong = room.table.teams ? teamsProblem(players.length) : null;
+  // the server tells everyone's side (their pick, or the side that is short)
+  const teams = players.map(m => m.team ?? 0);
+  const teamsWrong = room.table.teams ? teamsProblem(teams) : null;
   const canStart = isHost && players.length >= 2 && !teamsWrong;
-  const startHint = players.length < 2 ? 'Нужен ещё хотя бы один игрок: позови друга или добавь бота.' : teamsWrong ? `${teamsWrong}: добавь бота или выключи «2 на 2».` : null;
+  const canAddBot = isHost && players.length < MAX_PLAYERS;
+  // the side a new player without a pick would join
+  const nextTeam = teamsOf([...players, {}])[players.length];
+  const tile = (i: number) => {
+    const m = players[i];
+    return (
+      <Player
+        key={m.id}
+        team={room.table.teams ? teams[i] : null}
+        m={m}
+        me={m.id === room.you}
+        picking={picking}
+        canKick={isHost && m.id !== room.you}
+        onKick={() => conn.send({ t: 'kick', id: m.id })}
+        onAvatar={() => setPicking(p => !p)}
+        // the host seats anyone; a guest picks only their own side
+        onTeam={isHost || m.id === room.you ? () => conn.send({ t: 'team', id: m.id, team: teams[i] ? 0 : 1 }) : undefined}
+      />
+    );
+  };
+  const addBot = (
+    <li className="pl" key="add">
+      <button className="pl-add" onClick={() => conn.send({ t: 'addBot' })} aria-label="Добавить бота">
+        <span aria-hidden>+</span>
+      </button>
+      <span className="pl-name muted">Бот</span>
+    </li>
+  );
+  const startHint = players.length < 2 ? 'Нужен ещё хотя бы один игрок: позови друга или добавь бота.' : teamsWrong ? `${teamsWrong}: поменяй команды, добавь бота или выключи «2 на 2».` : null;
 
   return (
     <div className={`lobby page-${room.theme}`}>
@@ -58,28 +89,27 @@ export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
           <h2 className="lb-h" id="lb-players">
             Игроки <span className="lb-count">{players.length} из {MAX_PLAYERS}</span>
           </h2>
-          <ul className="players">
-            {players.map((m, i) => (
-              <Player
-                key={m.id}
-                team={room.table.teams ? i % 2 : null}
-                m={m}
-                me={m.id === room.you}
-                picking={picking}
-                canKick={isHost && m.id !== room.you}
-                onKick={() => conn.send({ t: 'kick', id: m.id })}
-                onAvatar={() => setPicking(p => !p)}
-              />
-            ))}
-            {isHost && players.length < MAX_PLAYERS && (
-              <li className="pl">
-                <button className="pl-add" onClick={() => conn.send({ t: 'addBot' })} aria-label="Добавить бота">
-                  <span aria-hidden>+</span>
-                </button>
-                <span className="pl-name muted">Бот</span>
-              </li>
-            )}
-          </ul>
+          {room.table.teams ? (
+            <div className="team-cols two">
+              {([0, 1] as const).map(t => {
+                const mine = players.map((_, i) => i).filter(i => teams[i] === t);
+                return (
+                  <TeamBox key={t} team={t} count={mine.length}>
+                    <ul className="players">
+                      {mine.map(tile)}
+                      {/* a new bot joins the side that is short, so its tile waits there */}
+                      {canAddBot && nextTeam === t && addBot}
+                    </ul>
+                  </TeamBox>
+                );
+              })}
+            </div>
+          ) : (
+            <ul className="players">
+              {players.map((_, i) => tile(i))}
+              {canAddBot && addBot}
+            </ul>
+          )}
           {picking && (
             <div className="lb-picker">
               <span className="lb-label">Твой аватар</span>
@@ -100,7 +130,7 @@ export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
 
         <section className="lb-section" aria-labelledby="lb-format">
           <h2 className="lb-h" id="lb-format">Формат</h2>
-          <TablePanel table={room.table} players={players.length} onChange={isHost ? table => conn.send({ t: 'table', table }) : undefined} />
+          <TablePanel table={room.table} teams={teams} onChange={isHost ? table => conn.send({ t: 'table', table }) : undefined} />
         </section>
 
         <section className="lb-section lb-theme" aria-labelledby="lb-theme">
@@ -145,13 +175,15 @@ function StartBar({ canStart, hint, onStart }: { canStart: boolean; hint: string
 }
 
 /** One player: avatar card, name under it. Host has a crown; the host can remove anyone else. */
-function Player({ m, me, picking, canKick, onKick, onAvatar, team }: {
+function Player({ m, me, picking, canKick, onKick, onAvatar, team, onTeam }: {
   m: MemberInfo; me: boolean; picking: boolean; canKick: boolean; onKick: () => void; onAvatar: () => void; team: number | null;
+  /** switch to the other team (only when this viewer may) */
+  onTeam?: () => void;
 }) {
   const ava = <AvatarImg id={m.avatar} name={m.name} bot={m.bot} size={56} />;
   const sub = !m.bot && !m.connected ? 'нет связи' : me ? 'это ты' : m.bot ? 'бот' : m.host ? 'хост' : '';
   return (
-    <li className={`pl ${me ? 'me' : ''} ${!m.bot && !m.connected ? 'away' : ''} ${team !== null ? `team-${team}` : ''}`}>
+    <li className={`pl ${me ? 'me' : ''} ${!m.bot && !m.connected ? 'away' : ''}`}>
       <span className="pl-ava-wrap">
         {me ? (
           <button className="pl-ava" onClick={onAvatar} aria-expanded={picking} aria-label="Сменить аватар" title="Сменить аватар">
@@ -162,13 +194,23 @@ function Player({ m, me, picking, canKick, onKick, onAvatar, team }: {
           <span className="pl-ava">{ava}</span>
         )}
         {m.host && <span className="pl-crown" title="Хост" aria-label="хост">👑</span>}
+        {team !== null && onTeam && (
+          <button
+            className={`pl-swap to${1 - team}`}
+            onClick={onTeam}
+            title={`Перевести в команду «${TEAM_NAMES[1 - team]}»`}
+            aria-label={`${m.name}: перевести в команду «${TEAM_NAMES[1 - team]}»`}
+          >
+            <SwapTeamIcon size={13} />
+          </button>
+        )}
         {canKick && (
           <button className="pl-kick" onClick={onKick} aria-label={`Убрать ${m.name}`} title="Убрать из комнаты">
             <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /></svg>
           </button>
         )}
       </span>
-      {team !== null && <span className={`pl-team t${team}`}>{TEAM_NAMES[team]}</span>}
+
       <span className="pl-name" title={m.name}>{m.name}</span>
       {sub && <span className={`pl-sub ${sub === 'нет связи' ? 'warn' : ''}`}>{sub}</span>}
     </li>

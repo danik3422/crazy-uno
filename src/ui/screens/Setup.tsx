@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
-import { avatarOf, BOT_AVATARS, HUMAN_AVATARS } from '../../game/avatars';
-import { BOTNAMES, DEFAULT_TABLE, EVENTS, teamsProblem } from '../../game/content';
+import { avatarOf, BOT_AVATARS, HUMAN_AVATARS, randomBot } from '../../game/avatars';
+import { DEFAULT_TABLE, EVENTS, TEAM_NAMES } from '../../game/content';
+import { teamsOf, teamsProblem } from '../../game/teams';
 import type { LocalSetup } from '../../game/engine';
 import { AvatarImg } from '../components/AvatarImg';
 import { Hero } from '../components/Hero';
 import { Legend } from '../components/Legend';
+import { SwapTeamIcon, TeamBox } from '../components/TeamBox';
 import { PhoneTip } from '../components/RotateGate';
 import { SwipeBack } from '../components/SwipeBack';
 import { enterFullscreen, SMALL_SCREEN, useMedia } from '../hooks/phone';
@@ -23,16 +25,72 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
   const players = cfg.players;
   const update = (i: number, patch: Partial<LocalSetup['players'][number]>) =>
     setCfg(c => ({ ...c, players: c.players.map((p, k) => (k === i ? { ...p, ...patch } : p)) }));
-  const freeBot = () => BOTNAMES.find(n => !players.some(p => p.name === n)) ?? `Бот №${players.length + 1}`;
+  // a random name and robot face, preferably ones nobody at the table has yet
+  const newBot = (others = players) => ({ bot: true, ...randomBot(others) });
   const humans = players.filter(p => !p.bot).length;
   const table = cfg.table ?? DEFAULT_TABLE;
-  const teamsWrong = table.teams ? teamsProblem(players.length) : null;
+  const teams = teamsOf(players);
+  const teamsWrong = table.teams ? teamsProblem(teams) : null;
   const small = useMedia(SMALL_SCREEN);
   const theme = cfg.theme ?? 'classic';
   useEffect(() => {
     document.body.classList.add(`page-${theme}`);
     return () => document.body.classList.remove(`page-${theme}`);
   }, [theme]);
+
+  /** One editable player: avatar, name, team switch (teams format), person/bot, remove. */
+  const row = (i: number) => {
+    const p = players[i];
+    return (
+      <div className="prow" key={i}>
+        <button
+          className="ava-btn"
+          title="Сменить аватар"
+          onClick={() => {
+            const pool = p.bot ? BOT_AVATARS : HUMAN_AVATARS;
+            const curA = avatarOf(p.avatar, p.name, p.bot);
+            const at = pool.findIndex(a => a.id === curA.id);
+            update(i, { avatar: pool[(at + 1) % pool.length].id });
+          }}
+        >
+          <AvatarImg id={p.avatar} name={p.name} bot={p.bot} size={42} />
+        </button>
+        <input
+          id={`pname${i}`}
+          maxLength={16}
+          value={p.name}
+          aria-label={`Имя игрока ${i + 1}`}
+          onChange={e => update(i, { name: e.target.value })}
+        />
+        {table.teams && (
+          <button
+            className={`btn team-swap to${1 - teams[i]}`}
+            title={`Перевести в команду «${TEAM_NAMES[1 - teams[i]]}»`}
+            aria-label={`${p.name}: перевести в команду «${TEAM_NAMES[1 - teams[i]]}»`}
+            onClick={() => update(i, { team: teams[i] ? 0 : 1 })}
+          >
+            <SwapTeamIcon />
+          </button>
+        )}
+        <button
+          className="btn tog"
+          title={p.bot ? 'Бот — нажми, чтобы стал человеком' : 'Человек — нажми, чтобы стал ботом'}
+          onClick={() => update(i, p.bot ? { bot: false, avatar: undefined } : newBot(players.filter((_, k) => k !== i)))}
+        >
+          <span aria-hidden>{p.bot ? '🤖' : '🙂'}</span>
+          <span className="tog-label">{p.bot ? 'Бот' : 'Человек'}</span>
+        </button>
+        <button
+          className="btn x"
+          aria-label="Убрать игрока"
+          disabled={players.length <= 2}
+          onClick={() => setCfg(c => ({ ...c, players: c.players.filter((_, k) => k !== i) }))}
+        >
+          ✕
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className={`setup-page page-${cfg.theme ?? 'classic'}`}>
@@ -43,54 +101,27 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
       <div className="setup">
         <section className="panel">
           <h2>Игроки</h2>
-          <div className="plist-edit">
-            {players.map((p, i) => (
-              <div className="prow" key={i}>
-                <button
-                  className="ava-btn"
-                  title="Сменить аватар"
-                  onClick={() => {
-                    const pool = p.bot ? BOT_AVATARS : HUMAN_AVATARS;
-                    const curA = avatarOf(p.avatar, p.name, p.bot);
-                    const at = pool.findIndex(a => a.id === curA.id);
-                    update(i, { avatar: pool[(at + 1) % pool.length].id });
-                  }}
-                >
-                  <AvatarImg id={p.avatar} name={p.name} bot={p.bot} size={42} />
-                </button>
-                <input
-                  id={`pname${i}`}
-                  maxLength={16}
-                  value={p.name}
-                  aria-label={`Имя игрока ${i + 1}`}
-                  onChange={e => update(i, { name: e.target.value })}
-                />
-                <button
-                  className="btn tog"
-                  title={p.bot ? 'Бот — нажми, чтобы стал человеком' : 'Человек — нажми, чтобы стал ботом'}
-                  onClick={() => update(i, p.bot ? { bot: false, avatar: undefined } : { bot: true, avatar: undefined, name: /^Бот/.test(p.name) ? p.name : freeBot() })}
-                >
-                  <span aria-hidden>{p.bot ? '🤖' : '🙂'}</span>
-                  <span className="tog-label">{p.bot ? 'Бот' : 'Человек'}</span>
-                </button>
-                <button
-                  className="btn x"
-                  aria-label="Убрать игрока"
-                  disabled={players.length <= 2}
-                  onClick={() => setCfg(c => ({ ...c, players: c.players.filter((_, k) => k !== i) }))}
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
+          {table.teams ? (
+            <div className="team-cols">
+              {([0, 1] as const).map(t => {
+                const mine = players.map((_, i) => i).filter(i => teams[i] === t);
+                return (
+                  <TeamBox key={t} team={t} count={mine.length} empty="Пока никого: нажми ⇄ у игрока из другой команды">
+                    {mine.length > 0 && <div className="plist-edit">{mine.map(row)}</div>}
+                  </TeamBox>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="plist-edit">{players.map((_, i) => row(i))}</div>
+          )}
           <div className="row">
             <button className="btn" disabled={players.length >= 8}
               onClick={() => setCfg(c => ({ ...c, players: [...c.players, { name: `Игрок ${c.players.length + 1}`, bot: false }] }))}>
               + Человек
             </button>
             <button className="btn" disabled={players.length >= 8}
-              onClick={() => setCfg(c => ({ ...c, players: [...c.players, { name: freeBot(), bot: true }] }))}>
+              onClick={() => setCfg(c => ({ ...c, players: [...c.players, newBot(c.players)] }))}>
               + Бот
             </button>
           </div>
@@ -99,7 +130,7 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
               ? 'Людей несколько: перед каждым ходом карты прячутся, пока устройство не передадут.'
               : 'Добавь людей, и игра будет прятать карты между ходами.'}
           </small>
-          {teamsWrong && <p className="table-warn">{teamsWrong}: добавь игрока или бота.</p>}
+          {teamsWrong && <p className="table-warn">{teamsWrong}: поменяй команды или добавь игрока.</p>}
           <PhoneTip />
           <button className="btn big" disabled={!!teamsWrong} onClick={() => { void enterFullscreen(); onStart(); }}>Раздавай!</button>
         </section>
@@ -108,7 +139,7 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
           <h2>Правила</h2>
           <RulesPanel rules={cfg.rules} onChange={rules => setCfg(c => ({ ...c, rules }))} />
           <h2 style={{ marginTop: 8 }}>Формат</h2>
-          <TablePanel table={table} players={players.length} onChange={t => setCfg(c => ({ ...c, table: t }))} />
+          <TablePanel table={table} teams={teams} onChange={t => setCfg(c => ({ ...c, table: t }))} />
         </section>
       </div>
 

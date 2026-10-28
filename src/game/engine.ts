@@ -1,14 +1,16 @@
 import { Observable } from '../lib/observable';
-import { botCatchers, botDecision, pickBotCard } from './bot';
-import { CNAME, COLORS, CPLURAL, DARES, DEFAULT_TABLE, effectiveTable, MERCY_LIMIT, PUNISH, TEAM_NAMES } from './content';
+import { BOT_SKILL, botCatchers, botDecision, pickBotCard } from './bot';
+import { CNAME, COLORS, CPLURAL, DARES, DEFAULT_TABLE, effectiveTable, MERCY_LIMIT, PUNISH, TABLE_CHOICES, TEAM_NAMES } from './content';
 import { eventDue, fireEvent, flipCoin, type EventTools } from './events';
 import { buildDeck } from './deck';
-import { pick, randomIndex, shuffle, type Rng } from './random';
+import { pick, randomIndex, seededRng, shuffle, type Rng } from './random';
 import { activeSeats, canPlayCard, cardName, drawValue, isCatchable, nextSeat, playableCard, sameTeam } from './rules';
+import { teamsOf, teamsProblem } from './teams';
 import type { Card, Choice, Color, EventId, Fx, FxKind, Player, Rules, State, Table, ThemeId } from './types';
 
 export interface GameConfig {
-  players: { name: string; bot: boolean; avatar?: string }[];
+  /** in seat order; `team` counts only in the teams format (see seatByTeams) */
+  players: { name: string; bot: boolean; avatar?: string; team?: number }[];
   rules: Rules;
   round?: number;
   /** online room: every human has their own screen, so no hand-over curtain */
@@ -23,6 +25,8 @@ export type LocalSetup = Pick<GameConfig, 'players' | 'rules' | 'theme' | 'table
 export interface GameOptions {
   rng?: Rng;
   now?: () => number;
+  /** start from this state instead of dealing a new round (a hard bot imagining how the game may go) */
+  restore?: State;
 }
 
 /** Time per turn during a blitz event. */
@@ -30,6 +34,10 @@ export const BLITZ_MS = 7_000;
 /** An event banner eats a few seconds of the turn: the person moving gets them back. */
 const EVENT_GRACE_MS = 2_500;
 const LOG_LIMIT = 50;
+/** How many imagined games a hard bot plays out for each move it considers. */
+const HARD_ROLLOUTS = 100;
+/** An imagined game stops after this many steps (it almost always ends long before). */
+const ROLLOUT_STEPS = 500;
 const FX_LIMIT = 20;
 
 /**
@@ -46,6 +54,12 @@ export class Game extends Observable {
   readonly fxBaseline = 0;
   private fxId = 0;
   private nextCardId = 0;
+  /**
+   * What everyone at the table has seen: the colours a hand had nothing of when its owner drew instead of playing.
+   * Kept per hand (not per seat), so it travels with the cards when hands are swapped.
+   * Hard bots use it to imagine the hidden hands more accurately.
+   */
+  private lacks = new WeakMap<Card[], Set<Color>>();
   private online: boolean;
   private rng: Rng;
   private now: () => number;
@@ -55,6 +69,12 @@ export class Game extends Observable {
     this.rng = opts.rng ?? Math.random;
     this.now = opts.now ?? Date.now;
     this.online = !!cfg.online;
+    if (opts.restore) {
+      this.s = opts.restore;
+      const all = [...this.s.deck, ...this.s.discard, ...this.s.players.flatMap(p => p.hand)];
+      this.nextCardId = all.reduce((m, c) => Math.max(m, c.id + 1), 0);
+      return;
+    }
     const players: Player[] = cfg.players.map((p, i) => ({
       name: p.name.trim() || `Игрок ${i + 1}`,
       bot: p.bot,
@@ -66,8 +86,11 @@ export class Game extends Observable {
     const deck = shuffle(buildDeck(cfg.rules), this.rng);
     deck.forEach(c => { c.id = this.nextCardId++; });
     const table = effectiveTable({ ...DEFAULT_TABLE, ...cfg.table });
-    // teams only make sense on an even table of 4+; partners alternate, so they sit opposite
-    const teams = table.teams && n >= 4 && n % 2 === 0 ? players.map((_, i) => i % 2) : null;
+    // a table saved before bot levels existed
+    if (!TABLE_CHOICES.botLevel.includes(table.botLevel)) table.botLevel = 'normal';
+    // the teams the players picked (or an even split), as long as both sides are the same size
+    const picked = teamsOf(cfg.players);
+    const teams = table.teams && !teamsProblem(picked) ? picked : null;
     for (let k = 0; k < table.handSize; k++) {
       players.forEach((p, i) => {
         const c = deck.pop()!;
@@ -75,8 +98,7 @@ export class Game extends Observable {
         p.hand.push(c);
       });
     }
-    // the pile starts with a number card
-    const first = deck.splice(deck.map(c => c.type).lastIndexOf('num'), 1)[0];
+    const first = this.firstCard(deck, cfg.rules);
 
     this.s = {
       round: cfg.round ?? 1,
@@ -97,6 +119,7 @@ export class Game extends Observable {
       pendingType: null,
       pendingLast: 0,
       rouletteNext: false,
+      wildStart: false,
       drawn: false,
       lastDrawn: null,
       unoCalled: false,
@@ -126,7 +149,55 @@ export class Game extends Observable {
       punishment: null,
     };
     this.say(`Раздали по ${table.handSize}. Первым ходит ${players[this.s.cur].name}. Удачи, она понадобится.`);
+    this.openWith(first);
     this.beginTurn();
+  }
+
+  /**
+   * Turns up the first card of the pile. Normally the top number card of the deck; with the official start
+   * whatever is on top, except a +4 (and cards the official game does not have), which go back into the deck.
+   */
+  private firstCard(deck: Card[], rules: Rules): Card {
+    if (!rules.startAction) return deck.splice(deck.map(c => c.type).lastIndexOf('num'), 1)[0];
+    const fine = (c: Card) => c.type === 'num' || c.type === 'skip' || c.type === 'rev' || c.type === 'draw2' || c.type === 'wild';
+    for (let guard = 0; guard < 50 && !fine(deck[deck.length - 1]); guard++) {
+      // back into the deck at a random place, and turn up the next one
+      deck.splice(randomIndex(deck.length, this.rng), 0, deck.pop()!);
+    }
+    const i = fine(deck[deck.length - 1]) ? deck.length - 1 : deck.map(c => c.type).lastIndexOf('num');
+    return deck.splice(i, 1)[0];
+  }
+
+  /** The official start: an action card turned up first works on the first player. */
+  private openWith(first: Card) {
+    const s = this.s;
+    if (!s.rules.startAction || first.type === 'num') return;
+    const p = this.cp();
+    switch (first.type) {
+      case 'skip':
+        this.say(`💤 Первая карта — Пропуск: ${p.name} пропускает ход`);
+        s.cur = this.nextIdx();
+        break;
+      case 'rev': {
+        // the dealer (who sits before the first player) starts, and play goes the other way
+        const dealer = this.nextIdx(s.cur, s.players.length - 1);
+        this.reverse();
+        s.cur = dealer;
+        this.say(`⇄ Первая карта — Разворот: начинает раздающий, ${s.players[dealer].name}, и в другую сторону`);
+        break;
+      }
+      case 'draw2':
+        // like a +2 laid on them: they draw 2 and miss the turn (or answer it, with the stacking rule)
+        this.addPending(first);
+        this.say(`📚 Первая карта — +2: ${p.name} начинает со штрафа`);
+        break;
+      case 'wild':
+        s.wildStart = true;
+        // some colour is needed until they pick one; nobody can move before that
+        s.color = pick(COLORS, this.rng);
+        this.say(`🎨 Первая карта — Цвет: ${p.name} выбирает цвет`);
+        break;
+    }
   }
 
   /* ================= queries ================= */
@@ -172,6 +243,7 @@ export class Game extends Observable {
     const idx = p.hand.findIndex(c => c.id === cardId);
     if (idx < 0 || !this.playable(p.hand[idx])) return false;
     const card = p.hand.splice(idx, 1)[0];
+    if (card.color !== 'wild') this.lacks.get(p.hand)?.delete(card.color);
     // a +4 is "guilty" when laid while holding a card of the colour in play
     const guilty = card.type === 'wild4' && p.hand.some(c => c.color === s.color);
     s.discard.push(card);
@@ -214,6 +286,7 @@ export class Game extends Observable {
       return;
     }
     if (s.drawn) return;
+    const asked = s.color;
     const got: Card[] = [];
     if (s.rules.drawPlay || s.rules.noMercy) {
       // keep drawing until something fits (the cap only guards against an endless loop)
@@ -226,6 +299,7 @@ export class Game extends Observable {
     } else got.push(...this.give(p, 1));
     s.drawn = true;
     s.lastDrawn = got.length ? got[got.length - 1].id : null;
+    this.noteLack(p, asked);
     this.say(`${p.name} тянет ${got.length > 1 ? `${got.length} карт(ы)` : got.length ? 'карту' : '… а колода пуста'}`);
     if (!p.hand.some(c => this.playable(c))) this.advance();
     this.emitChange();
@@ -375,9 +449,10 @@ export class Game extends Observable {
     const s = this.s;
     const p = this.cp();
     const bots = botCatchers(s, s.cur);
-    // a bot notices about half the time, after a human-like pause
-    const botCatcher = bots.length && this.rng() < 0.55 ? pick(bots, this.rng) : null;
-    s.unoCatch = { victim: s.cur, until: s.turn + 1, botCatcher, botDelay: 1400 + Math.floor(this.rng() * 2200) };
+    // a bot may notice (how often and how fast depends on their level), after a human-like pause
+    const skill = BOT_SKILL[s.table.botLevel];
+    const botCatcher = bots.length && this.rng() < skill.noticeUno ? pick(bots, this.rng) : null;
+    s.unoCatch = { victim: s.cur, until: s.turn + 1, botCatcher, botDelay: skill.catchMs[0] + Math.floor(this.rng() * skill.catchMs[1]) };
     this.say(`🤫 ${p.name} осталась одна карта… а «UNO!» никто не слышал`);
   }
 
@@ -543,22 +618,99 @@ export class Game extends Observable {
     const s = this.s;
     const p = this.cp();
     if (!p.bot && !force) return;
+    // the autopilot standing in for a person always plays sensibly, whatever the bots' level
+    const level = p.bot ? s.table.botLevel : 'normal';
+    const skill = BOT_SKILL[level];
     if (s.phase === 'handover') return this.confirmHandover();
     if (s.phase === 'dare') return this.resolveDare(true);
     if (s.phase === 'coin') return s.coin ? this.finishCoin() : this.guessCoin(this.rng() < 0.5 ? 'heads' : 'tails');
-    if (s.phase === 'choose' && s.choice) return this.resolveChoice(botDecision(s, s.choice));
+    if (s.phase === 'choose' && s.choice) {
+      if (level === 'hard' && s.choice.kind === 'color' && !s.choice.mode) {
+        // which colour gives the best games when played out?
+        return this.resolveChoice(COLORS[this.thinkAhead(COLORS.map(col => (g: Game) => g.resolveChoice(col)))]);
+      }
+      return this.resolveChoice(botDecision(s, s.choice, level, this.rng));
+    }
     if (s.phase !== 'play') return;
     if (s.challenge && s.challenge.target === s.cur) {
-      // bots smell a bluff about a third of the time; autopilot never gambles
-      if (!force && this.rng() < 0.35) return this.challengeWild4();
+      // bots smell a bluff now and then; autopilot never gambles
+      if (!force && this.rng() < skill.challenge) return this.challengeWild4();
       s.challenge = null;
     }
     const options = p.hand.filter(c => this.playable(c));
     if (!options.length) return s.drawn && s.pending === 0 ? this.pass() : this.draw();
-    const card = pickBotCard(s, options, this.rng);
+    const card = level === 'hard' && options.length > 1
+      ? options[this.thinkAhead(options.map(c => (g: Game) => {
+        g.s.unoCalled = true;
+        g.play(c.id);
+      }))]
+      : pickBotCard(s, options, this.rng, level);
     // bots forget to call UNO now and then, so people have someone to catch
-    if (p.hand.length === 2) s.unoCalled = this.rng() > 0.2;
+    if (p.hand.length === 2) s.unoCalled = this.rng() > skill.forgetUno;
     this.play(card.id);
+  }
+
+  /* ================= hard bots: thinking ahead ================= */
+
+  /**
+   * Tries each of `moves` in many imagined games and returns the index of the one that wins most often.
+   * The bot only uses what it could know at a real table: its own hand, the pile and how many cards
+   * everyone holds. The cards it cannot see are dealt at random for every imagined game,
+   * and everyone then plays on like a normal bot.
+   */
+  private thinkAhead(moves: ((g: Game) => void)[]): number {
+    const me = this.s.cur;
+    const wins = moves.map(() => 0);
+    for (let k = 0; k < HARD_ROLLOUTS; k++) {
+      // the same imagined deal for every move, so they are compared on equal terms
+      const seed = this.rng();
+      moves.forEach((move, i) => {
+        const g = this.imagine(seededRng(seed));
+        move(g);
+        wins[i] += g.playOut(me);
+      });
+    }
+    let best = 0;
+    wins.forEach((w, i) => { if (w > wins[best]) best = i; });
+    return best;
+  }
+
+  /** A copy of the game as the current player sees it, with every hidden card dealt at random. */
+  private imagine(rng: Rng): Game {
+    const s = structuredClone(this.s);
+    const me = s.cur;
+    const hidden = shuffle([...s.deck, ...s.players.flatMap((p, i) => (i === me ? [] : p.hand))], rng);
+    s.players.forEach((p, i) => {
+      p.bot = true;
+      if (i === me) return;
+      // someone who drew on a colour gets none of it in the imagined deal (as long as there is enough else to give)
+      const lacks = this.knownLacks(i);
+      const size = p.hand.length;
+      const hand: Card[] = [];
+      for (let k = hidden.length - 1; k >= 0 && hand.length < size; k--) {
+        const c = hidden[k];
+        if (c.color === 'wild' || !lacks.has(c.color)) hand.push(...hidden.splice(k, 1));
+      }
+      while (hand.length < size && hidden.length) hand.push(hidden.pop()!);
+      p.hand = hand;
+    });
+    s.deck = hidden;
+    s.log = [];
+    s.fx = [];
+    // no surprises and no clocks in the imagination, and everyone in it plays like a normal bot
+    s.rules = { ...s.rules, events: false };
+    s.table = { ...s.table, botLevel: 'normal' };
+    s.unoCatch = null;
+    s.endsAt = null;
+    return new Game({ players: [], rules: s.rules, online: true }, { rng, now: () => 0, restore: s });
+  }
+
+  /** Plays an imagined game to the end: 1 if `me` (or my team) wins, 0 if not. */
+  private playOut(me: number): number {
+    const s = this.s;
+    for (let k = 0; k < ROLLOUT_STEPS && s.phase !== 'over'; k++) this.botAct(true);
+    if (s.phase !== 'over' || s.winner === null) return 0.5;
+    return s.winner === me || this.sameTeam(s.winner, me) ? 1 : 0;
   }
 
   /* ================= turn flow ================= */
@@ -609,6 +761,12 @@ export class Game extends Observable {
   private afterHandover() {
     const s = this.s;
     const p = this.cp();
+    if (s.wildStart) {
+      // the round opened with a Wild: the first player names the colour, then moves as usual
+      s.wildStart = false;
+      s.effect = { card: this.top(), steps: 0 };
+      return this.ask({ kind: 'color', title: 'Первая карта — Цвет! Какой выбираешь?' });
+    }
     if (s.rouletteNext) {
       // the colour roulette hits whoever moves now: they name a colour and dig for it
       s.rouletteNext = false;
@@ -883,6 +1041,8 @@ export class Game extends Observable {
       p.hand.push(c);
       got.push(c);
     }
+    // a couple of new cards and nobody can tell what colours that hand is missing any more
+    if (got.length >= 2) this.lacks.delete(p.hand);
     if (this.s.rules.noMercy && !p.out && p.hand.length >= MERCY_LIMIT) this.knockOut(p);
     return got;
   }
@@ -965,6 +1125,18 @@ export class Game extends Observable {
     const m = Math.min(k, p.hand.length - 1);
     for (let i = 0; i < m; i++) this.s.deck.unshift(this.takeRandomCard(p));
     return Math.max(0, m);
+  }
+
+  /** Remembers that `p` drew instead of answering `color`. */
+  private noteLack(p: Player, color: Color) {
+    const known = this.lacks.get(p.hand) ?? new Set<Color>();
+    known.add(color);
+    this.lacks.set(p.hand, known);
+  }
+
+  /** The colours the player in `seat` is known to have none of (from the table's point of view). */
+  private knownLacks(seat: number): ReadonlySet<Color> {
+    return this.lacks.get(this.s.players[seat].hand) ?? new Set();
   }
 
   /** Every hand moves on to the next player in the direction of play. */

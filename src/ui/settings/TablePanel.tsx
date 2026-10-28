@@ -1,19 +1,27 @@
 import { useId, useState } from 'react';
-import { effectiveTable, QUICK, TABLE_CHOICES, teamsProblem } from '../../game/content';
+import { effectiveTable, QUICK, TABLE_CHOICES } from '../../game/content';
+import { teamsProblem } from '../../game/teams';
 import type { Table } from '../../game/types';
 import { ModeIcon } from './ModeIcon';
 
 interface Props {
   table: Table;
-  /** seated players, to tell whether teams can be played */
-  players: number;
+  /** the team of every seated player, to tell whether teams can be played */
+  teams: readonly number[];
   /** omitted: read-only (guests) */
   onChange?: (t: Table) => void;
 }
 
 const EVENT_NAMES = { rare: 'Редко', normal: 'Обычно', often: 'Часто' } as const;
+const BOT_NAMES = { easy: 'Лёгкие', normal: 'Обычные', hard: 'Хитрые' } as const;
+const BOT_HINTS = {
+  easy: 'кладут что попало и часто забывают «UNO!»',
+  normal: 'играют разумно, иногда ошибаются',
+  hard: 'просчитывают ходы наперёд: бьют лидера штрафами, берегут дикие карты',
+} as const;
 
 const ROWS: { key: keyof typeof TABLE_CHOICES; label: string; hint: string; fmt: (v: never) => string; quick?: boolean }[] = [
+  { key: 'botLevel', label: 'Боты', hint: '', fmt: (v: keyof typeof BOT_NAMES) => BOT_NAMES[v] },
   { key: 'handSize', label: 'Карт на старте', hint: 'сколько раздают каждому', fmt: (v: number) => `${v}`, quick: true },
   { key: 'turnSec', label: 'Время на ход', hint: 'не успел — тянешь карту', fmt: (v: number) => `${v} с`, quick: true },
   { key: 'roundMin', label: 'Лимит раунда', hint: 'по сигналу побеждает тот, у кого меньше карт', fmt: (v: number) => (v ? `${v} мин` : 'Нет'), quick: true },
@@ -23,10 +31,10 @@ const ROWS: { key: keyof typeof TABLE_CHOICES; label: string; hint: string; fmt:
 ];
 
 /** Format switches (quick round, 2 on 2, autopilot) and the table's numbers, in the same calm style as the rules. */
-export function TablePanel({ table, players, onChange }: Props) {
+export function TablePanel({ table, teams, onChange }: Props) {
   const ro = !onChange;
   const eff = effectiveTable(table);
-  const teamsWrong = table.teams ? teamsProblem(players) : null;
+  const teamsWrong = table.teams ? teamsProblem(teams) : null;
   const [open, setOpen] = useState(false);
   const id = useId();
   const set = (patch: Partial<Table>) => onChange?.({ ...table, ...patch });
@@ -46,7 +54,7 @@ export function TablePanel({ table, players, onChange }: Props) {
         id="fmt-teams"
         icon="teams"
         title="2 на 2"
-        desc="Командами, напарник напротив"
+        desc="Командами: выбери, кто с кем"
         on={table.teams}
         ro={ro}
         onToggle={v => set({ teams: v })}
@@ -68,6 +76,7 @@ export function TablePanel({ table, players, onChange }: Props) {
       table.quick && '⚡ Быстрый раунд',
       table.teams && '👥 2 на 2',
       table.autopilot && '🤖 Автопилот',
+      table.botLevel && table.botLevel !== 'normal' && `Боты: ${BOT_NAMES[table.botLevel].toLowerCase()}`,
       `${eff.handSize} карт`,
       `${eff.turnSec} с на ход`,
       eff.roundMin ? `раунд ${eff.roundMin} мин` : null,
@@ -82,18 +91,21 @@ export function TablePanel({ table, players, onChange }: Props) {
   return (
     <div className="table-panel">
       {formats}
-      {teamsWrong && <p className="table-warn" role="alert">{teamsWrong}. Сейчас за столом {players}.</p>}
+      {teamsWrong && <p className="table-warn" role="alert">{teamsWrong}.</p>}
       <button type="button" className={`rules-toggle ${open ? 'open' : ''}`} aria-expanded={open} aria-controls={id} onClick={() => setOpen(o => !o)}>
         <span>{open ? 'Свернуть настройки стола' : 'Настройки стола'}</span>
-        <span className="rules-count">{eff.handSize} карт · {eff.turnSec} с</span>
+        <span className="rules-count">{eff.handSize} карт · {eff.turnSec} с{eff.botLevel && eff.botLevel !== 'normal' ? ` · боты ${BOT_NAMES[eff.botLevel].toLowerCase()}` : ''}</span>
         <svg className="chev" viewBox="0 0 24 24" width="18" height="18" aria-hidden><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
       {open && (
         <div className="rule-list" id={id}>
           {ROWS.map(r => {
-            const hint = r.key === 'turnSec' && table.autopilot ? 'потом ходит автопилот' : r.hint;
+            const hint =
+              r.key === 'botLevel' ? BOT_HINTS[eff.botLevel ?? 'normal']
+              : r.key === 'turnSec' && table.autopilot ? 'потом ходит автопилот'
+              : r.hint;
             const locked = r.quick && table.quick;
-            const cur = (locked ? eff : table)[r.key];
+            const cur = (locked ? eff : table)[r.key] ?? (r.key === 'botLevel' ? 'normal' : undefined);
             return (
               <div key={r.key} className={`rule-row num-row ${locked ? 'locked' : ''}`}>
                 <span className="rule-text">

@@ -51,6 +51,12 @@ export interface Rules {
    * equal or bigger draw card, draw until you can play, and 25 cards knock you out.
    */
   noMercy: boolean;
+  /**
+   * The official start: if the first card turned up is an action card, it works on the first player
+   * (Skip: they miss the turn, Reverse: the dealer starts the other way, +2: they draw 2, Wild: they pick the colour).
+   * A +4 goes back into the deck. Off: the pile always starts with a number.
+   */
+  startAction: boolean;
 }
 
 export type EventId =
@@ -72,7 +78,11 @@ export interface Table {
   events: 'rare' | 'normal' | 'often';
   /** a person who lets the turn clock run out: on autopilot plays on for them, off (the default) draws a card and loses the turn */
   autopilot: boolean;
+  /** how well the bots play */
+  botLevel: BotLevel;
 }
+
+export type BotLevel = 'easy' | 'normal' | 'hard';
 
 /** Table look picked by the host. Card faces stay the same in every theme, so they are always easy to read. */
 export type ThemeId = 'classic' | 'neon' | 'space' | 'halloween';
@@ -132,6 +142,8 @@ export interface State {
   pendingLast: number;
   /** No Mercy: a colour roulette was played; the next player names a colour and draws until it comes up */
   rouletteNext: boolean;
+  /** the round opened with a Wild: the first player picks the colour before moving */
+  wildStart: boolean;
   drawn: boolean;
   lastDrawn: number | null;
   unoCalled: boolean;

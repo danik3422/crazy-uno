@@ -1,4 +1,5 @@
 import type { Rules, State, Table, ThemeId } from '../game/types';
+import type { TeamId } from '../game/teams';
 
 /** Shared between the browser client and the Node server. */
 
@@ -11,6 +12,8 @@ export interface MemberInfo {
   /** joined while a round was running: watches now, plays from the next round */
   spectator: boolean;
   host: boolean;
+  /** their side in the teams format (spectators have none) */
+  team?: TeamId;
 }
 
 export interface RoomInfo {
@@ -99,6 +102,8 @@ export type ClientMsg =
   | { t: 'profile'; name?: string; avatar?: string }
   | { t: 'addBot' }
   | { t: 'kick'; id: string }
+  /** put a seated player on a team (the host: anyone; everyone else: themselves) */
+  | { t: 'team'; id: string; team: TeamId }
   | { t: 'rules'; rules: Rules }
   | { t: 'theme'; theme: ThemeId }
   | { t: 'table'; table: Table }

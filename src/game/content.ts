@@ -54,6 +54,7 @@ export const RULES: { id: keyof Rules; name: string; desc: string; def: boolean 
   { id: 'drawPlay', name: 'Тяни до победного', desc: 'Тянешь из колоды, пока не попадётся карта, которой можно сходить.', def: false },
   { id: 'events', name: 'Безумные события', desc: 'В случайный момент случается что-то: метеорит +10, перекраска карт, молния, блиц…', def: true },
   { id: 'punish', name: 'Наказание проигравшему', desc: 'В конце раунда у кого больше всех карт — получает задание.', def: true },
+  { id: 'startAction', name: 'Первая карта действует', desc: 'Открылась первой карта действия — она срабатывает на первого игрока: пропуск, разворот, +2 или выбор цвета. Как в настоящем UNO.', def: false },
   { id: 'noMercy', name: 'No Mercy', desc: 'Колода UNO Show ’Em No Mercy: +6, +10, рулетка. Перебить штраф можно только картой не меньше. 25 карт — выбываешь.', def: false },
 ];
 
@@ -105,7 +106,11 @@ export const PUNISH = [
   'Делает 15 приседаний под счёт всей компании',
 ];
 
-export const BOTNAMES = ['Бот Валера', 'Бот Зинаида', 'Бот Кекс', 'Бот Тостер', 'Бот Пельмень', 'Бот Жорик', 'Бот Галя'];
+export const BOTNAMES = [
+  'Бот Валера', 'Бот Зинаида', 'Бот Кекс', 'Бот Тостер', 'Бот Пельмень', 'Бот Жорик', 'Бот Галя',
+  'Бот Батон', 'Бот Пончик', 'Бот Сырок', 'Бот Чебурек', 'Бот Люся', 'Бот Гоша', 'Бот Шпрота',
+  'Бот Борщ', 'Бот Котлета', 'Бот Тамара', 'Бот Вафля', 'Бот Кузя', 'Бот Пирожок',
+];
 
 export const EVENTS: Record<EventId, { icon: string; title: string; desc: string }> = {
   meteor: { icon: '☄️', title: 'Метеорит!', desc: 'Падает на случайного игрока: +10 карт' },
@@ -155,6 +160,7 @@ export const RULE_GROUPS: { title: string; hint: string; rules: { id: keyof Rule
       { id: 'sevenZero', icon: '🔄', short: '7 — меняешься картами с кем хочешь, 0 — все передают руки по кругу' },
       { id: 'crazy', icon: '🃏', short: 'Бомба, Подарок, Ливень, Зеркало, Хаос, Уборка, Обмен' },
       { id: 'drawPlay', icon: '♾️', short: 'Тянешь, пока не попадётся карта, которой можно сходить' },
+      { id: 'startAction', icon: '🎬', short: 'Первая открытая карта действия срабатывает на первого игрока' },
       { id: 'noMercy', icon: '💀', short: 'Колода No Mercy: +6, +10, рулетка, пропуск всех. 25 карт — выбываешь' },
     ],
   },
@@ -183,20 +189,20 @@ export const PRESETS: { id: string; icon: string; name: string; desc: string; ru
   {
     // the official rules of UNO: no stacking, +4 can be challenged, draw one card and play it if it fits
     id: 'classic', icon: '🎴', name: 'Классика', desc: 'Настоящие правила UNO, без сюрпризов',
-    rules: { stack: false, sevenZero: false, crazy: false, dares: false, uno: true, drawPlay: false, punish: false, events: false, timer: true, challenge: true, noMercy: false },
+    rules: { stack: false, sevenZero: false, crazy: false, dares: false, uno: true, drawPlay: false, punish: false, events: false, timer: true, challenge: true, noMercy: false, startAction: true },
   },
   {
     // the official rules of UNO Show 'Em No Mercy, nothing added
     id: 'nomercy', icon: '💀', name: 'No Mercy', desc: 'Оригинальные правила UNO No Mercy: +10, рулетка и 25 карт на вылет',
-    rules: { stack: true, sevenZero: true, crazy: false, dares: false, uno: true, drawPlay: true, punish: false, events: false, timer: true, challenge: false, noMercy: true },
+    rules: { stack: true, sevenZero: true, crazy: false, dares: false, uno: true, drawPlay: true, punish: false, events: false, timer: true, challenge: false, noMercy: true, startAction: false },
   },
   {
     id: 'party', icon: '🎉', name: 'Вечеринка', desc: 'Безумные карты, фанты и события',
-    rules: { stack: true, sevenZero: true, crazy: true, dares: true, uno: true, drawPlay: false, punish: true, events: true, timer: true, challenge: true, noMercy: false },
+    rules: { stack: true, sevenZero: true, crazy: true, dares: true, uno: true, drawPlay: false, punish: true, events: true, timer: true, challenge: true, noMercy: false, startAction: false },
   },
   {
     id: 'chaos', icon: '🌪', name: 'Полный хаос', desc: 'Всё включено. Вообще всё',
-    rules: { stack: true, sevenZero: true, crazy: true, dares: true, uno: true, drawPlay: true, punish: true, events: true, timer: true, challenge: true, noMercy: false },
+    rules: { stack: true, sevenZero: true, crazy: true, dares: true, uno: true, drawPlay: true, punish: true, events: true, timer: true, challenge: true, noMercy: false, startAction: true },
   },
 ];
 
@@ -204,7 +210,7 @@ export function presetOf(r: Rules) {
   return PRESETS.find(p => (Object.keys(p.rules) as (keyof Rules)[]).every(k => p.rules[k] === r[k])) ?? null;
 }
 
-export const DEFAULT_TABLE: Table = { teams: false, quick: false, handSize: 7, turnSec: 30, bombSec: 10, unoPenalty: 2, roundMin: 0, events: 'normal', autopilot: false };
+export const DEFAULT_TABLE: Table = { teams: false, quick: false, handSize: 7, turnSec: 30, bombSec: 10, unoPenalty: 2, roundMin: 0, events: 'normal', autopilot: false, botLevel: 'normal' };
 
 /** The quick round overrides these numbers. */
 export const QUICK = { handSize: 5, turnSec: 15, roundMin: 5 };
@@ -217,6 +223,7 @@ export const TABLE_CHOICES = {
   unoPenalty: [2, 4],
   roundMin: [0, 5, 10],
   events: ['rare', 'normal', 'often'] as const,
+  botLevel: ['easy', 'normal', 'hard'] as const,
 };
 
 /** What a table actually plays with (quick round wins over the individual numbers). */
@@ -239,14 +246,8 @@ export function cleanTable(raw: unknown): Table {
     roundMin: pick('roundMin'),
     events: pick('events'),
     autopilot: r.autopilot === true,
+    botLevel: pick('botLevel'),
   };
-}
-
-/** Teams need an even table of at least 4. */
-export function teamsProblem(players: number): string | null {
-  if (players < 4) return 'Для игры командами нужно 4 игрока или больше';
-  if (players % 2) return 'Для игры командами нужно чётное число игроков';
-  return null;
 }
 
 export const TEAM_NAMES = ['Красные', 'Синие'];

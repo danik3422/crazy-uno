@@ -380,6 +380,43 @@ describe('online rooms', () => {
     guest.close();
   });
 
+  it('lets players pick their team: the host seats anyone, a guest only themselves', async () => {
+    const [host, guest] = await openRoom(['Хост', 'Гость']);
+    host.auto = guest.auto = false;
+    host.send({ t: 'table', table: { ...host.room!.table, teams: true } });
+    host.send({ t: 'addBot' });
+    host.send({ t: 'addBot' });
+    await guest.until(() => guest.room!.members.length === 4 && guest.room!.table.teams);
+    const [h, g, b1, b2] = guest.room!.members;
+    // by default the table splits evenly, alternating
+    expect([h, g, b1, b2].map(m => m.team)).toEqual([0, 1, 0, 1]);
+    // a guest cannot move someone else
+    guest.send({ t: 'team', id: b1.id, team: 1 });
+    // but can move themselves, and the side that is now short gets the next one without a pick
+    guest.send({ t: 'team', id: g.id, team: 0 });
+    await guest.until(() => guest.room!.members[1].team === 0);
+    expect(guest.room!.members.map(m => m.team)).toEqual([0, 0, 1, 1]);
+    // the host puts the bots together and the guest with them
+    host.send({ t: 'team', id: b1.id, team: 0 });
+    host.send({ t: 'team', id: b2.id, team: 0 });
+    await host.until(() => host.room!.members[3].team === 0);
+    host.send({ t: 'start' });
+    await host.until(() => host.errors.includes('too-few'));
+    host.send({ t: 'team', id: h.id, team: 1 });
+    host.send({ t: 'team', id: g.id, team: 1 });
+    await host.until(() => host.room!.members[1].team === 1);
+    host.send({ t: 'start' });
+    await guest.until(() => !!guest.view);
+    const s = guest.view!.state;
+    // sides alternate around the table: the people are partners, sitting opposite
+    expect(s.teams).toEqual([0, 1, 0, 1]);
+    const people = s.players.map((p, i) => (p.bot ? -1 : i)).filter(i => i >= 0);
+    expect(people.map(i => s.teams![i])).toEqual([1, 1]);
+    expect(Math.abs(people[0] - people[1])).toBe(2);
+    host.close();
+    guest.close();
+  });
+
   it('keeps the score per person, not per name', async () => {
     const [host, guest] = await openRoom(['Хост', 'Гость']);
     host.send({ t: 'start' });

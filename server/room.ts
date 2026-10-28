@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { BOT_AVATARS, isAvatarId } from '../src/game/avatars';
+import { isAvatarId, randomBot } from '../src/game/avatars';
 import { EVENT_PAUSE_MS, botThinkMs } from '../src/game/bot';
-import { BOTNAMES, DEFAULT_RULES, DEFAULT_TABLE, RULES, cleanTable, isTheme, teamsProblem } from '../src/game/content';
+import { DEFAULT_RULES, DEFAULT_TABLE, RULES, cleanTable, isTheme } from '../src/game/content';
 import { Game } from '../src/game/engine';
+import { isTeamId, seatByTeams, teamsOf, teamsProblem, type TeamId } from '../src/game/teams';
 import type { Card, Rules, Table, ThemeId } from '../src/game/types';
 import {
   MAX_MEMBERS, MAX_PLAYERS, REMATCH_COUNTDOWN_MS, SHUFFLE_MS, WARMUP_MAX_MS, cleanName, dealMs,
@@ -25,6 +26,8 @@ export interface Member {
   sock: Sock | null;
   /** a bot that took over the seat of someone who left; dropped when the round ends */
   ghost?: boolean;
+  /** the team they picked for the teams format (unset: whichever side is short) */
+  team?: TeamId;
 }
 
 export interface RoomOptions {
@@ -224,12 +227,13 @@ export class Room {
 
   private addBot() {
     if (this.players().length >= MAX_PLAYERS || this.members.length >= MAX_MEMBERS) return;
+    // a random bot name and robot face, preferably ones nobody at the table has yet
+    const bot = randomBot(this.members);
     this.members.push({
       id: randomUUID().slice(0, 8),
       token: randomUUID(),
-      // the first bot name and robot face nobody at the table has yet
-      name: this.uniqueName(BOTNAMES.find(n => !this.members.some(x => x.name === n)) ?? 'Бот'),
-      avatar: BOT_AVATARS.find(a => !this.members.some(x => x.avatar === a.id))?.id,
+      name: this.uniqueName(bot.name),
+      avatar: bot.avatar,
       bot: true,
       spectator: false,
       sock: null,
@@ -285,6 +289,13 @@ export class Room {
       case 'addBot':
         if (!needHost() || !inLobby) return;
         return this.addBot();
+      case 'team': {
+        // the host seats anyone; everyone else picks only their own side
+        const target = this.member(msg.id);
+        if (!inLobby || !target || !isTeamId(msg.team) || (!host && target !== m)) return;
+        target.team = msg.team;
+        return this.broadcastRoom();
+      }
       case 'kick': {
         if (!needHost()) return;
         const target = this.member(msg.id);
@@ -456,18 +467,25 @@ export class Room {
       this.sendTo(by.sock, { t: 'error', code: 'too-few', msg: 'Нужно хотя бы 2 игрока. Позови друзей или добавь бота' });
       return;
     }
-    const teamsWrong = this.table.teams ? teamsProblem(lineup.length) : null;
-    if (teamsWrong) {
-      this.sendTo(by.sock, { t: 'error', code: 'too-few', msg: `${teamsWrong}. Добавь бота или выключи «2 на 2»` });
-      return;
+    let seated = lineup;
+    let teams: TeamId[] = [];
+    if (this.table.teams) {
+      const picked = teamsOf(lineup);
+      const teamsWrong = teamsProblem(picked);
+      if (teamsWrong) {
+        this.sendTo(by.sock, { t: 'error', code: 'too-few', msg: `${teamsWrong}. Поменяй команды, добавь бота или выключи «2 на 2»` });
+        return;
+      }
+      // the sides alternate around the table
+      ({ list: seated, teams } = seatByTeams(lineup, picked));
     }
     this.endGame();
     this.round++;
-    this.seats = lineup.map(x => x.id);
+    this.seats = seated.map(x => x.id);
     this.fxSeen = 0;
     this.autoTurn = -1;
     this.game = new Game({
-      players: lineup.map(x => ({ name: x.name, bot: x.bot, avatar: x.avatar })),
+      players: seated.map((x, i) => ({ name: x.name, bot: x.bot, avatar: x.avatar, team: teams[i] })),
       rules: this.rules,
       round: this.round,
       online: true,
@@ -533,11 +551,15 @@ export class Room {
   /* ---------- state fan-out ---------- */
 
   info(m: Member): RoomInfo {
+    // the side each seated player is on (their pick, or the side that is short)
+    const seated = this.players();
+    const teams = new Map(teamsOf(seated).map((t, i) => [seated[i].id, t]));
     return {
       code: this.code,
       you: m.id,
       members: this.members.map(x => ({
         id: x.id, name: x.name, avatar: x.avatar, bot: x.bot, connected: x.bot || !!x.sock, spectator: x.spectator, host: x.id === this.hostId,
+        team: teams.get(x.id),
       })),
       rules: this.rules,
       theme: this.theme,

@@ -1,12 +1,35 @@
 import { COLORS } from './content';
 import type { Rng } from './random';
 import { drawValue, nextSeat, sameTeam } from './rules';
-import type { Card, Choice, Color, State } from './types';
+import type { BotLevel, Card, Choice, Color, State } from './types';
 
 /**
  * How bots (and the autopilot that stands in for an absent person) decide.
  * Pure functions: the engine applies the decision.
+ *
+ * Three levels, picked per table:
+ * - easy: plays any card that fits, often forgets «UNO!», rarely catches anyone;
+ * - normal: sensible, with a little randomness (the autopilot always plays like this);
+ * - hard: before each move plays it out in many imagined games and picks what wins most often
+ *   (so it hits whoever is about to win, keeps wild cards when that pays off, and so on),
+ *   and almost never forgets «UNO!». See `thinkAhead` in the engine.
  */
+
+/** The table-talk side of each level: UNO calls, catching others, challenging a +4. */
+export const BOT_SKILL: Record<BotLevel, {
+  /** chance to forget «UNO!» on the second-to-last card */
+  forgetUno: number;
+  /** chance that some bot notices a missing «UNO!» */
+  noticeUno: number;
+  /** how long before a bot catches it: base + random spread, ms */
+  catchMs: [number, number];
+  /** chance to challenge a +4 */
+  challenge: number;
+}> = {
+  easy: { forgetUno: 0.45, noticeUno: 0.3, catchMs: [2600, 2600], challenge: 0.1 },
+  normal: { forgetUno: 0.2, noticeUno: 0.55, catchMs: [1400, 2200], challenge: 0.35 },
+  hard: { forgetUno: 0.03, noticeUno: 0.9, catchMs: [900, 1100], challenge: 0.35 },
+};
 
 /** Cards that hurt the next player: played eagerly once that player is close to winning. */
 const ATTACK_CARDS: readonly Card['type'][] = ['draw2', 'wild4', 'skip', 'bomb', 'rain', 'draw4', 'wild6', 'wild10', 'wildRev4', 'skipAll', 'roulette'];
@@ -17,8 +40,17 @@ export function countColors(hand: Card[]): Record<Color, number> {
   return counts;
 }
 
-/** Picks which of the playable `options` the current player lays. A bit of randomness keeps bots unpredictable. */
-export function pickBotCard(s: State, options: Card[], rng: Rng): Card {
+/**
+ * Picks which of the playable `options` the current player lays: at random for an easy bot, by rule of thumb otherwise.
+ * (A hard bot weighs its options by playing them out, see `thinkAhead` in the engine; this is its fallback.)
+ */
+export function pickBotCard(s: State, options: Card[], rng: Rng, level: BotLevel = 'normal'): Card {
+  if (level === 'easy') return options[Math.floor(rng() * options.length)];
+  return pickNormal(s, options, rng);
+}
+
+/** A bit of randomness keeps normal bots unpredictable. */
+function pickNormal(s: State, options: Card[], rng: Rng): Card {
   const me = s.players[s.cur];
   const nextIsClose = s.players[nextSeat(s)].hand.length <= 2;
   const counts = countColors(me.hand);
@@ -41,9 +73,10 @@ export function pickBotCard(s: State, options: Card[], rng: Rng): Card {
   return options[0];
 }
 
-/** Answers a choice prompt: a colour, a card to gift, or a target player. */
-export function botDecision(s: State, choice: Choice): string | number {
+/** Answers a choice prompt: a colour, a card to gift, or a target player. `rng` lets an easy bot choose at random. */
+export function botDecision(s: State, choice: Choice, level: BotLevel = 'normal', rng?: Rng): string | number {
   const me = s.players[s.cur];
+  if (level === 'easy' && rng && choice.kind === 'color' && rng() < 0.5) return COLORS[Math.floor(rng() * COLORS.length)];
   if (choice.kind === 'color') {
     const counts = countColors(me.hand);
     return COLORS.slice().sort((a, b) => counts[b] - counts[a])[0];

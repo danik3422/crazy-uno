@@ -7,7 +7,7 @@ import { GameScreen } from '../ui/game/GameScreen';
 import { Home } from '../ui/screens/Home';
 import { ConnBadge, Lobby } from '../ui/screens/Lobby';
 import { Setup } from '../ui/screens/Setup';
-import { loadLocalSetup, saveLocalSetup } from './localSetup';
+import { loadLocalSetup, localGameConfig, saveLocalSetup } from './localSetup';
 import { inviteFromUrl, setUrlRoom } from './roomUrl';
 import { useRemoteGame } from './useRemoteGame';
 import { useServerCheck } from './useServerCheck';
@@ -98,7 +98,7 @@ export default function App() {
         setCfg={setSetup}
         onBack={() => setScreen('home')}
         onStart={() => {
-          setLocal(new Game({ ...setup, round: 1 }));
+          setLocal(new Game(localGameConfig(setup, 1)));
           setScreen('local-game');
         }}
       />
@@ -111,7 +111,7 @@ export default function App() {
         game={local}
         score={localScore}
         onOver={onLocalOver}
-        onAgain={() => setLocal(new Game({ ...setup, round: local.s.round + 1 }))}
+        onAgain={() => setLocal(new Game(localGameConfig(setup, local.s.round + 1)))}
         onMenu={() => { setLocal(null); setScreen('local-setup'); }}
       />
     );

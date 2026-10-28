@@ -1,3 +1,5 @@
+import { BOTNAMES } from './content';
+
 /**
  * Preset avatars. Players cannot upload pictures, so they pick one of these:
  * animal emoji tiles for people and hand-drawn SVG robots for bots.
@@ -70,6 +72,21 @@ export function avatarOf(id: string | undefined, name: string, bot: boolean): Av
 
 export function isAvatarId(id: unknown): id is string {
   return typeof id === 'string' && byId.has(id);
+}
+
+/**
+ * A new bot: a random name and a random robot face, preferring ones nobody at the table has yet.
+ * `rng` defaults to Math.random.
+ */
+export function randomBot(taken: readonly { name: string; avatar?: string }[], rng: () => number = Math.random): { name: string; avatar: string } {
+  const pick = <T,>(all: readonly T[], free: readonly T[]) => (free.length ? free : all)[Math.floor(rng() * (free.length || all.length))];
+  const names = new Set(taken.map(p => p.name));
+  const faces = new Set(taken.map(p => p.avatar));
+  let name = pick(BOTNAMES, BOTNAMES.filter(n => !names.has(n)));
+  // every name in use: number it
+  for (let i = 2; names.has(name); i++) name = `${name.replace(/ \d+$/, '')} ${i}`;
+  const avatar = pick(BOT_AVATARS, BOT_AVATARS.filter(a => !faces.has(a.id))).id;
+  return { name, avatar };
 }
 
 export function randomHumanAvatar() {

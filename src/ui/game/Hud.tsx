@@ -56,8 +56,18 @@ export function Hud({ game, toasts, bombLeft, online, locked, roundLeft }: Props
     <div className="hud">
       <div className="hud-top">
         <div className="status">
-          <span className="swatch" style={{ background: HEX[s.color] }} />
-          <span className="cname">{CNAME[s.color]}</span>
+          {/* the round opened with a Wild and the first player has not named the colour yet */}
+          {s.discard.length === 1 && s.discard[0].color === 'wild' && s.phase === 'choose' ? (
+            <>
+              <span className="swatch" style={{ background: `conic-gradient(${HEX.red} 0 25%, ${HEX.yellow} 0 50%, ${HEX.green} 0 75%, ${HEX.blue} 0)` }} />
+              <span className="cname">Цвет выбирают</span>
+            </>
+          ) : (
+            <>
+              <span className="swatch" style={{ background: HEX[s.color] }} />
+              <span className="cname">{CNAME[s.color]}</span>
+            </>
+          )}
           <span className={`dirIcon ${s.dir < 0 ? 'ccw' : ''}`} title={s.dir < 0 ? 'Против часовой' : 'По часовой'}>
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
               <path d="M19 12a7 7 0 1 1-2.05-4.95" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
@@ -109,11 +119,6 @@ export function Hud({ game, toasts, bombLeft, online, locked, roundLeft }: Props
           )}
         </div>
         <div className="actions">
-          {playing && s.rules.uno && cur.hand.length === 2 && anyPlay && (
-            <button className={`btn act unobtn ${s.unoCalled ? 'done' : ''}`} onClick={() => game.callUno()}>
-              {s.unoCalled ? 'UNO! ✓' : 'Крикнуть UNO!'}
-            </button>
-          )}
           {playing && s.drawn && s.pending === 0 && anyPlay && !s.rules.noMercy && (
             <button className="btn act" onClick={() => game.pass()}>
               <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden><path d="M5 12h12M13 7l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -132,6 +137,8 @@ export function Hud({ game, toasts, bombLeft, online, locked, roundLeft }: Props
         </div>
       </div>
 
+      {playing && s.rules.uno && cur.hand.length === 2 && anyPlay && !s.unoCalled && <UnoCall onCall={() => game.callUno()} />}
+
       <UnoCatch game={game} online={!!online} />
 
       <div className="toasts">
@@ -144,21 +151,53 @@ export function Hud({ game, toasts, bombLeft, online, locked, roundLeft }: Props
 }
 
 /**
+ * The round "UNO!" badges in the game's logo style: an oval with big letters, rings rippling out
+ * and a short line under it. `wide`: a longer word ("Поймал!") gets a wider oval.
+ */
+function UnoBadge({ wide, word, caption, label, onClick, avatar }: {
+  wide?: boolean; word: string; caption: string; label: string; onClick: () => void;
+  /** a little portrait stuck to the oval (whoever is being caught) */
+  avatar?: { id?: string; name: string; bot: boolean };
+}) {
+  return (
+    <button className={`uno-call ${wide ? 'wide' : ''}`} onClick={onClick} aria-label={label}>
+      <span className="uno-rings" aria-hidden><i /><i /></span>
+      <span className="uno-oval" aria-hidden>
+        <span className="uno-word">{word}</span>
+      </span>
+      {avatar && (
+        <span className="uno-who" aria-hidden>
+          <AvatarImg id={avatar.id} name={avatar.name} bot={avatar.bot} size={44} />
+        </span>
+      )}
+      <span className="uno-cap" aria-hidden>{caption}</span>
+    </button>
+  );
+}
+
+/** Two cards left: a big "UNO!" floats above the dock until it is pressed, then it goes (the table shows the shout). */
+function UnoCall({ onCall }: { onCall: () => void }) {
+  return (
+    <div className="uno-call-zone">
+      <UnoBadge word="UNO!" caption="Жми, пока не поймали" label="Крикнуть UNO! (клавиша U)" onClick={onCall} />
+    </div>
+  );
+}
+
+/**
  * Someone is down to one card and nobody heard "UNO!":
- * everyone else gets a big "Caught you!" button, the victim gets one last chance to shout it.
+ * everyone else gets a big "Caught you!" over the table, the victim gets one last chance to shout it.
  */
 function UnoCatch({ game, online }: { game: GameView; online: boolean }) {
   if (!game.catchable() || !game.s.unoCatch) return null;
   const s = game.s;
   const victim = s.unoCatch!.victim;
   const v = game.viewer();
-  const name = s.players[victim].name;
+  const p = s.players[victim];
   if (v === victim) {
     return (
       <div className="catch-zone">
-        <button className="btn catch-btn save" onClick={() => game.lateUno()}>
-          Крикнуть UNO! <small>пока не поймали</small>
-        </button>
+        <UnoBadge word="UNO!" caption="Ты забыл(а)! Успей, пока не поймали" label="Крикнуть UNO, пока не поймали" onClick={() => game.lateUno()} />
       </div>
     );
   }
@@ -166,9 +205,14 @@ function UnoCatch({ game, online }: { game: GameView; online: boolean }) {
   if (online && v === null) return null;
   return (
     <div className="catch-zone">
-      <button className="btn catch-btn" onClick={() => game.catchUno()}>
-        🫵 Поймал! <small>{name} не крикнул(а) UNO</small>
-      </button>
+      <UnoBadge
+        wide
+        word="Поймал!"
+        caption={`${p.name} не крикнул(а) «UNO!»`}
+        label={`Поймать: ${p.name} не крикнул(а) UNO`}
+        onClick={() => game.catchUno()}
+        avatar={{ id: p.avatar, name: p.name, bot: p.bot }}
+      />
     </div>
   );
 }

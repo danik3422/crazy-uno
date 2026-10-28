@@ -9,7 +9,7 @@ export const STORAGE_KEYS = {
   session: 'crazy-uno-session',
   name: 'crazy-uno-name',
   avatar: 'crazy-uno-avatar',
-  /** players and rules of the last local (one device) game */
+  /** players, rules, table and theme of the last local (one device) game */
   localSetup: 'crazy-uno-cfg-v2',
   sound: 'crazy-uno-sound',
 } as const;
