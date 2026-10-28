@@ -183,9 +183,48 @@ describe('Game engine', () => {
     expect(t.g.s.players[t.victim].hand.length).toBe(1);
   });
 
-  it('plays the turn for a person whose clock ran out', () => {
+  it('a person who lets the clock run out draws one card and loses the turn (autopilot off)', () => {
+    let clock = 0;
+    const g = new Game({ players: [{ name: 'A', bot: false }, { name: 'B', bot: true }, { name: 'C', bot: true }], rules: { ...DEFAULT_RULES, events: false } }, { rng: seeded(2), now: () => clock });
+    while (g.cp().bot) g.botAct();
+    const who = g.s.cur;
+    const before = g.cp().hand.length;
+    const pile = g.s.discard.length;
+    clock += 31_000;
+    g.timeoutTurn();
+    expect(g.s.cur).not.toBe(who);
+    expect(g.s.players[who].hand.length).toBe(before + 1);
+    expect(g.s.discard.length).toBe(pile); // nothing was played for them
+    expect(g.s.log.at(-1)).toContain('тянет карту');
+  });
+
+  it('a waiting penalty is taken in full when the clock runs out', () => {
+    let clock = 0;
+    const g = new Game({ players: [{ name: 'A', bot: false }, { name: 'B', bot: true }, { name: 'C', bot: true }], rules: { ...DEFAULT_RULES, events: false } }, { rng: seeded(3), now: () => clock });
+    while (g.cp().bot) g.botAct();
+    const who = g.s.cur;
+    const before = g.cp().hand.length;
+    g.s.pending = 4;
+    g.s.pendingType = 'wild4';
+    clock += 31_000;
+    g.timeoutTurn();
+    expect(g.s.players[who].hand.length).toBe(before + 4);
+    expect(g.s.pending).toBe(0);
+    expect(g.s.cur).not.toBe(who);
+  });
+
+  it('the server can still hand a dropped player to autopilot with the setting off', () => {
     let clock = 0;
     const g = new Game({ players: [{ name: 'A', bot: false }, { name: 'B', bot: true }], rules: { ...DEFAULT_RULES, events: false } }, { rng: seeded(2), now: () => clock });
+    while (g.cp().bot) g.botAct();
+    clock += 31_000;
+    g.timeoutTurn(true);
+    expect(g.s.log.some(l => l.includes('автопилот'))).toBe(true);
+  });
+
+  it('plays the turn for a person whose clock ran out (autopilot on)', () => {
+    let clock = 0;
+    const g = new Game({ players: [{ name: 'A', bot: false }, { name: 'B', bot: true }], rules: { ...DEFAULT_RULES, events: false }, table: { ...DEFAULT_TABLE, autopilot: true } }, { rng: seeded(2), now: () => clock });
     while (g.cp().bot) g.botAct();
     const who = g.s.cur;
     expect(g.s.turnDeadline).not.toBeNull();

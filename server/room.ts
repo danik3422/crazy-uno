@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { BOT_AVATARS, isAvatarId } from '../src/game/avatars';
+import { EVENT_PAUSE_MS, botThinkMs } from '../src/game/bot';
 import { BOTNAMES, DEFAULT_RULES, DEFAULT_TABLE, RULES, cleanTable, isTheme, teamsProblem } from '../src/game/content';
 import { Game } from '../src/game/engine';
 import type { Card, Rules, Table, ThemeId } from '../src/game/types';
@@ -41,7 +42,44 @@ export interface RoomOptions {
   rematchMs?: number;
 }
 
-const EVENT_PAUSE_MS = 2800;
+type Timer = ReturnType<typeof setTimeout>;
+
+/**
+ * Round start: everybody's screen first draws the table and reports 'ready',
+ * then all of them see the deal at the same moment, and only then can anybody move.
+ */
+interface Warmup {
+  ready: Set<string>;
+  /** loaded, but the phone is still held upright: the deal waits until it lies on its side */
+  upright: Set<string>;
+  dealAt: number | null;
+  dealEnd: number | null;
+  timer: Timer | null;
+  /** waited long enough for slow screens: from now on only upright phones hold the table */
+  slowOk?: boolean;
+}
+
+/**
+ * "Ещё раунд": every seated person who is online has to press it. Once they all have,
+ * a short countdown runs and the next round starts with the same loading screen and deal as the first.
+ */
+interface RematchVote {
+  ready: Set<string>;
+  startAt: number | null;
+  timer: Timer | null;
+}
+
+/**
+ * Per viewer: the opaque number each hidden card goes by, and which real cards that viewer saw last time.
+ * A card gets a fresh random number whenever it leaves the viewer's sight, so a card you gave away
+ * (swap, gift, zero, carousel) cannot be told apart from the others in its new owner's hand.
+ */
+interface AliasBook {
+  game: Game;
+  alias: Map<number, number>;
+  used: Set<number>;
+  seen: Set<number>;
+}
 
 /** Authoritative state of one game room: lobby, seats, the engine and all timers. */
 export class Room {
@@ -56,16 +94,27 @@ export class Room {
   /** member id for every engine player index */
   seats: string[] = [];
   lastActivity = Date.now();
+
+  private opts: Required<RoomOptions>;
   private round = 0;
-  private timer: ReturnType<typeof setTimeout> | null = null;
-  private bombTimer: ReturnType<typeof setTimeout> | null = null;
-  private eventAt = 0;
+  private warm: Warmup | null = null;
+  private rematch: RematchVote | null = null;
+  private aliases = new Map<string, AliasBook>();
+  /** effects already looked at, and when the last random event fired (bots wait for its banner) */
   private fxSeen = 0;
+  private eventAt = 0;
+  /** the turn number autopilot is playing for an absent person (-1: none) */
   private autoTurn = -1;
   private flushQueued = false;
   private scored = new WeakSet<Game>();
-  private unsub: (() => void) | null = null;
-  private opts: Required<RoomOptions>;
+  private unsubscribe: (() => void) | null = null;
+
+  // timers: the next bot / autopilot step, the bomb, the round limit, a bot catching a missing UNO
+  private timer: Timer | null = null;
+  private bombTimer: Timer | null = null;
+  private limitTimer: Timer | null = null;
+  private catchTimer: Timer | null = null;
+  private catchFor: unknown = null;
 
   constructor(public code: string, opts: RoomOptions = {}) {
     this.opts = { botSpeed: 1, offlineAutoMs: 12_000, idleAutoMs: 75_000, dealScale: 1, groupMs: 25_000, rematchMs: REMATCH_COUNTDOWN_MS, ...opts };
@@ -81,6 +130,14 @@ export class Room {
     return this.members.filter(m => !m.spectator);
   }
 
+  private member(id: string) {
+    return this.members.find(m => m.id === id);
+  }
+
+  private hostOnline() {
+    return this.members.some(m => m.id === this.hostId && m.sock);
+  }
+
   join(name: string, sock: Sock, token?: string, avatar?: string): Member | ErrorCode {
     this.touch();
     const back = token ? this.members.find(m => m.token === token && !m.bot) : undefined;
@@ -93,7 +150,7 @@ export class Room {
       this.setStandIn(back, false);
       if (name) back.name = this.uniqueName(name, back);
       if (isAvatarId(avatar)) back.avatar = avatar;
-      if (!this.members.some(m => m.id === this.hostId && m.sock)) this.hostId = back.id;
+      if (!this.hostOnline()) this.hostId = back.id;
       this.sendTo(sock, { t: 'joined', code: this.code, token: back.token, id: back.id });
       this.syncNames();
       this.broadcastRoom();
@@ -113,7 +170,7 @@ export class Room {
       sock,
     };
     this.members.push(m);
-    if (!this.hostId || !this.members.some(x => x.id === this.hostId && x.sock)) this.hostId = m.id;
+    if (!this.hostId || !this.hostOnline()) this.hostId = m.id;
     this.sendTo(sock, { t: 'joined', code: this.code, token: m.token, id: m.id });
     this.broadcastRoom();
     this.sendState(m);
@@ -165,6 +222,21 @@ export class Room {
     this.flush();
   }
 
+  private addBot() {
+    if (this.players().length >= MAX_PLAYERS || this.members.length >= MAX_MEMBERS) return;
+    this.members.push({
+      id: randomUUID().slice(0, 8),
+      token: randomUUID(),
+      // the first bot name and robot face nobody at the table has yet
+      name: this.uniqueName(BOTNAMES.find(n => !this.members.some(x => x.name === n)) ?? 'Бот'),
+      avatar: BOT_AVATARS.find(a => !this.members.some(x => x.avatar === a.id))?.id,
+      bot: true,
+      spectator: false,
+      sock: null,
+    });
+    this.broadcastRoom();
+  }
+
   private passHost() {
     if (this.members.some(x => x.id === this.hostId && x.sock && !x.bot)) return;
     const next = this.connectedHumans()[0];
@@ -182,7 +254,7 @@ export class Room {
   private syncNames() {
     if (!this.game) return;
     this.seats.forEach((id, i) => {
-      const m = this.members.find(x => x.id === id);
+      const m = this.member(id);
       if (m) Object.assign(this.game!.s.players[i], { name: m.name, avatar: m.avatar });
     });
   }
@@ -212,20 +284,10 @@ export class Room {
       }
       case 'addBot':
         if (!needHost() || !inLobby) return;
-        if (this.players().length >= MAX_PLAYERS || this.members.length >= MAX_MEMBERS) return;
-        this.members.push({
-          id: randomUUID().slice(0, 8),
-          token: randomUUID(),
-          name: this.uniqueName(BOTNAMES.find(n => !this.members.some(x => x.name === n)) ?? 'Бот'),
-          avatar: BOT_AVATARS.find(a => !this.members.some(x => x.avatar === a.id))?.id,
-          bot: true,
-          spectator: false,
-          sock: null,
-        });
-        return this.broadcastRoom();
+        return this.addBot();
       case 'kick': {
         if (!needHost()) return;
-        const target = this.members.find(x => x.id === msg.id);
+        const target = this.member(msg.id);
         if (!target || target === m) return;
         if (target.sock) {
           this.sendTo(target.sock, { t: 'error', code: 'kicked', msg: 'Хост убрал тебя из комнаты' });
@@ -267,9 +329,9 @@ export class Room {
       case 'act':
         return this.act(m, msg.act);
       case 'ready':
-        return this.markReady(m, Number(msg.round), msg.upright === true);
+        return this.markScreen(m, Number(msg.round), msg.upright === true, true);
       case 'orient':
-        return this.markOrient(m, Number(msg.round), msg.upright === true);
+        return this.markScreen(m, Number(msg.round), msg.upright === true, false);
       case 'dealNow':
         if (!needHost()) return;
         this.maybeDeal(true);
@@ -281,63 +343,46 @@ export class Room {
     }
   }
 
-  /**
-   * Round start: everybody's screen first draws the table and reports 'ready',
-   * then all of them see the deal at the same moment, and only then can anybody move.
-   */
-  private warm: {
-    ready: Set<string>;
-    /** loaded, but the phone is still held upright: the deal waits until it lies on its side */
-    upright: Set<string>;
-    dealAt: number | null;
-    dealEnd: number | null;
-    timer: ReturnType<typeof setTimeout> | null;
-    /** waited long enough for slow screens: from now on only upright phones hold the table */
-    slowOk?: boolean;
-  } | null = null;
+  /* ---------- round start: loading screens and the deal ---------- */
 
+  /** The table is still loading or the cards are still flying. */
   private warming() {
     const w = this.warm;
     return !!w && (w.dealEnd === null || Date.now() < w.dealEnd);
   }
 
-  private markReady(m: Member, round: number, upright: boolean) {
+  /**
+   * A screen reports in for `round`: `ready` once it has drawn the table (message 'ready'),
+   * or just a phone turning while the deal waits (message 'orient').
+   */
+  private markScreen(m: Member, round: number, upright: boolean, ready: boolean) {
     const w = this.warm;
     if (!w || round !== this.round || w.dealAt !== null) return;
-    w.ready.add(m.id);
+    if (ready) w.ready.add(m.id);
     if (upright) w.upright.add(m.id);
     else w.upright.delete(m.id);
     this.maybeDeal();
     this.flush();
   }
 
-  private markOrient(m: Member, round: number, upright: boolean) {
-    const w = this.warm;
-    if (!w || round !== this.round || w.dealAt !== null) return;
-    if (upright) w.upright.add(m.id);
-    else w.upright.delete(m.id);
-    this.maybeDeal();
-    this.flush();
+  /** Seated people who are online. Bots and dropped players never hold the table. */
+  private seatedOnline(): string[] {
+    return this.seats.filter(id => {
+      const m = this.member(id);
+      return !!m && !m.bot && !!m.sock;
+    });
   }
 
-  /** Seated, online, table drawn, but still holding the phone upright. */
+  /** Table drawn, but the phone is still held upright. */
   private turning(): string[] {
     const w = this.warm;
-    if (!w) return [];
-    return this.seats.filter(id => {
-      const m = this.members.find(x => x.id === id);
-      return !!m && !m.bot && !!m.sock && w.ready.has(id) && w.upright.has(id);
-    });
+    return w ? this.seatedOnline().filter(id => w.ready.has(id) && w.upright.has(id)) : [];
   }
 
-  /** Seated people who are online and have not reported yet. Bots and dropped players never hold the table. */
+  /** Screens that have not reported yet. */
   private notReady(): string[] {
     const w = this.warm;
-    if (!w) return [];
-    return this.seats.filter(id => {
-      const m = this.members.find(x => x.id === id);
-      return !!m && !m.bot && !!m.sock && !w.ready.has(id);
-    });
+    return w ? this.seatedOnline().filter(id => !w.ready.has(id)) : [];
   }
 
   private maybeDeal(force = false) {
@@ -353,11 +398,7 @@ export class Room {
     this.game.holdClock(w.dealEnd - Date.now());
   }
 
-  /*
-   * "Ещё раунд": every seated person who is online has to press it. Once they all have,
-   * a short countdown runs and the next round starts with the same loading screen and deal as the first.
-   */
-  private rematch: { ready: Set<string>; startAt: number | null; timer: ReturnType<typeof setTimeout> | null } | null = null;
+  /* ---------- rounds: rematch vote, start and end ---------- */
 
   private voteRematch(m: Member, off: boolean, force: boolean) {
     const g = this.game;
@@ -385,7 +426,7 @@ export class Room {
     if ((everyone || force) && r.startAt === null) {
       r.startAt = Date.now() + this.opts.rematchMs;
       r.timer = setTimeout(() => {
-        const host = this.members.find(x => x.id === this.hostId) ?? this.members[0];
+        const host = this.member(this.hostId) ?? this.members[0];
         this.rematch = null;
         if (host) this.startRound(host);
       }, this.opts.rematchMs);
@@ -441,7 +482,7 @@ export class Room {
       this.maybeDeal();
       this.flush();
     }, WARMUP_MAX_MS);
-    this.unsub = this.game.subscribe(() => this.flush());
+    this.unsubscribe = this.game.subscribe(() => this.flush());
     this.broadcastRoom();
     this.flush();
   }
@@ -453,11 +494,13 @@ export class Room {
     if (this.catchTimer) clearTimeout(this.catchTimer);
     this.catchTimer = null;
     this.catchFor = null;
-    this.unsub?.();
-    this.unsub = null;
+    this.unsubscribe?.();
+    this.unsubscribe = null;
     this.game = null;
     this.seats = [];
   }
+
+  /* ---------- moves ---------- */
 
   private act(m: Member, a: Action) {
     const g = this.game;
@@ -512,14 +555,7 @@ export class Room {
     };
   }
 
-  /**
-   * Per viewer: the opaque number each hidden card goes by, and which real cards that viewer saw last time.
-   * A card gets a fresh random number whenever it leaves the viewer's sight, so a card you gave away
-   * (swap, gift, zero, carousel) cannot be told apart from the others in its new owner's hand.
-   */
-  private aliases = new Map<string, { game: Game; alias: Map<number, number>; used: Set<number>; seen: Set<number> }>();
-
-  private aliasBook(m: Member, g: Game) {
+  private aliasBook(m: Member, g: Game): AliasBook {
     let b = this.aliases.get(m.id);
     if (!b || b.game !== g) {
       b = { game: g, alias: new Map(), used: new Set(), seen: new Set() };
@@ -528,6 +564,7 @@ export class Room {
     return b;
   }
 
+  /** The game as `m` may see it: their own hand face up, everyone else's as opaque placeholders. */
   view(m: Member | null): PlayerView | null {
     const g = this.game;
     if (!g) return null;
@@ -558,7 +595,7 @@ export class Room {
     };
     const discard = s.discard.slice(-40).map(show);
     const players = s.players.map((p, i) => {
-      const mem = this.members.find(x => x.id === this.seats[i]);
+      const mem = this.member(this.seats[i]);
       return {
         name: p.name,
         bot: p.bot,
@@ -596,6 +633,8 @@ export class Room {
       },
     };
   }
+
+  /* ---------- sending ---------- */
 
   private broadcastRoom() {
     for (const m of this.members) if (m.sock) this.sendTo(m.sock, { t: 'room', room: this.info(m) });
@@ -636,8 +675,6 @@ export class Room {
   /* ---------- timers: bots, autopilot, bomb ---------- */
 
   /** A bot that noticed a missing UNO speaks up after a human-like pause; one timer per catch window. */
-  private catchTimer: ReturnType<typeof setTimeout> | null = null;
-  private catchFor: unknown = null;
   private scheduleCatch() {
     const g = this.game;
     const c = g?.s.unoCatch ?? null;
@@ -650,16 +687,12 @@ export class Room {
     this.catchTimer = setTimeout(() => g.catchUno(by), c.botDelay * this.opts.botSpeed);
   }
 
-  private limitTimer: ReturnType<typeof setTimeout> | null = null;
-
   private clearTimers() {
-    if (this.limitTimer) clearTimeout(this.limitTimer);
-    this.limitTimer = null;
-    if (this.timer) clearTimeout(this.timer);
-    if (this.bombTimer) clearTimeout(this.bombTimer);
-    this.timer = this.bombTimer = null;
+    for (const t of [this.timer, this.bombTimer, this.limitTimer]) if (t) clearTimeout(t);
+    this.timer = this.bombTimer = this.limitTimer = null;
   }
 
+  /** After every change: set up the one timer that moves the game on next (bot, autopilot, clocks). */
   private schedule() {
     this.clearTimers();
     this.scheduleCatch();
@@ -677,10 +710,9 @@ export class Room {
       this.bombTimer = setTimeout(() => g.checkBomb(), Math.max(0, s.bombDeadline - Date.now()) + 30);
     }
     // quick round / round limit: when time is up, the fewest cards win
-    if (this.limitTimer) clearTimeout(this.limitTimer);
     this.limitTimer = s.endsAt !== null ? setTimeout(() => g.checkTimeLimit(), Math.max(0, s.endsAt - Date.now()) + 30) : null;
     const p = g.cp();
-    const mem = this.members.find(x => x.id === this.seats[s.cur]);
+    const mem = this.member(this.seats[s.cur]);
     const eventWait = Math.max(0, this.eventAt + EVENT_PAUSE_MS - Date.now()) * this.opts.botSpeed;
 
     if (s.phase === 'group') {
@@ -690,22 +722,24 @@ export class Room {
       return;
     }
     if (p.bot) {
-      const base = s.phase === 'choose' ? 700 : s.drawn ? 650 : 950 + Math.random() * 700;
-      this.timer = setTimeout(() => g.botAct(), eventWait + base * this.opts.botSpeed);
+      this.timer = setTimeout(() => g.botAct(), eventWait + botThinkMs(s) * this.opts.botSpeed);
       return;
     }
     // a human's turn with the clock on: when it runs out, the engine plays the rest of the turn
+    // (a dropped connection is always covered by autopilot; someone just idle at the table gets it only
+    // when the host turned it on, otherwise they draw a card and lose the turn)
+    const offline = !mem?.sock;
     if (s.turnDeadline !== null && s.phase === 'play') {
-      this.timer = setTimeout(() => g.timeoutTurn(), Math.max(0, s.turnDeadline - Date.now()) + 30);
+      this.timer = setTimeout(() => g.timeoutTurn(offline), Math.max(0, s.turnDeadline - Date.now()) + 30);
       return;
     }
-    // otherwise autopilot only if they dropped out or went idle
-    const offline = !mem?.sock;
+    // otherwise only if they dropped out or went idle
     const continuing = this.autoTurn === s.turn;
     const wait = continuing ? 800 * this.opts.botSpeed : offline ? this.opts.offlineAutoMs : this.opts.idleAutoMs;
     this.timer = setTimeout(() => {
       this.autoTurn = g.s.turn;
-      g.botAct(true);
+      if (offline || g.s.table.autopilot) g.botAct(true);
+      else g.missTurn();
     }, wait);
   }
 

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import { COLORS } from '../src/game/content';
-import { playableCard } from '../src/game/engine';
+import { playableCard } from '../src/game/rules';
 import type { Action, ClientMsg, PlayerView, RoomInfo, ServerMsg } from '../src/net/protocol';
 import { createUnoServer } from './server';
 

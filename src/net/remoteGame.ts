@@ -1,6 +1,7 @@
-import { playableCard } from '../game/engine';
+import { isCatchable, nextSeat, playableCard } from '../game/rules';
 import type { Card, State } from '../game/types';
 import type { GameView } from '../game/view';
+import { Observable } from '../lib/observable';
 import type { Connection } from './connection';
 import type { PlayerView, Warmup } from './protocol';
 
@@ -8,7 +9,7 @@ import type { PlayerView, Warmup } from './protocol';
 const DECK_VISUAL = 60;
 
 /** Mirror of the server's game, as this player is allowed to see it. Moves go back over the socket. */
-export class RemoteGame implements GameView {
+export class RemoteGame extends Observable implements GameView {
   s!: State;
   readonly isLocal = false;
   clockOffset = 0;
@@ -19,11 +20,10 @@ export class RemoteGame implements GameView {
   private uprightSent = false;
   /** the server view last applied, to skip re-applying the same one */
   src: PlayerView | null = null;
-  private version = 0;
-  private listeners = new Set<() => void>();
 
   /** fresh: we watched this round from its start, so its opening effects should play */
   constructor(private conn: Connection, view: PlayerView, now: number, fresh: boolean) {
+    super();
     this.apply(view, now);
     this.fxBaseline = fresh ? 0 : Math.max(0, ...view.state.fx.map(f => f.id));
   }
@@ -38,20 +38,11 @@ export class RemoteGame implements GameView {
     this.warmup = view.warmup;
     this.clockOffset = now - Date.now();
     // no notify here: this runs while App renders, and App re-rendering is what passes the update down
-    this.version++;
+    this.bumpVersion();
   }
-
-  subscribe = (f: () => void) => {
-    this.listeners.add(f);
-    return () => { this.listeners.delete(f); };
-  };
-  getVersion = () => this.version;
 
   cp() { return this.s.players[this.s.cur]; }
-  nextIdx(from = this.s.cur, steps = 1) {
-    const n = this.s.players.length;
-    return (((from + this.s.dir * steps) % n) + n) % n;
-  }
+  nextIdx(from = this.s.cur, steps = 1) { return nextSeat(this.s, from, steps); }
   viewer() { return this.you; }
   seat() { return this.you ?? 0; }
   playable(c: Card) { return !c.hidden && this.you === this.s.cur && playableCard(this.s, c); }
@@ -86,10 +77,7 @@ export class RemoteGame implements GameView {
   doneGroup() { this.conn.act({ a: 'group' }); }
   guessCoin(guess: 'heads' | 'tails') { this.conn.act({ a: 'coin', guess }); }
   finishCoin() { this.conn.act({ a: 'coinDone' }); }
-  catchable() {
-    const c = this.s.unoCatch;
-    return !!c && this.s.phase !== 'over' && this.s.turn <= c.until && this.s.players[c.victim]?.hand.length === 1;
-  }
+  catchable() { return isCatchable(this.s); }
   catchUno() { this.conn.act({ a: 'catch' }); }
   lateUno() { this.conn.act({ a: 'lateUno' }); }
   challengeWild4() { this.conn.act({ a: 'challenge' }); }

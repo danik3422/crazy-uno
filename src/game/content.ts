@@ -24,7 +24,24 @@ export const SPECIAL: Record<Exclude<CardType, 'num'>, { sym: string; name: stri
   mirror: { sym: '🪞', name: 'Зеркало', desc: 'Отражает +2/+4 обратно. Кладётся на любой штраф. Без штрафа — разворот' },
   chaos: { sym: '🌪', name: 'Хаос', desc: 'Карты всех игроков перемешиваются и раздаются поровну' },
   dump: { sym: '🧹', name: 'Уборка', desc: 'Выбираешь цвет и сбрасываешь все свои карты этого цвета' },
+  // UNO Show 'Em No Mercy
+  draw4: { sym: '+4', name: '+4', desc: 'Цветная +4: следующий тянет 4 и пропускает ход' },
+  skipAll: { sym: '⊘', name: 'Пропуск всех', desc: 'Все пропускают ход, ты ходишь ещё раз' },
+  discardAll: { sym: '🗑️', name: 'Сброс цвета', desc: 'Сбрасываешь все свои карты этого цвета' },
+  wildRev4: { sym: '⇄', name: 'Разворот +4', desc: 'Игра идёт обратно, и тот, кто теперь ходит, тянет 4' },
+  wild6: { sym: '+6', name: '+6', desc: 'Выбираешь цвет, следующий тянет 6' },
+  wild10: { sym: '+10', name: '+10', desc: 'Выбираешь цвет, следующий тянет 10' },
+  roulette: { sym: '🎡', name: 'Рулетка', desc: 'Следующий называет цвет и тянет карты, пока не попадётся этот цвет' },
 };
+
+/** Wild cards (black, any colour may be named). */
+export const WILD_TYPES: CardType[] = ['wild', 'wild4', 'chaos', 'dump', 'wildRev4', 'wild6', 'wild10', 'roulette'];
+
+/** Cards that only come in the No Mercy deck. */
+export const NO_MERCY_TYPES: CardType[] = ['draw4', 'skipAll', 'discardAll', 'wildRev4', 'wild6', 'wild10', 'roulette'];
+
+/** No Mercy: holding this many cards knocks you out. */
+export const MERCY_LIMIT = 25;
 
 export const RULES: { id: keyof Rules; name: string; desc: string; def: boolean }[] = [
   { id: 'stack', name: 'Стопка штрафов', desc: '+2 на +2, +4 на любой штраф. Кто не отбился — тянет всё.', def: true },
@@ -32,11 +49,12 @@ export const RULES: { id: keyof Rules; name: string; desc: string; def: boolean 
   { id: 'crazy', name: 'Безумные карты', desc: 'Обмен, Подарок, Бомба, Ливень, Зеркало, Хаос, Уборка.', def: true },
   { id: 'dares', name: 'Фанты', desc: 'Карта 🎭 даёт следующему игроку смешное задание.', def: true },
   { id: 'uno', name: 'Кричи «UNO!»', desc: 'Остался с одной картой и не крикнул «UNO!» — любой может нажать «Поймал!», и ты тянешь 2.', def: true },
-  { id: 'timer', name: 'Таймер хода', desc: '30 секунд на ход. Не успел — за тебя сходит автопилот.', def: true },
+  { id: 'timer', name: 'Таймер хода', desc: 'Ограниченное время на ход. Не успел — тянешь карту и пропускаешь ход (или ходит автопилот, если он включён).', def: true },
   { id: 'challenge', name: 'Оспорить +4', desc: 'Если +4 положили, имея карту нужного цвета, и тебя это бесит — оспорь. Попался — тянет 4 сам. Ошибся — тянешь 6.', def: true },
   { id: 'drawPlay', name: 'Тяни до победного', desc: 'Тянешь из колоды, пока не попадётся карта, которой можно сходить.', def: false },
   { id: 'events', name: 'Безумные события', desc: 'В случайный момент случается что-то: метеорит +10, перекраска карт, молния, блиц…', def: true },
   { id: 'punish', name: 'Наказание проигравшему', desc: 'В конце раунда у кого больше всех карт — получает задание.', def: true },
+  { id: 'noMercy', name: 'No Mercy', desc: 'Колода UNO Show ’Em No Mercy: +6, +10, рулетка. Перебить штраф можно только картой не меньше. 25 карт — выбываешь.', def: false },
 ];
 
 export const DEFAULT_RULES = Object.fromEntries(RULES.map(r => [r.id, r.def])) as unknown as Rules;
@@ -137,6 +155,7 @@ export const RULE_GROUPS: { title: string; hint: string; rules: { id: keyof Rule
       { id: 'sevenZero', icon: '🔄', short: '7 — меняешься картами с кем хочешь, 0 — все передают руки по кругу' },
       { id: 'crazy', icon: '🃏', short: 'Бомба, Подарок, Ливень, Зеркало, Хаос, Уборка, Обмен' },
       { id: 'drawPlay', icon: '♾️', short: 'Тянешь, пока не попадётся карта, которой можно сходить' },
+      { id: 'noMercy', icon: '💀', short: 'Колода No Mercy: +6, +10, рулетка, пропуск всех. 25 карт — выбываешь' },
     ],
   },
   {
@@ -153,7 +172,7 @@ export const RULE_GROUPS: { title: string; hint: string; rules: { id: keyof Rule
     title: 'Темп и сюрпризы',
     hint: 'чтобы никто не скучал',
     rules: [
-      { id: 'timer', icon: '⏱', short: '30 секунд на ход, потом ходит автопилот' },
+      { id: 'timer', icon: '⏱', short: 'Время на ход. Не успел — тянешь карту и пропускаешь ход' },
       { id: 'events', icon: '🌪', short: 'Метеорит +10, молния, бомбардировщик и ещё 10 событий' },
     ],
   },
@@ -162,16 +181,22 @@ export const RULE_GROUPS: { title: string; hint: string; rules: { id: keyof Rule
 /** One-click rule sets. */
 export const PRESETS: { id: string; icon: string; name: string; desc: string; rules: Rules }[] = [
   {
-    id: 'classic', icon: '🎴', name: 'Классика', desc: 'Почти настоящее UNO, без сюрпризов',
-    rules: { stack: true, sevenZero: false, crazy: false, dares: false, uno: true, drawPlay: false, punish: false, events: false, timer: true, challenge: true },
+    // the official rules of UNO: no stacking, +4 can be challenged, draw one card and play it if it fits
+    id: 'classic', icon: '🎴', name: 'Классика', desc: 'Настоящие правила UNO, без сюрпризов',
+    rules: { stack: false, sevenZero: false, crazy: false, dares: false, uno: true, drawPlay: false, punish: false, events: false, timer: true, challenge: true, noMercy: false },
+  },
+  {
+    // the official rules of UNO Show 'Em No Mercy, nothing added
+    id: 'nomercy', icon: '💀', name: 'No Mercy', desc: 'Оригинальные правила UNO No Mercy: +10, рулетка и 25 карт на вылет',
+    rules: { stack: true, sevenZero: true, crazy: false, dares: false, uno: true, drawPlay: true, punish: false, events: false, timer: true, challenge: false, noMercy: true },
   },
   {
     id: 'party', icon: '🎉', name: 'Вечеринка', desc: 'Безумные карты, фанты и события',
-    rules: { stack: true, sevenZero: true, crazy: true, dares: true, uno: true, drawPlay: false, punish: true, events: true, timer: true, challenge: true },
+    rules: { stack: true, sevenZero: true, crazy: true, dares: true, uno: true, drawPlay: false, punish: true, events: true, timer: true, challenge: true, noMercy: false },
   },
   {
     id: 'chaos', icon: '🌪', name: 'Полный хаос', desc: 'Всё включено. Вообще всё',
-    rules: { stack: true, sevenZero: true, crazy: true, dares: true, uno: true, drawPlay: true, punish: true, events: true, timer: true, challenge: true },
+    rules: { stack: true, sevenZero: true, crazy: true, dares: true, uno: true, drawPlay: true, punish: true, events: true, timer: true, challenge: true, noMercy: false },
   },
 ];
 
@@ -179,7 +204,7 @@ export function presetOf(r: Rules) {
   return PRESETS.find(p => (Object.keys(p.rules) as (keyof Rules)[]).every(k => p.rules[k] === r[k])) ?? null;
 }
 
-export const DEFAULT_TABLE: Table = { teams: false, quick: false, handSize: 7, turnSec: 30, bombSec: 10, unoPenalty: 2, roundMin: 0, events: 'normal' };
+export const DEFAULT_TABLE: Table = { teams: false, quick: false, handSize: 7, turnSec: 30, bombSec: 10, unoPenalty: 2, roundMin: 0, events: 'normal', autopilot: false };
 
 /** The quick round overrides these numbers. */
 export const QUICK = { handSize: 5, turnSec: 15, roundMin: 5 };
@@ -213,6 +238,7 @@ export function cleanTable(raw: unknown): Table {
     unoPenalty: pick('unoPenalty'),
     roundMin: pick('roundMin'),
     events: pick('events'),
+    autopilot: r.autopilot === true,
   };
 }
 

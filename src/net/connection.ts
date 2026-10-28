@@ -1,3 +1,5 @@
+import { Observable } from '../lib/observable';
+import { STORAGE_KEYS, readJson, writeJson } from '../lib/storage';
 import type { Action, ClientMsg, ErrorCode, PlayerView, RoomInfo, ServerMsg } from './protocol';
 
 export type ConnStatus = 'idle' | 'connecting' | 'open' | 'reconnecting';
@@ -7,37 +9,31 @@ interface Session {
   token: string;
 }
 
-const SESSION_KEY = 'crazy-uno-session';
-const NAME_KEY = 'crazy-uno-name';
-const AVATAR_KEY = 'crazy-uno-avatar';
+const RETRY_MAX_MS = 5_000;
+const HEARTBEAT_MS = 10_000;
+/** no message from the server for this long: the link is considered dead */
+const DEAD_LINK_MS = 30_000;
 
-function load<T>(key: string): T | null {
-  try {
-    return JSON.parse(localStorage.getItem(key) ?? 'null');
-  } catch {
-    return null;
-  }
-}
-function store(key: string, v: unknown) {
-  try {
-    if (v === null) localStorage.removeItem(key);
-    else localStorage.setItem(key, JSON.stringify(v));
-  } catch { /* storage unavailable: the session just won't survive a reload */ }
+/** Errors after which this client no longer has a seat in the room. */
+export function errorLeavesRoom(code: ErrorCode, inRoom: boolean): boolean {
+  if (code === 'no-room' || code === 'kicked' || code === 'replaced') return true;
+  // could not create or enter a room in the first place
+  return (code === 'slow-down' || code === 'full') && !inRoom;
 }
 
 export function savedName(): string {
-  return load<string>(NAME_KEY) ?? '';
+  return readJson<string>(STORAGE_KEYS.name) ?? '';
 }
 
 export function savedAvatar(): string | null {
-  return load<string>(AVATAR_KEY);
+  return readJson<string>(STORAGE_KEYS.avatar);
 }
 
 /**
  * One WebSocket to the game server that survives drops:
  * reconnects with backoff, rejoins the room with the saved token, and pings to notice dead links.
  */
-export class Connection {
+export class Connection extends Observable {
   status: ConnStatus = 'idle';
   room: RoomInfo | null = null;
   /** local time the last room update arrived (countdowns are sent as "ms from now") */
@@ -46,7 +42,7 @@ export class Connection {
   /** server clock at the moment `view` was produced */
   viewNow = 0;
   error: { code: ErrorCode; msg: string; at: number } | null = null;
-  session: Session | null = load<Session>(SESSION_KEY);
+  session: Session | null = readJson<Session>(STORAGE_KEYS.session);
   name = savedName();
   avatar = savedAvatar() ?? undefined;
 
@@ -57,24 +53,12 @@ export class Connection {
   private lastMsgAt = 0;
   private hb: ReturnType<typeof setInterval> | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
-  private version = 0;
-  private listeners = new Set<() => void>();
-
-  subscribe = (f: () => void) => {
-    this.listeners.add(f);
-    return () => { this.listeners.delete(f); };
-  };
-  getVersion = () => this.version;
-  private emit() {
-    this.version++;
-    this.listeners.forEach(f => f());
-  }
 
   open() {
     if (this.wanted) return;
     this.wanted = true;
     this.connect();
-    this.hb = setInterval(() => this.heartbeat(), 10_000);
+    this.hb = setInterval(() => this.heartbeat(), HEARTBEAT_MS);
     document.addEventListener('visibilitychange', this.onVisible);
     window.addEventListener('online', this.onVisible);
   }
@@ -88,17 +72,17 @@ export class Connection {
     this.ws?.close();
     this.ws = null;
     this.status = 'idle';
-    this.emit();
+    this.emitChange();
   }
 
   setName(name: string) {
     this.name = name;
-    store(NAME_KEY, name);
+    writeJson(STORAGE_KEYS.name, name);
   }
 
   setAvatar(id: string) {
     this.avatar = id;
-    store(AVATAR_KEY, id);
+    writeJson(STORAGE_KEYS.avatar, id);
     if (this.room) this.send({ t: 'profile', avatar: id });
   }
 
@@ -115,7 +99,7 @@ export class Connection {
   leave() {
     this.send({ t: 'leave' });
     this.forget();
-    this.emit();
+    this.emitChange();
   }
 
   act(act: Action) {
@@ -130,12 +114,12 @@ export class Connection {
 
   clearError() {
     this.error = null;
-    this.emit();
+    this.emitChange();
   }
 
   private forget() {
     this.session = null;
-    store(SESSION_KEY, null);
+    writeJson(STORAGE_KEYS.session, null);
     this.room = null;
     this.view = null;
   }
@@ -149,7 +133,7 @@ export class Connection {
   private connect() {
     if (!this.wanted || this.ws) return;
     this.status = this.retry ? 'reconnecting' : 'connecting';
-    this.emit();
+    this.emitChange();
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     let ws: WebSocket;
     try {
@@ -167,7 +151,7 @@ export class Connection {
       const explicitJoin = pending.some(m => m.t === 'join' || m.t === 'create');
       if (this.session && !explicitJoin) this.raw({ t: 'join', code: this.session.code, name: this.name, avatar: this.avatar, token: this.session.token });
       pending.forEach(m => this.raw(m));
-      this.emit();
+      this.emitChange();
     };
     ws.onmessage = e => {
       this.lastMsgAt = Date.now();
@@ -188,15 +172,15 @@ export class Connection {
 
   private scheduleRetry() {
     this.status = 'reconnecting';
-    this.emit();
-    const delay = Math.min(5000, 300 * 2 ** this.retry++) + Math.random() * 300;
+    this.emitChange();
+    const delay = Math.min(RETRY_MAX_MS, 300 * 2 ** this.retry++) + Math.random() * 300;
     if (this.retryTimer) clearTimeout(this.retryTimer);
     this.retryTimer = setTimeout(() => this.connect(), delay);
   }
 
   private heartbeat() {
     if (this.status !== 'open') return;
-    if (Date.now() - this.lastMsgAt > 30_000) {
+    if (Date.now() - this.lastMsgAt > DEAD_LINK_MS) {
       // the link looks dead (sleeping phone, flaky Wi-Fi): force a fresh connection
       this.ws?.close();
       this.ws = null;
@@ -219,7 +203,7 @@ export class Connection {
     switch (m.t) {
       case 'joined':
         this.session = { code: m.code, token: m.token };
-        store(SESSION_KEY, this.session);
+        writeJson(STORAGE_KEYS.session, this.session);
         this.error = null;
         break;
       case 'room':
@@ -236,12 +220,11 @@ export class Connection {
         break;
       case 'error':
         this.error = { code: m.code, msg: m.msg, at: Date.now() };
-        if (m.code === 'no-room' || m.code === 'kicked' || m.code === 'replaced') this.forget();
-        if ((m.code === 'slow-down' || m.code === 'full') && !this.room) this.forget();
+        if (errorLeavesRoom(m.code, !!this.room)) this.forget();
         break;
       case 'pong':
         return;
     }
-    this.emit();
+    this.emitChange();
   }
 }

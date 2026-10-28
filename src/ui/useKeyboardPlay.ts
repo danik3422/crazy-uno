@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { cardName } from '../game/engine';
+import { cardName } from '../game/rules';
 import type { GameView } from '../game/view';
 import { keySel } from '../three/drag';
 

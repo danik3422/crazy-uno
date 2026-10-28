@@ -2,7 +2,9 @@ export type Color = 'red' | 'yellow' | 'green' | 'blue';
 export type CardColor = Color | 'wild';
 export type CardType =
   | 'num' | 'skip' | 'rev' | 'draw2' | 'wild' | 'wild4'
-  | 'swap' | 'gift' | 'bomb' | 'dare' | 'rain' | 'mirror' | 'chaos' | 'dump';
+  | 'swap' | 'gift' | 'bomb' | 'dare' | 'rain' | 'mirror' | 'chaos' | 'dump'
+  // UNO Show 'Em No Mercy
+  | 'draw4' | 'skipAll' | 'discardAll' | 'wildRev4' | 'wild6' | 'wild10' | 'roulette';
 
 export interface Card {
   id: number;
@@ -27,6 +29,8 @@ export interface Player {
   member?: string;
   /** online only: the player's connection dropped (autopilot may be playing) */
   offline?: boolean;
+  /** No Mercy: knocked out for holding too many cards; the number says in what order (1 = first out) */
+  out?: number;
 }
 
 export interface Rules {
@@ -42,6 +46,11 @@ export interface Rules {
   timer: boolean;
   /** a +4 may be challenged: if it was played while holding the current colour, the player who laid it draws 4 */
   challenge: boolean;
+  /**
+   * UNO Show 'Em No Mercy: its 168-card deck (+6, +10, colour roulette…), penalties stacked only with an
+   * equal or bigger draw card, draw until you can play, and 25 cards knock you out.
+   */
+  noMercy: boolean;
 }
 
 export type EventId =
@@ -61,13 +70,15 @@ export interface Table {
   /** minutes; 0 = no limit */
   roundMin: number;
   events: 'rare' | 'normal' | 'often';
+  /** a person who lets the turn clock run out: on autopilot plays on for them, off (the default) draws a card and loses the turn */
+  autopilot: boolean;
 }
 
 /** Table look picked by the host. Card faces stay the same in every theme, so they are always easy to read. */
 export type ThemeId = 'classic' | 'neon' | 'space' | 'halloween';
 
 export type Choice =
-  | { kind: 'color'; title: string; mode?: 'dump' }
+  | { kind: 'color'; title: string; mode?: 'dump' | 'roulette' }
   | { kind: 'player'; title: string; mode: 'swap' | 'gift' }
   | { kind: 'card'; title: string };
 
@@ -85,7 +96,7 @@ export type Phase = 'handover' | 'dare' | 'group' | 'coin' | 'play' | 'choose' |
 export type FxKind =
   | 'toast' | 'shake' | 'chaos' | 'boom' | 'win' | 'uno' | 'flip'
   | 'event' | 'meteor' | 'spin' | 'lightning' | 'jackpot' | 'upside' | 'carousel' | 'bomber'
-  | 'caught' | 'challenge' | 'timeout';
+  | 'caught' | 'challenge' | 'timeout' | 'knockout';
 export interface Fx {
   id: number;
   kind: FxKind;
@@ -117,6 +128,10 @@ export interface State {
   color: Color;
   pending: number;
   pendingType: 'draw2' | 'wild4' | null;
+  /** No Mercy: the value of the last draw card in the stack; only an equal or bigger one may go on it */
+  pendingLast: number;
+  /** No Mercy: a colour roulette was played; the next player names a colour and draws until it comes up */
+  rouletteNext: boolean;
   drawn: boolean;
   lastDrawn: number | null;
   unoCalled: boolean;
