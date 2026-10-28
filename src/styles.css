@@ -508,14 +508,6 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outl
 .box.sheet .score small { width: 100%; }
 .box.sheet .score div { gap: 10px; padding: 4px 10px; }
 @keyframes sheet-in { from { transform: translateY(110%); } }
-.podium-label { display: flex; flex-direction: column; align-items: center; gap: 2px; transition: opacity 0.3s; white-space: nowrap; }
-.podium-place {
-  font-family: var(--display); font-weight: 900; font-size: 12px; padding: 3px 10px; border-radius: 999px; color: #3a1d00;
-  background: linear-gradient(180deg, #fff09a, #ffc61a); box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
-}
-.podium-label.p2 .podium-place { background: linear-gradient(180deg, #ffffff, #c3c8d2); color: #222; }
-.podium-label.p3 .podium-place { background: linear-gradient(180deg, #ffcf9a, #cd7f32); color: #2a1200; }
-.podium-name { font-family: var(--display); font-weight: 600; font-size: 14px; color: #fff; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7); max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 560px) {
   .box.sheet { padding: 12px 14px; gap: 8px; }
   .box.sheet h2 { font-size: 17px; }
@@ -605,7 +597,11 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outl
 .pc-name.nudge { animation: nope 0.35s 2; }
 .pc-picker { padding: 12px; border-radius: 16px; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--line); animation: fade 0.2s; }
 
-.btn.pc-main { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 19px; padding-block: 17px; width: 100%; }
+.btn.pc-main {
+  display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 19px; padding-block: 17px; width: 100%;
+  /* long labels ("Играть на одном устройстве") wrap onto two balanced lines instead of spilling out */
+  white-space: normal; text-wrap: balance; line-height: 1.15; min-width: 0;
+}
 .pc-main-icon { font-size: 22px; line-height: 1; }
 .pc-join { display: flex; flex-direction: column; gap: 8px; }
 .pc-join .btn { width: 100%; }
@@ -763,7 +759,9 @@ button.pl-ava { cursor: pointer; }
 
 /* game mode: segmented presets + one line; individual rules behind a toggle (shared with the hot-seat setup) */
 .rules-panel { display: flex; flex-direction: column; align-items: stretch; min-width: 0; container-type: inline-size; }
-.modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 16px; background: rgba(0, 0, 0, 0.28); }
+.modes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 16px; background: rgba(0, 0, 0, 0.28); }
+/* four modes do not fit one row on a narrow screen: two by two */
+@media (max-width: 620px) { .modes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .mode {
   display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 8px 10px; border: 0; border-radius: 12px; cursor: pointer;
   background: transparent; color: var(--ink); font-family: var(--display); font-weight: 600; font-size: 14px; text-align: center;
@@ -920,7 +918,7 @@ button.pl-ava { cursor: pointer; }
 .plate-away { bottom: -14px; font-weight: 600; font-size: 10px; letter-spacing: 0.01em; }
 @media (prefers-reduced-motion: reduce) { .swap-in, .plate-name { animation: none; } }
 
-/* ---------- formats: quick round, teams ---------- */
+/* ---------- formats: quick round, teams, autopilot ---------- */
 .table-panel { display: flex; flex-direction: column; gap: 10px; }
 .formats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 @media (max-width: 560px) { .formats { grid-template-columns: minmax(0, 1fr); } }
@@ -971,7 +969,7 @@ button.pl-ava { cursor: pointer; }
 .plate.team.t1 .plate-team { background: var(--blue); }
 
 /* long names: wrap onto a second line instead of being cut with "…" (names are at most 16 characters) */
-.plate-name, .pl-name, .seat-name, .rematch-list .rm-name, .podium-name {
+.plate-name, .pl-name, .seat-name, .rematch-list .rm-name {
   white-space: normal; overflow: hidden; text-overflow: clip; overflow-wrap: break-word; line-height: 1.15;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
 }
@@ -1090,6 +1088,8 @@ button.pl-ava { cursor: pointer; }
 .oplate-away { font-size: 10.5px; font-weight: 600; color: #ffd2cc; }
 .oplate.cur { border-color: var(--gold); transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3), 0 0 0 3px rgba(255, 216, 74, 0.18), 0 0 28px rgba(255, 196, 60, 0.35); }
 .oplate.cur .plate-name { color: var(--gold); }
+/* No Mercy: knocked out of the round */
+.oplate.out { opacity: 0.55; filter: grayscale(0.85); }
 .oplate.off { opacity: 0.85; }
 .oplate.off .oplate-ava { filter: grayscale(0.6); }
 .oplate.win { border-color: #7dff8a; }
@@ -1249,6 +1249,8 @@ button.pl-ava { cursor: pointer; }
 .ref-panel[open] > summary { margin-bottom: 4px; }
 .ref-sub { font-family: var(--display); font-size: 15px; margin: 8px 0 0; color: var(--gold); }
 .formats { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+/* an odd tile out takes the whole last row */
+.formats > .format:last-child:nth-child(odd) { grid-column: 1 / -1; }
 
 @media (max-width: 760px) {
   .setup-page { gap: 14px; padding-block: 12px 32px; }

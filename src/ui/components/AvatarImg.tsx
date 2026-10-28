@@ -1,4 +1,4 @@
-import { HUMAN_AVATARS, avatarOf, robotDataUrl, type Avatar } from '../game/avatars';
+import { type Avatar, avatarOf, HUMAN_AVATARS, robotDataUrl } from '../../game/avatars';
 
 interface Props {
   id?: string;

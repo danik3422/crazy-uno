@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
-import { PRESETS, RULES, RULE_GROUPS, presetOf } from '../game/content';
-import type { Rules } from '../game/types';
+import { presetOf, PRESETS, RULE_GROUPS, RULES } from '../../game/content';
+import type { Rules } from '../../game/types';
 import { ModeIcon } from './ModeIcon';
 
 interface Props {

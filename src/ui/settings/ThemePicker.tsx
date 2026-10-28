@@ -1,6 +1,6 @@
-import { THEMES_LIST } from '../game/content';
-import type { ThemeId } from '../game/types';
-import { cardImage } from '../three/textures';
+import { THEMES_LIST } from '../../game/content';
+import type { ThemeId } from '../../game/types';
+import { cardImage } from '../../three/textures';
 
 interface Props {
   value: ThemeId;

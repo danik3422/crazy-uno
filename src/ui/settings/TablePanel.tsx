@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
-import { QUICK, TABLE_CHOICES, effectiveTable, teamsProblem } from '../game/content';
-import type { Table } from '../game/types';
+import { effectiveTable, QUICK, TABLE_CHOICES, teamsProblem } from '../../game/content';
+import type { Table } from '../../game/types';
 import { ModeIcon } from './ModeIcon';
 
 interface Props {
@@ -15,14 +15,14 @@ const EVENT_NAMES = { rare: 'Редко', normal: 'Обычно', often: 'Час
 
 const ROWS: { key: keyof typeof TABLE_CHOICES; label: string; hint: string; fmt: (v: never) => string; quick?: boolean }[] = [
   { key: 'handSize', label: 'Карт на старте', hint: 'сколько раздают каждому', fmt: (v: number) => `${v}`, quick: true },
-  { key: 'turnSec', label: 'Время на ход', hint: 'потом ходит автопилот', fmt: (v: number) => `${v} с`, quick: true },
+  { key: 'turnSec', label: 'Время на ход', hint: 'не успел — тянешь карту', fmt: (v: number) => `${v} с`, quick: true },
   { key: 'roundMin', label: 'Лимит раунда', hint: 'по сигналу побеждает тот, у кого меньше карт', fmt: (v: number) => (v ? `${v} мин` : 'Нет'), quick: true },
   { key: 'bombSec', label: 'Таймер бомбы', hint: 'на ход после карты «Бомба»', fmt: (v: number) => `${v} с` },
   { key: 'unoPenalty', label: 'Штраф за UNO', hint: 'если поймали без «UNO!»', fmt: (v: number) => `+${v}` },
   { key: 'events', label: 'Безумные события', hint: 'как часто что-то случается', fmt: (v: keyof typeof EVENT_NAMES) => EVENT_NAMES[v] },
 ];
 
-/** Format switches (quick round, 2 on 2) and the table's numbers, in the same calm style as the rules. */
+/** Format switches (quick round, 2 on 2, autopilot) and the table's numbers, in the same calm style as the rules. */
 export function TablePanel({ table, players, onChange }: Props) {
   const ro = !onChange;
   const eff = effectiveTable(table);
@@ -51,6 +51,15 @@ export function TablePanel({ table, players, onChange }: Props) {
         ro={ro}
         onToggle={v => set({ teams: v })}
       />
+      <FormatSwitch
+        id="fmt-autopilot"
+        icon="autopilot"
+        title="Автопилот"
+        desc={table.autopilot ? 'Не успел — за тебя ходит бот' : 'Выкл.: не успел — берёшь карту'}
+        on={table.autopilot}
+        ro={ro}
+        onToggle={v => set({ autopilot: v })}
+      />
     </div>
   );
 
@@ -58,6 +67,7 @@ export function TablePanel({ table, players, onChange }: Props) {
     const chips = [
       table.quick && '⚡ Быстрый раунд',
       table.teams && '👥 2 на 2',
+      table.autopilot && '🤖 Автопилот',
       `${eff.handSize} карт`,
       `${eff.turnSec} с на ход`,
       eff.roundMin ? `раунд ${eff.roundMin} мин` : null,
@@ -81,13 +91,14 @@ export function TablePanel({ table, players, onChange }: Props) {
       {open && (
         <div className="rule-list" id={id}>
           {ROWS.map(r => {
+            const hint = r.key === 'turnSec' && table.autopilot ? 'потом ходит автопилот' : r.hint;
             const locked = r.quick && table.quick;
             const cur = (locked ? eff : table)[r.key];
             return (
               <div key={r.key} className={`rule-row num-row ${locked ? 'locked' : ''}`}>
                 <span className="rule-text">
                   <b>{r.label}</b>
-                  <small>{locked ? 'задано быстрым раундом' : r.hint}</small>
+                  <small>{locked ? 'задано быстрым раундом' : hint}</small>
                 </span>
                 <span className="seg" role="radiogroup" aria-label={r.label}>
                   {(TABLE_CHOICES[r.key] as readonly (string | number)[]).map(v => (

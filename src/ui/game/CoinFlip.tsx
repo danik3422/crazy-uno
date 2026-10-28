@@ -1,5 +1,5 @@
-import type React from 'react';
 import { useEffect, useState } from 'react';
+import type React from 'react';
 import { CoinHeads, CoinTails } from './CoinFaces';
 
 type Side = 'heads' | 'tails';

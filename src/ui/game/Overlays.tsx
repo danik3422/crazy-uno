@@ -1,30 +1,13 @@
-import type { ReactNode } from 'react';
-import { useEffect, useState } from 'react';
-import { CNAME, COLORS, HEX, TEAM_NAMES } from '../game/content';
-import type { GameView } from '../game/view';
+import { type ReactNode, useEffect, useState } from 'react';
+import { CNAME, COLORS, HEX, TEAM_NAMES } from '../../game/content';
+import type { GameView } from '../../game/view';
+import { IconCards, IconMenu } from '../components/Icons';
+import { Legend } from '../components/Legend';
+import { FullscreenButton } from '../components/RotateGate';
+import { SoundMenu } from '../components/SoundMenu';
 import { CoinFlip } from './CoinFlip';
-import { Legend } from './Legend';
 import { RematchVote } from './RematchVote';
-import type { MemberInfo, Rematch } from '../net/protocol';
-import { IconCards, IconMenu } from './Icons';
-import { FullscreenButton } from './RotateGate';
-import { SoundMenu } from './SoundMenu';
-
-/** Extra context when the game is an online room. */
-export interface OnlineCtx {
-  code: string;
-  isHost: boolean;
-  /** this player is only watching this round */
-  spectator: boolean;
-  /** host: back to the room lobby */
-  onLobby: () => void;
-  me: string;
-  members: MemberInfo[];
-  rematch: Rematch | null;
-  roomAt: number;
-  onVote: (ready: boolean) => void;
-  onForce: () => void;
-}
+import type { OnlineCtx } from './onlineCtx';
 
 interface Props {
   game: GameView;
@@ -136,7 +119,7 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
         <h2>{s.choice.title}</h2>
         <div className="plist">
           {s.players.map((o, i) =>
-            i === s.cur ? null : (
+            i === s.cur || o.out ? null : (
               <button key={i} onClick={() => game.resolveChoice(i)}>
                 <span>{o.bot ? '🤖 ' : ''}{o.name}</span>
                 <span>{o.hand.length} карт</span>
@@ -215,7 +198,7 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
       {help && (
         <Modal onClose={() => setHelp(false)}>
           <h2>Что за карты</h2>
-          <Legend />
+          <Legend rules={s.rules} />
           <button className="btn big" onClick={() => setHelp(false)}>Понятно</button>
         </Modal>
       )}

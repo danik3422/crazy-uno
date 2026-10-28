@@ -1,0 +1,53 @@
+import type { State } from '../../game/types';
+import type { Warmup } from '../../net/protocol';
+import { AvatarImg } from '../components/AvatarImg';
+import { CardLoader } from '../components/CardLoader';
+
+interface Props {
+  s: State;
+  /** fading out: the shuffle has started */
+  leaving: boolean;
+  /** online only: who is still loading */
+  warmup: Warmup | null;
+  /** online only: who still holds their phone upright */
+  turning: number[];
+  /** host only: offer to deal without the phones that stay upright */
+  onDealNow?: () => void;
+}
+
+/** "Раскладываем стол": covers the table while it loads, and online shows who everybody is waiting for. */
+export function LoadingCurtain({ s, leaving, warmup, turning, onDealNow }: Props) {
+  const sub = turning.length
+    ? 'Ждём, пока все повернут телефоны горизонтально'
+    : warmup && warmup.waiting.length
+      ? 'Ждём, пока у всех загрузится игра'
+      : 'Ещё секунду…';
+  return (
+    <div className={`loading-screen ${leaving ? 'leaving' : ''}`}>
+      <CardLoader theme={s.theme} title="Раскладываем стол" sub={sub}>
+        {warmup && (
+          <ul className="ready-list">
+            {s.players.map((p, i) => {
+              const loading = warmup.waiting.includes(i);
+              const upright = turning.includes(i);
+              return (
+                <li key={i} className={loading ? '' : upright ? 'turn' : 'ok'}>
+                  <AvatarImg id={p.avatar} name={p.name} bot={p.bot} size={28} />
+                  {p.name}
+                  <span className="st">
+                    {loading ? <span className="dot-pulse" /> : upright ? <span className="turn-ic" title="Поворачивает телефон">📱</span> : '✓'}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {onDealNow && (
+          <button type="button" className="btn deal-now" onClick={onDealNow}>
+            Начать без них
+          </button>
+        )}
+      </CardLoader>
+    </div>
+  );
+}

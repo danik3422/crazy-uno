@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { cardName } from '../game/rules';
-import type { GameView } from '../game/view';
-import { keySel } from '../three/drag';
+import { cardName } from '../../game/rules';
+import type { GameView } from '../../game/view';
+import { keySel } from '../../three/drag';
 
 /**
  * Play without a mouse: ← → pick a card, Enter or Space plays it, D draws, U calls UNO, P passes,

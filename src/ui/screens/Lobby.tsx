@@ -1,17 +1,16 @@
 import qrcode from 'qrcode-generator';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { THEMES_LIST } from '../game/content';
-import type { Connection } from '../net/connection';
-import { MAX_PLAYERS, type MemberInfo, type RoomInfo } from '../net/protocol';
-import { AvatarImg, AvatarPicker } from './AvatarImg';
-import { FitLetter } from './FitLetter';
-import { TEAM_NAMES, teamsProblem } from '../game/content';
-import { RulesPanel } from './RulesPanel';
-import { TablePanel } from './TablePanel';
-import { ThemePicker } from './ThemePicker';
-import { enterFullscreen } from './phone';
-import { SwipeBack } from './SwipeBack';
-import { PhoneTip } from './RotateGate';
+import { TEAM_NAMES, teamsProblem, THEMES_LIST } from '../../game/content';
+import type { Connection } from '../../net/connection';
+import { MAX_PLAYERS, type MemberInfo, type RoomInfo } from '../../net/protocol';
+import { AvatarImg, AvatarPicker } from '../components/AvatarImg';
+import { FitLetter } from '../components/FitLetter';
+import { PhoneTip } from '../components/RotateGate';
+import { SwipeBack } from '../components/SwipeBack';
+import { enterFullscreen } from '../hooks/phone';
+import { RulesPanel } from '../settings/RulesPanel';
+import { TablePanel } from '../settings/TablePanel';
+import { ThemePicker } from '../settings/ThemePicker';
 
 interface Props {
   conn: Connection;

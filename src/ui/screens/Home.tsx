@@ -1,9 +1,9 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { CODE_LEN, normalizeCode } from '../net/protocol';
-import { AvatarImg, AvatarPicker } from './AvatarImg';
-import { FitLetter } from './FitLetter';
+import { CODE_LEN, normalizeCode } from '../../net/protocol';
+import { AvatarImg, AvatarPicker } from '../components/AvatarImg';
+import { FitLetter } from '../components/FitLetter';
 
-const MascotStage = lazy(() => import('./MascotStage'));
+const MascotStage = lazy(() => import('../components/MascotStage'));
 
 interface Props {
   /** null while we check whether a game server is reachable */

@@ -29,6 +29,21 @@ export function ModeIcon({ id, size = 32 }: { id: string; size?: number }) {
           <MiniCard x={16} y={15} r={0} fill={R} />
         </>
       )}
+      {id === 'nomercy' && (
+        <>
+          {/* a black wild card behind a red one, set on fire: no mercy */}
+          <MiniCard x={11} y={19} r={-14} fill="#19191d" />
+          <MiniCard x={19} y={18} r={10} fill={R} />
+          <path
+            d="M24.5 3.5 C26.8 6.6 29 8.6 28.4 12 C28 14.6 25.8 16 23.6 15.8 C21.2 15.6 19.8 13.6 20.2 11.4 C20.5 9.8 21.6 9 21.9 7.6 C22.9 9.2 23.6 9.8 24.2 9.2 C25 8.2 24.4 5.8 24.5 3.5 Z"
+            fill="#ff7a1a"
+            stroke={INK}
+            strokeWidth="0.8"
+            strokeLinejoin="round"
+          />
+          <path d="M24 9.6 C25.4 11.2 26.2 12.4 25.6 13.8 C25.1 14.8 23.6 15 22.8 14.2 C22 13.4 22.4 12.2 23 11.6 C23.3 12.3 23.8 12.4 24 12 C24.3 11.3 24 10.4 24 9.6 Z" fill={Y} />
+        </>
+      )}
       {id === 'party' && (
         <>
           {/* a card with confetti flying off it */}
@@ -69,6 +84,20 @@ export function ModeIcon({ id, size = 32 }: { id: string; size?: number }) {
           <MiniCard x={11} y={17} r={-14} fill={R} />
           <MiniCard x={21} y={17} r={14} fill={B} />
           <path d="M16 9.5 C16 7.6 13.4 7 12.6 8.8 C11.8 7 9.2 7.6 9.2 9.5 C9.2 11.6 12.6 13.8 12.6 13.8 C12.6 13.8 16 11.6 16 9.5 Z" transform="translate(3.4 -4.2)" fill="#ffd04a" stroke={INK} strokeWidth="0.8" />
+        </>
+      )}
+      {id === 'autopilot' && (
+        <>
+          {/* a little robot holding a card: it plays your turn for you */}
+          <path d="M12 5.5 V8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <circle cx="12" cy="4.6" r="1.6" fill={Y} stroke={EDGE} strokeWidth="1" />
+          <rect x="4.5" y="8" width="15" height="12" rx="3.6" fill={B} stroke={EDGE} strokeWidth="1.6" />
+          <circle cx="9" cy="13.4" r="1.9" fill={EDGE} />
+          <circle cx="15" cy="13.4" r="1.9" fill={EDGE} />
+          <circle cx="9" cy="13.6" r="0.9" fill={INK} />
+          <circle cx="15" cy="13.6" r="0.9" fill={INK} />
+          <path d="M9.4 17.2 h5.2" stroke={EDGE} strokeWidth="1.4" strokeLinecap="round" />
+          <MiniCard x={24} y={21} r={14} fill={R} />
         </>
       )}
       {id === 'custom' && (

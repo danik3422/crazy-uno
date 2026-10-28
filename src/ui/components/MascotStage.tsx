@@ -1,10 +1,10 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import type { Card } from '../game/types';
-import { Mascot } from '../three/Mascot';
-import { useGlRecovery } from '../three/useGlRecovery';
-import { cardTexture } from '../three/textures';
+import type { Card } from '../../game/types';
+import { Mascot } from '../../three/Mascot';
+import { useGlRecovery } from '../../three/useGlRecovery';
+import { cardTexture } from '../../three/textures';
 
 const HERO: Card[] = [
   { id: 1, color: 'red', type: 'num', value: 7 },

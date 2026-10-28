@@ -1,28 +1,27 @@
-import type { Config } from '../App';
-import { BOT_AVATARS, HUMAN_AVATARS, avatarOf } from '../game/avatars';
-import { BOTNAMES, EVENTS } from '../game/content';
-import { AvatarImg } from './AvatarImg';
-import { Hero } from './Hero';
-import { DEFAULT_TABLE, teamsProblem } from '../game/content';
-import { RulesPanel } from './RulesPanel';
-import { TablePanel } from './TablePanel';
-import { ThemePicker } from './ThemePicker';
-import { Legend } from './Legend';
-import { SMALL_SCREEN, enterFullscreen, useMedia } from './phone';
-import { SwipeBack } from './SwipeBack';
 import { useEffect } from 'react';
-import { PhoneTip } from './RotateGate';
+import { avatarOf, BOT_AVATARS, HUMAN_AVATARS } from '../../game/avatars';
+import { BOTNAMES, DEFAULT_TABLE, EVENTS, teamsProblem } from '../../game/content';
+import type { LocalSetup } from '../../game/engine';
+import { AvatarImg } from '../components/AvatarImg';
+import { Hero } from '../components/Hero';
+import { Legend } from '../components/Legend';
+import { PhoneTip } from '../components/RotateGate';
+import { SwipeBack } from '../components/SwipeBack';
+import { enterFullscreen, SMALL_SCREEN, useMedia } from '../hooks/phone';
+import { RulesPanel } from '../settings/RulesPanel';
+import { TablePanel } from '../settings/TablePanel';
+import { ThemePicker } from '../settings/ThemePicker';
 
 interface Props {
-  cfg: Config;
-  setCfg: (f: (c: Config) => Config) => void;
+  cfg: LocalSetup;
+  setCfg: (f: (c: LocalSetup) => LocalSetup) => void;
   onStart: () => void;
   onBack: () => void;
 }
 
 export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
   const players = cfg.players;
-  const update = (i: number, patch: Partial<Config['players'][number]>) =>
+  const update = (i: number, patch: Partial<LocalSetup['players'][number]>) =>
     setCfg(c => ({ ...c, players: c.players.map((p, k) => (k === i ? { ...p, ...patch } : p)) }));
   const freeBot = () => BOTNAMES.find(n => !players.some(p => p.name === n)) ?? `Бот №${players.length + 1}`;
   const humans = players.filter(p => !p.bot).length;
@@ -125,7 +124,7 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
           <span className="ref-count">17 карт · 13 событий</span>
           <svg className="chev" viewBox="0 0 24 24" width="18" height="18" aria-hidden><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </summary>
-        <Legend />
+        <Legend rules={cfg.rules} />
         <h3 className="ref-sub">Безумные события</h3>
         <small className="muted">Случаются сами, в случайный момент, примерно раз в 4–13 ходов.</small>
         <div className="legend">

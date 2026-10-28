@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { MemberInfo, Rematch } from '../net/protocol';
-import { AvatarImg } from './AvatarImg';
+import type { MemberInfo, Rematch } from '../../net/protocol';
+import { AvatarImg } from '../components/AvatarImg';
 
 interface Props {
   me: string;

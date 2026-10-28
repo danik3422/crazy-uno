@@ -1,10 +1,9 @@
-import { CNAME, HEX } from '../game/content';
-import type { GameView } from '../game/view';
-import { standIn } from '../game/avatars';
-import { TEAM_NAMES } from '../game/content';
-import { AvatarImg } from './AvatarImg';
+import { standIn } from '../../game/avatars';
+import { CNAME, HEX, TEAM_NAMES } from '../../game/content';
+import type { GameView } from '../../game/view';
+import { AvatarImg } from '../components/AvatarImg';
 import { TurnRing } from './TurnRing';
-import type { OnlineCtx } from './Overlays';
+import type { OnlineCtx } from './onlineCtx';
 
 export interface Toast {
   id: number;
@@ -38,8 +37,10 @@ export function Hud({ game, toasts, bombLeft, online, locked, roundLeft }: Props
   else if (s.phase === 'over') hint = '';
   else if (myTurn && s.phase === 'choose' && s.choice?.kind === 'card') hint = '🎁 Нажми на карту, которую подаришь';
   else if (playing && s.blindTurns > 0) hint = '🕶️ Вслепую! Светятся карты, которыми можно сходить';
+  else if (seatP.out) hint = 'Ты выбыл(а): 25 карт. Смотри, кто победит';
+  else if (playing && s.pending > 0 && s.rules.noMercy) hint = anyPlay ? `Перебей картой не меньше +${s.pendingLast} или возьми +${s.pending}` : `Перебить нечем. Бери +${s.pending}`;
   else if (playing && s.pending > 0) hint = anyPlay ? `Отбейся или возьми +${s.pending}` : `Отбиться нечем. Бери +${s.pending}`;
-  else if (playing && s.drawn) hint = 'Можно сыграть вытянутую карту или спасовать';
+  else if (playing && s.drawn) hint = s.rules.noMercy ? 'Вытянул подходящую карту: ходи ей' : 'Можно сыграть вытянутую карту или спасовать';
   else if (playing) hint = anyPlay ? 'Твой ход: перетащи карту в центр или нажми на неё' : 'Нечем ходить, тяни из колоды';
   else if (online?.spectator) hint = `Ты зритель, сыграешь со следующего раунда. Ходит ${cur.name}`;
   else if (s.phase === 'dare') hint = `🎭 ${cur.name} выполняет фант: «${s.dare}»`;
@@ -113,7 +114,7 @@ export function Hud({ game, toasts, bombLeft, online, locked, roundLeft }: Props
               {s.unoCalled ? 'UNO! ✓' : 'Крикнуть UNO!'}
             </button>
           )}
-          {playing && s.drawn && s.pending === 0 && anyPlay && (
+          {playing && s.drawn && s.pending === 0 && anyPlay && !s.rules.noMercy && (
             <button className="btn act" onClick={() => game.pass()}>
               <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden><path d="M5 12h12M13 7l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
               Пас
