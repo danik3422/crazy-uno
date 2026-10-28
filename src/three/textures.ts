@@ -234,7 +234,7 @@ export function drawCard(ctx: CanvasRenderingContext2D, card: Card | null, theme
 
   const sym = card.type === 'num' ? String(card.value) : SPECIAL[card.type].sym;
   const emoji = isEmoji(sym);
-  const tag = card.type !== 'num' && !['skip', 'rev', 'draw2', 'wild4'].includes(card.type);
+  const tag = card.type !== 'num' && !['skip', 'rev', 'draw2', 'wild4', 'draw4', 'wild6', 'wild10'].includes(card.type);
   const ink = shade(wild ? HEX.black : col, -0.45);
 
   // big centre symbol: a dark extruded shadow, a crisp outline, the colour on top
@@ -254,7 +254,7 @@ export function drawCard(ctx: CanvasRenderingContext2D, card: Card | null, theme
     ctx.shadowOffsetY = 4;
     drawEmoji(ctx, sym, 0, 0, 106);
   } else {
-    ctx.font = `900 ${sym.length > 1 ? 92 : 128}px ${DISPLAY}`;
+    ctx.font = `900 ${sym.length > 2 ? 70 : sym.length > 1 ? 92 : 128}px ${DISPLAY}`;
     ctx.fillStyle = ink;
     ctx.fillText(sym, 5, 7);
     ctx.lineWidth = wild ? 14 : 9;
@@ -273,7 +273,7 @@ export function drawCard(ctx: CanvasRenderingContext2D, card: Card | null, theme
     if (ARROW_ICONS.includes(card.type)) drawArrowIcon(ctx, card.type as ArrowIcon, 19, { fill: EDGE, rim: ink, rimWidth: 3.5 });
     else if (emoji) drawEmoji(ctx, sym, 0, 0, 34);
     else {
-      ctx.font = `900 ${sym.length > 1 ? 30 : 40}px ${DISPLAY}`;
+      ctx.font = `900 ${sym.length > 2 ? 24 : sym.length > 1 ? 30 : 40}px ${DISPLAY}`;
       ctx.lineWidth = 6;
       ctx.strokeStyle = ink;
       ctx.strokeText(sym, 0, 0);

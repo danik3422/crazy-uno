@@ -108,6 +108,7 @@ export function Lightning({ game, view }: FxProps) {
     group.current.visible = on;
     seatWorld(game, fxState.lightning.target, view, target);
     group.current.position.set(target.x, 0, target.z);
+    light.current.position.set(target.x, 1.5, target.z);
     const flicker = on && Math.sin(t * 70) > -0.3 ? 1 : 0.2;
     coreMat.current.opacity = flicker;
     glowMat.current.opacity = 0.35 * flicker;
@@ -115,15 +116,18 @@ export function Lightning({ game, view }: FxProps) {
   });
 
   return (
-    <group ref={group}>
-      <mesh geometry={geo.core}>
-        <meshBasicMaterial ref={coreMat} color="#ffffff" transparent toneMapped={false} />
-      </mesh>
-      <mesh geometry={geo.glow}>
-        <meshBasicMaterial ref={glowMat} color="#8fc8ff" transparent toneMapped={false} depthWrite={false} />
-      </mesh>
-      <pointLight ref={light} position={[0, 1.5, 0]} color="#bfe0ff" distance={12} />
-    </group>
+    <>
+      <group ref={group}>
+        <mesh geometry={geo.core}>
+          <meshBasicMaterial ref={coreMat} color="#ffffff" transparent toneMapped={false} />
+        </mesh>
+        <mesh geometry={geo.glow}>
+          <meshBasicMaterial ref={glowMat} color="#8fc8ff" transparent toneMapped={false} depthWrite={false} />
+        </mesh>
+      </group>
+      {/* outside the group that hides: the number of lights must never change (see Bomb in Scene.tsx) */}
+      <pointLight ref={light} color="#bfe0ff" distance={12} intensity={0} />
+    </>
   );
 }
 

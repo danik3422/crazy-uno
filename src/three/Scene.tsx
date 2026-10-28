@@ -78,17 +78,23 @@ export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dea
       {top && <PlayFx top={top} at={A.discard} />}
       <StackFx pending={s.pending} top={top} at={A.discard} />
       <DropZone at={A.discard} radius={portrait ? 2.2 : 2.6} />
-      {s.bombDeadline !== null && s.timerKind === 'bomb' && <Bomb deadline={s.bombDeadline} offset={game.clockOffset} />}
+      <Bomb deadline={s.timerKind === 'bomb' ? s.bombDeadline : null} offset={game.clockOffset} />
       <Explosion />
       <Meteor game={game} view={view} />
       <Lightning game={game} view={view} />
       <GoldBurst game={game} view={view} />
       <BombDrop />
       <Mascot scale={portrait ? 0.6 : 0.72} portrait={portrait} />
-      {s.phase === 'over' && <Confetti />}
-      {s.phase === 'over' && s.winner !== null && (
-        <Podium players={s.players} winner={s.winner} teams={s.teams} at={A.discard} scale={portrait ? 0.8 : 1} />
-      )}
+      {/* mounted all round (hidden) so their shaders are ready: the finale must not stall */}
+      <Confetti active={s.phase === 'over'} />
+      <Podium
+        active={s.phase === 'over' && s.winner !== null}
+        players={s.players}
+        winner={s.winner}
+        teams={s.teams}
+        at={A.discard}
+        scale={portrait ? 0.8 : 1}
+      />
     </>
   );
 }
@@ -325,7 +331,7 @@ function PlayerPlates({ game, view, dealing }: { game: GameView; view: View; dea
         const sub = standIn(p.name);
         return (
           <Html key={i} position={pos} center zIndexRange={[20, 0]} pointerEvents="none">
-            <div className={`oplate ${cur ? 'cur' : ''} ${i === s.winner ? 'win' : ''} ${p.offline ? 'off' : ''} ${s.teams ? `team t${s.teams[i]}` : ''} ${view.portrait || view.compact ? 'small' : ''} ${(view.portrait && s.players.length > 3) || (view.compact && s.players.length > 5) ? 'tiny' : ''}`} title={p.name}>
+            <div className={`oplate ${cur ? 'cur' : ''} ${i === s.winner ? 'win' : ''} ${p.offline ? 'off' : ''} ${p.out ? 'out' : ''} ${s.teams ? `team t${s.teams[i]}` : ''} ${view.portrait || view.compact ? 'small' : ''} ${(view.portrait && s.players.length > 3) || (view.compact && s.players.length > 5) ? 'tiny' : ''}`} title={p.name}>
               {s.teams && (
                 <span className="oplate-team">{s.teams[i] === s.teams[game.seat()] ? '🤝 напарник' : TEAM_NAMES[s.teams[i]]}</span>
               )}
@@ -338,7 +344,9 @@ function PlayerPlates({ game, view, dealing }: { game: GameView; view: View; dea
               </span>
               <span className="oplate-info">
                 <span className="plate-name" key={p.offline ? 'bot' : 'me'}>{p.offline ? sub.name : p.name}</span>
-                {p.offline ? (
+                {p.out ? (
+                  <span className="oplate-away">💀 выбыл(а)</span>
+                ) : p.offline ? (
                   <span className="oplate-away">за {p.name} · нет связи</span>
                 ) : (
                   <span className="oplate-count" aria-label={`${p.hand.length} карт`}><IconStack />{p.hand.length}</span>
@@ -353,11 +361,22 @@ function PlayerPlates({ game, view, dealing }: { game: GameView; view: View; dea
   );
 }
 
-function Bomb({ deadline, offset }: { deadline: number; offset: number }) {
+/**
+ * The ticking bomb over the table while a bomb countdown runs (`deadline`, server ms; null: no bomb).
+ * Always mounted with its light, which only dims to 0: adding or removing a light makes three.js
+ * recompile every lit material on screen, a visible stall.
+ */
+function Bomb({ deadline, offset }: { deadline: number | null; offset: number }) {
   const g = useRef<THREE.Group>(null!);
+  const body = useRef<THREE.Group>(null!);
   const spark = useRef<THREE.Mesh>(null!);
   const light = useRef<THREE.PointLight>(null!);
   useFrame(st => {
+    body.current.visible = deadline !== null;
+    if (deadline === null) {
+      light.current.intensity = 0;
+      return;
+    }
     const t = st.clock.elapsedTime;
     const left = Math.max(0, (deadline - Date.now() - offset) / 1000);
     const panic = left < 3 ? 3 : 1;
@@ -369,23 +388,25 @@ function Bomb({ deadline, offset }: { deadline: number; offset: number }) {
   });
   return (
     <group ref={g} position={[0, 1.4, 2.2]}>
-      <mesh castShadow>
-        <sphereGeometry args={[0.42, 32, 24]} />
-        <meshStandardMaterial color="#1b1b20" roughness={0.3} metalness={0.4} />
-      </mesh>
-      <mesh position={[0.22, 0.36, 0]} rotation-z={-0.6}>
-        <cylinderGeometry args={[0.1, 0.12, 0.16, 16]} />
-        <meshStandardMaterial color="#555" metalness={0.6} roughness={0.3} />
-      </mesh>
-      <mesh position={[0.36, 0.52, 0]} rotation-z={-0.8}>
-        <cylinderGeometry args={[0.025, 0.025, 0.28, 8]} />
-        <meshStandardMaterial color="#c9a46a" />
-      </mesh>
-      <mesh ref={spark} position={[0.47, 0.63, 0]}>
-        <sphereGeometry args={[0.07, 12, 8]} />
-        <meshBasicMaterial color="#ffcf4a" toneMapped={false} />
-      </mesh>
-      <pointLight ref={light} position={[0.47, 0.63, 0.1]} color="#ff9a3c" distance={4} />
+      <group ref={body} visible={false}>
+        <mesh castShadow>
+          <sphereGeometry args={[0.42, 32, 24]} />
+          <meshStandardMaterial color="#1b1b20" roughness={0.3} metalness={0.4} />
+        </mesh>
+        <mesh position={[0.22, 0.36, 0]} rotation-z={-0.6}>
+          <cylinderGeometry args={[0.1, 0.12, 0.16, 16]} />
+          <meshStandardMaterial color="#555" metalness={0.6} roughness={0.3} />
+        </mesh>
+        <mesh position={[0.36, 0.52, 0]} rotation-z={-0.8}>
+          <cylinderGeometry args={[0.025, 0.025, 0.28, 8]} />
+          <meshStandardMaterial color="#c9a46a" />
+        </mesh>
+        <mesh ref={spark} position={[0.47, 0.63, 0]}>
+          <sphereGeometry args={[0.07, 12, 8]} />
+          <meshBasicMaterial color="#ffcf4a" toneMapped={false} />
+        </mesh>
+      </group>
+      <pointLight ref={light} position={[0.47, 0.63, 0.1]} color="#ff9a3c" distance={4} intensity={0} />
     </group>
   );
 }
@@ -415,20 +436,22 @@ function Explosion() {
   );
 }
 
-function Confetti() {
+/** Confetti raining over the finale. Always mounted (hidden and idle until `active`), restarts each time it turns on. */
+function Confetti({ active }: { active: boolean }) {
   const N = 320;
   const ref = useRef<THREE.InstancedMesh>(null!);
   const parts = useMemo(
     () =>
       Array.from({ length: N }, () => ({
-        p: new THREE.Vector3((Math.random() - 0.5) * 12, 6 + Math.random() * 8, (Math.random() - 0.5) * 8),
-        v: 1.2 + Math.random() * 1.8,
-        r: new THREE.Euler(Math.random() * 6, Math.random() * 6, Math.random() * 6),
-        w: (Math.random() - 0.5) * 8,
+        p: new THREE.Vector3(),
+        v: 0,
+        r: new THREE.Euler(),
+        w: 0,
       })),
     [],
   );
   const dummy = useMemo(() => new THREE.Object3D(), []);
+  const wasActive = useRef(false);
   useLayoutEffect(() => {
     const cols = ['#e5413a', '#f2bf16', '#26a556', '#2c79dc', '#ffd04a', '#fffdf6'];
     const c = new THREE.Color();
@@ -436,6 +459,19 @@ function Confetti() {
     ref.current.instanceColor!.needsUpdate = true;
   }, []);
   useFrame((_, dt) => {
+    const mesh = ref.current;
+    if (active && !wasActive.current) {
+      // a fresh shower from above the table
+      for (const q of parts) {
+        q.p.set((Math.random() - 0.5) * 12, 6 + Math.random() * 8, (Math.random() - 0.5) * 8);
+        q.v = 1.2 + Math.random() * 1.8;
+        q.r.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+        q.w = (Math.random() - 0.5) * 8;
+      }
+    }
+    wasActive.current = active;
+    mesh.visible = active;
+    if (!active) return;
     parts.forEach((q, i) => {
       q.p.y -= q.v * dt;
       q.p.x += Math.sin(q.p.y + i) * dt * 0.4;
@@ -447,12 +483,12 @@ function Confetti() {
       dummy.position.copy(q.p);
       dummy.rotation.copy(q.r);
       dummy.updateMatrix();
-      ref.current.setMatrixAt(i, dummy.matrix);
+      mesh.setMatrixAt(i, dummy.matrix);
     });
-    ref.current.instanceMatrix.needsUpdate = true;
+    mesh.instanceMatrix.needsUpdate = true;
   });
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, N]}>
+    <instancedMesh ref={ref} args={[undefined, undefined, N]} visible={false} frustumCulled={false}>
       <planeGeometry args={[0.12, 0.2]} />
       <meshBasicMaterial side={THREE.DoubleSide} toneMapped={false} />
     </instancedMesh>
@@ -488,16 +524,26 @@ function ReadySignal({ onReady }: { onReady?: () => void }) {
   useFrame(({ gl, scene, camera }) => {
     if (frames.current === 1) {
       // compile every shader now, under the loading curtain: effects that show up for the first time
-      // mid-game (pile flash, meteor, lightning, the plane…) would otherwise freeze a frame or two
+      // mid-game (pile flash, meteor, lightning, the plane, the podium…) would otherwise freeze a frame or two.
+      // Compiling alone is not enough: drivers finish linking a shader on its first draw, so everything
+      // hidden is also drawn once here (nobody sees this frame, the curtain covers it).
       const hidden: THREE.Object3D[] = [];
+      const culled: THREE.Object3D[] = [];
       scene.traverse(o => {
         if (!o.visible) {
           hidden.push(o);
           o.visible = true;
         }
+        // things off camera right now (the meteor up in the sky, the plane far away) get drawn too
+        if (o.frustumCulled) {
+          culled.push(o);
+          o.frustumCulled = false;
+        }
       });
       gl.compile(scene, camera);
+      gl.render(scene, camera);
       hidden.forEach(o => (o.visible = false));
+      culled.forEach(o => (o.frustumCulled = true));
     }
     if (done.current) return;
     // ready once the first heavy frames (shader compiles, texture uploads) are behind us and frames come
