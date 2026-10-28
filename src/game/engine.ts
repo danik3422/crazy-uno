@@ -847,8 +847,7 @@ export class Game extends Observable {
     const e = s.effect!;
     const card = e.card;
     const p = this.cp();
-    // players still in the game (No Mercy knocks some out): with two left, a reverse works like a skip
-    const n = activeSeats(s).length;
+    const n = s.players.length;
     const nextName = s.players[this.nextIdx()].name;
     switch (card.type) {
       case 'num':
@@ -878,8 +877,9 @@ export class Game extends Observable {
       case 'wild10':
         return this.ask({ kind: 'color', title: `+${drawValue(card)}! Какой цвет?` });
       case 'wildRev4':
-        // reverse first: the +4 goes to whoever moves next in the new direction (with two players, the opponent)
+        // reverse first: the +4 goes to whoever now moves next (with two players, that is you again)
         this.reverse();
+        if (activeSeats(s).length === 2) e.steps = 2;
         this.say('⇄ Разворот +4! Едем в другую сторону');
         return this.ask({ kind: 'color', title: 'Разворот +4! Какой цвет?' });
       case 'skipAll':
