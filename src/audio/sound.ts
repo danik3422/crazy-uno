@@ -1,4 +1,7 @@
 import type { ThemeId } from '../game/types';
+import { Observable } from '../lib/observable';
+import { STORAGE_KEYS, readJson, writeJson } from '../lib/storage';
+import { shoutUno } from './voice';
 
 /**
  * All game audio, synthesised with Web Audio: no files to load, works offline and inside the artifact.
@@ -9,19 +12,20 @@ export type Sfx =
   | 'card' | 'draw' | 'shuffle' | 'boom' | 'thunder' | 'uno' | 'event' | 'win' | 'whoosh'
   | 'turn' | 'tick' | 'caught' | 'penalty' | 'challenge' | 'click' | 'whistle';
 
-const PREFS_KEY = 'crazy-uno-sound';
-
 interface Prefs { sfx: boolean; music: boolean }
 
 function loadPrefs(): Prefs {
-  try {
-    const p = JSON.parse(localStorage.getItem(PREFS_KEY) ?? 'null');
-    if (p && typeof p.sfx === 'boolean') return { sfx: p.sfx, music: !!p.music };
-  } catch { /* storage unavailable */ }
+  const p = readJson<Partial<Prefs>>(STORAGE_KEYS.sound);
+  if (p && typeof p.sfx === 'boolean') return { sfx: p.sfx, music: !!p.music };
   return { sfx: true, music: true };
 }
 
 const midi = (n: number) => 440 * 2 ** ((n - 69) / 12);
+/** a little random detune (in semitones), so repeated sounds never come out identical */
+const vary = (semis: number) => 2 ** (((Math.random() * 2 - 1) * semis) / 12);
+
+/** How much of the effects goes through the room echo. */
+const REVERB_SEND = 0.2;
 
 interface Song {
   bpm: number;
@@ -41,15 +45,13 @@ const SONGS: Record<ThemeId, Song> = {
   halloween: { bpm: 100, chords: [[62, 65, 69], [58, 62, 65], [55, 58, 62], [57, 61, 64]], wave: 'square', style: 'organ', drums: 'spooky' },
 };
 
-class SoundEngine {
+class SoundEngine extends Observable {
   prefs: Prefs = loadPrefs();
   private ctx: AudioContext | null = null;
   private master!: GainNode;
   private sfxBus!: GainNode;
   private musicBus!: GainNode;
   private noise!: AudioBuffer;
-  private listeners = new Set<() => void>();
-  private version = 0;
   private song: ThemeId | null = null;
   private seqTimer: ReturnType<typeof setInterval> | null = null;
   private step = 0;
@@ -57,6 +59,7 @@ class SoundEngine {
   private prop: { osc: OscillatorNode; gain: GainNode; level: number } | null = null;
 
   constructor() {
+    super();
     if (typeof window === 'undefined') return;
     const unlock = () => this.unlock();
     window.addEventListener('pointerdown', unlock, { capture: true });
@@ -69,12 +72,6 @@ class SoundEngine {
   }
 
   /* ---------- settings (React reads them via subscribe/getVersion) ---------- */
-  subscribe = (f: () => void) => {
-    this.listeners.add(f);
-    return () => { this.listeners.delete(f); };
-  };
-  getVersion = () => this.version;
-
   setSfx(on: boolean) {
     this.prefs = { ...this.prefs, sfx: on };
     this.save();
@@ -88,9 +85,8 @@ class SoundEngine {
   }
 
   private save() {
-    try { localStorage.setItem(PREFS_KEY, JSON.stringify(this.prefs)); } catch { /* ignore */ }
-    this.version++;
-    this.listeners.forEach(f => f());
+    writeJson(STORAGE_KEYS.sound, this.prefs);
+    this.emitChange();
   }
 
   private unlock() {
@@ -112,6 +108,12 @@ class SoundEngine {
     this.sfxBus = ctx.createGain();
     this.sfxBus.gain.value = this.prefs.sfx ? 0.9 : 0;
     this.sfxBus.connect(this.master);
+    // a small room: effects get a soft tail instead of sounding dry and clicky
+    const room = ctx.createConvolver();
+    room.buffer = this.roomImpulse(1.4);
+    const wet = ctx.createGain();
+    wet.gain.value = REVERB_SEND;
+    this.sfxBus.connect(room).connect(wet).connect(this.master);
     this.musicBus = ctx.createGain();
     this.musicBus.gain.value = this.prefs.music ? 0.16 : 0;
     this.musicBus.connect(this.master);
@@ -121,6 +123,25 @@ class SoundEngine {
     if (this.song) this.startSeq();
   }
 
+  /** A synthetic room echo: two channels of decaying, slightly darkened noise. */
+  private roomImpulse(seconds: number): AudioBuffer {
+    const ctx = this.ctx!;
+    const len = Math.floor(ctx.sampleRate * seconds);
+    const buf = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch);
+      let last = 0;
+      for (let i = 0; i < len; i++) {
+        const x = i / len;
+        // a one-pole lowpass that closes over time: the tail gets darker as it fades
+        const k = 0.55 + x * 0.4;
+        last = last * k + (Math.random() * 2 - 1) * (1 - k);
+        d[i] = last * Math.pow(1 - x, 2.6) * 2.2;
+      }
+    }
+    return buf;
+  }
+
   /* ---------- building blocks ---------- */
   private env(g: GainNode, t: number, peak: number, attack: number, decay: number) {
     g.gain.setValueAtTime(0.0001, t);
@@ -128,6 +149,7 @@ class SoundEngine {
     g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay);
   }
 
+  /** Filtered noise: paper, air, rumble. */
   private burst(out: AudioNode, t: number, dur: number, type: BiquadFilterType, freq: number, peak: number, q = 1, sweepTo?: number) {
     const ctx = this.ctx!;
     const src = ctx.createBufferSource();
@@ -158,6 +180,55 @@ class SoundEngine {
     o.stop(t + attack + dur + 0.05);
   }
 
+  /** A soft mallet (marimba-like): a round tone with a quick bright overtone at the strike. */
+  private mallet(out: AudioNode, t: number, freq: number, dur: number, peak: number) {
+    this.tone(out, t, freq, dur, peak, 'sine', undefined, 0.004);
+    this.tone(out, t, freq * 4, dur * 0.18, peak * 0.25, 'sine', undefined, 0.002);
+  }
+
+  /** A small bell: a pure tone plus the slightly out-of-tune partials that make metal ring. */
+  private bell(out: AudioNode, t: number, freq: number, dur: number, peak: number) {
+    this.tone(out, t, freq, dur, peak, 'sine', undefined, 0.003);
+    this.tone(out, t, freq * 2.76, dur * 0.45, peak * 0.32, 'sine', undefined, 0.002);
+    this.tone(out, t, freq * 5.4, dur * 0.2, peak * 0.12, 'sine', undefined, 0.002);
+  }
+
+  /** A warm brass-like note: a sawtooth whose filter opens on the attack and settles, like a horn's "bwah". */
+  private brass(out: AudioNode, t: number, freq: number, dur: number, peak: number) {
+    const ctx = this.ctx!;
+    const o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.value = freq;
+    // two slightly detuned voices make it a section rather than one buzzer
+    const o2 = ctx.createOscillator();
+    o2.type = 'sawtooth';
+    o2.frequency.value = freq * 1.004;
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.Q.value = 1.2;
+    f.frequency.setValueAtTime(freq * 1.2, t);
+    f.frequency.exponentialRampToValueAtTime(freq * 6, t + 0.06);
+    f.frequency.exponentialRampToValueAtTime(freq * 3, t + 0.3);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.035);
+    g.gain.setValueAtTime(peak, t + dur * 0.6);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(f);
+    o2.connect(f);
+    f.connect(g).connect(out);
+    for (const x of [o, o2]) {
+      x.start(t);
+      x.stop(t + dur + 0.05);
+    }
+  }
+
+  /** A wooden knock (the timer, the judge's gavel). */
+  private wood(out: AudioNode, t: number, freq: number, peak: number) {
+    this.tone(out, t, freq, 0.05, peak, 'sine', freq * 0.7, 0.001);
+    this.burst(out, t, 0.025, 'bandpass', freq * 2.5, peak * 0.5, 3);
+  }
+
   /* ---------- effects ---------- */
   play(name: Sfx, count = 1) {
     const ctx = this.ctx;
@@ -165,85 +236,94 @@ class SoundEngine {
     const t = ctx.currentTime + 0.01;
     const o = this.sfxBus;
     switch (name) {
-      case 'card':
-        // a slap on the felt: bright crack plus a low thump
-        this.burst(o, t, 0.09, 'bandpass', 1900, 0.7, 0.9);
-        this.tone(o, t, 150, 0.08, 0.5, 'sine', 55);
+      case 'card': {
+        // a card slapped on the felt: a papery snap and a soft thud, a little different every time
+        const v = vary(1.5);
+        this.burst(o, t, 0.07, 'bandpass', 2300 * v, 0.45, 0.8, 1200 * v);
+        this.burst(o, t, 0.05, 'lowpass', 500, 0.35, 0.7);
+        this.tone(o, t, 120 * v, 0.07, 0.32, 'sine', 60);
         break;
+      }
       case 'draw':
-        // one flick per card, in step with the cards leaving the deck one by one
-        for (let i = 0; i < Math.min(count, 12); i++) this.burst(o, t + i * 0.16, 0.14, 'highpass', 2600, 0.18, 0.7, 5200);
+        // one soft slide per card, in step with the cards leaving the deck one by one
+        for (let i = 0; i < Math.min(count, 12); i++) {
+          const v = vary(2);
+          this.burst(o, t + i * 0.16, 0.12, 'bandpass', 1500 * v, 0.26, 0.9, 3800 * v);
+        }
         break;
       case 'shuffle':
-        for (let i = 0; i < 14; i++) this.burst(o, t + i * 0.045 + Math.random() * 0.015, 0.035, 'bandpass', 2800 + Math.random() * 1200, 0.3, 1.2);
-        this.burst(o, t + 0.7, 0.12, 'bandpass', 1600, 0.5, 0.9);
+        // a riffle: quick paper clicks that speed up, then the cards squared on the table
+        for (let i = 0; i < 16; i++) {
+          const at = t + Math.pow(i / 16, 0.85) * 0.65 + Math.random() * 0.01;
+          this.burst(o, at, 0.03, 'bandpass', (2400 + Math.random() * 900) * vary(1), 0.22, 1);
+        }
+        this.burst(o, t + 0.72, 0.09, 'lowpass', 900, 0.4, 0.8);
+        this.tone(o, t + 0.72, 110, 0.07, 0.25, 'sine', 70);
         break;
       case 'boom':
-        this.burst(o, t, 1.3, 'lowpass', 900, 1.0, 0.7, 80);
-        this.tone(o, t, 90, 0.9, 0.9, 'sine', 28);
+        this.burst(o, t, 1.3, 'lowpass', 800, 0.9, 0.7, 70);
+        this.tone(o, t, 85, 0.9, 0.85, 'sine', 30);
         break;
       case 'thunder':
-        this.burst(o, t, 0.25, 'highpass', 3000, 0.6, 0.7);
-        this.burst(o, t + 0.05, 1.8, 'lowpass', 600, 0.9, 0.5, 60);
-        this.tone(o, t + 0.05, 70, 1.2, 0.6, 'sine', 30);
+        this.burst(o, t, 0.2, 'highpass', 2500, 0.4, 0.7);
+        this.burst(o, t + 0.05, 1.8, 'lowpass', 500, 0.85, 0.5, 60);
+        this.tone(o, t + 0.05, 65, 1.2, 0.55, 'sine', 30);
         break;
       case 'uno': {
-        [72, 76, 79, 84].forEach((n, i) => this.tone(o, t + i * 0.07, midi(n), 0.18, 0.28, 'square'));
-        this.tone(o, t + 0.3, midi(88), 0.45, 0.25, 'triangle');
-        this.say('Уно!');
+        // a person shouting "УНО!", and a bright little sparkle of bells on the "О"
+        shoutUno(ctx, o, t, this.noise);
+        [84, 88, 91, 96].forEach((n, i) => this.bell(o, t + 0.3 + i * 0.06, midi(n), 0.7, 0.07));
         break;
       }
       case 'event':
-        this.burst(o, t, 0.55, 'bandpass', 300, 0.35, 1.5, 3500);
-        [84, 88, 91].forEach((n, i) => this.tone(o, t + 0.35 + i * 0.08, midi(n), 0.5, 0.18, 'sine'));
+        // a magic swell and a rising chime
+        this.burst(o, t, 0.5, 'bandpass', 400, 0.22, 1.2, 3000);
+        [79, 83, 86, 91].forEach((n, i) => this.bell(o, t + 0.3 + i * 0.08, midi(n), 0.9, 0.12));
         break;
       case 'win':
-        [[72, 0], [76, 0.12], [79, 0.24], [84, 0.36], [79, 0.6], [84, 0.72]].forEach(([n, d]) =>
-          this.tone(o, t + d, midi(n), d >= 0.72 ? 0.9 : 0.14, 0.3, 'triangle'));
-        [60, 64, 67].forEach(n => this.tone(o, t + 0.72, midi(n), 1.1, 0.12, 'sawtooth'));
+        // a little fanfare: brass pick-up notes into a held chord, bells on top
+        [[67, 0, 0.14], [72, 0.14, 0.14], [76, 0.28, 0.14], [79, 0.42, 0.3], [76, 0.62, 0.12], [79, 0.74, 0.9]].forEach(([n, d, len]) =>
+          this.brass(o, t + d, midi(n), len, 0.13));
+        [60, 64, 67].forEach(n => this.brass(o, t + 0.74, midi(n), 1.0, 0.06));
+        [84, 88, 91, 96].forEach((n, i) => this.bell(o, t + 0.78 + i * 0.07, midi(n), 1.1, 0.06));
         break;
       case 'whoosh':
-        this.burst(o, t, 0.6, 'bandpass', 400, 0.45, 2, 4000);
+        this.burst(o, t, 0.6, 'bandpass', 350, 0.4, 1.6, 3500);
         break;
       case 'turn':
-        this.tone(o, t, midi(81), 0.18, 0.18, 'sine');
-        this.tone(o, t + 0.1, midi(88), 0.3, 0.18, 'sine');
+        // "your turn": two soft marimba notes going up
+        this.mallet(o, t, midi(76), 0.35, 0.22);
+        this.mallet(o, t + 0.11, midi(83), 0.5, 0.22);
         break;
       case 'tick':
-        this.tone(o, t, 1500, 0.03, 0.18, 'square');
+        // the last seconds of your clock: a woodblock, not a beep
+        this.wood(o, t, 1200, 0.22);
         break;
       case 'caught':
-        // slide whistle down + a "boing"
-        this.tone(o, t, 1400, 0.4, 0.25, 'sine', 300);
-        this.tone(o, t + 0.42, 180, 0.35, 0.4, 'triangle', 420);
+        // a playful slide whistle down and a springy "boing"
+        this.tone(o, t, 1300, 0.38, 0.16, 'sine', 380);
+        this.tone(o, t + 0.4, 160, 0.4, 0.3, 'triangle', 380);
+        this.tone(o, t + 0.4, 320, 0.25, 0.08, 'sine', 760);
         break;
       case 'penalty':
-        this.tone(o, t, 220, 0.16, 0.25, 'square');
-        this.tone(o, t + 0.17, 165, 0.3, 0.25, 'square');
+        // a gentle "wah-wah": two falling soft-brass notes
+        this.brass(o, t, midi(62), 0.22, 0.12);
+        this.brass(o, t + 0.24, midi(57), 0.5, 0.12);
         break;
       case 'challenge':
-        [48, 55, 60, 63].forEach(n => this.tone(o, t, midi(n), 0.9, 0.12, 'sawtooth'));
-        this.burst(o, t, 0.6, 'lowpass', 500, 0.6, 0.7, 90);
+        // the judge's gavel twice, then a low dramatic chord
+        this.wood(o, t, 220, 0.5);
+        this.wood(o, t + 0.16, 220, 0.5);
+        [48, 55, 60, 63].forEach(n => this.brass(o, t + 0.32, midi(n), 0.9, 0.06));
         break;
       case 'whistle':
         // a falling bomb: a long descending whistle
-        this.tone(o, t, 1900, 0.62, 0.16, 'sine', 420, 0.03);
+        this.tone(o, t, 1700, 0.62, 0.12, 'sine', 420, 0.03);
         break;
       case 'click':
-        this.tone(o, t, 900, 0.025, 0.08, 'triangle');
+        this.wood(o, t, 1600, 0.08);
         break;
     }
-  }
-
-  private say(text: string) {
-    try {
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'ru-RU';
-      u.rate = 1.15;
-      u.pitch = 1.3;
-      u.volume = 0.9;
-      speechSynthesis.speak(u);
-    } catch { /* speech not available */ }
   }
 
   /** The mascot's propeller: 0 = silent, 1 = right overhead. Called every frame, cheap when unchanged. */
