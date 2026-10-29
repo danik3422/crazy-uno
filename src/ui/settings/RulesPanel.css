@@ -1,0 +1,32 @@
+/* game mode: segmented presets + one line; individual rules behind a toggle (shared with the hot-seat setup) */
+.rules-panel { display: flex; flex-direction: column; align-items: stretch; min-width: 0; container-type: inline-size; }
+.modes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 16px; background: rgba(0, 0, 0, 0.28); }
+/* four modes do not fit one row on a narrow screen: two by two */
+@media (max-width: 620px) {
+  .modes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.mode {
+  display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 8px 10px; border: 0; border-radius: 12px; cursor: pointer;
+  background: transparent; color: var(--ink); font-family: var(--display); font-weight: 600; font-size: 14px; text-align: center;
+  transition: background 0.15s, color 0.15s;
+}
+.mode:hover:not(.on) { background: rgba(255, 255, 255, 0.08); }
+.mode.on { background: var(--edge); color: #3a1d00; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25); }
+.mode-icon { font-size: 18px; line-height: 1; display: inline-grid; place-items: center; }
+.mode-now { margin: 10px 2px 0; color: var(--muted); font-size: 14px; }
+/* narrow (phones, the hot-seat setup column): icon above the name */
+@container (max-width: 540px) {
+  .mode { flex-direction: column; gap: 4px; font-family: var(--body); font-weight: 700; font-size: 14px; padding: 8px 4px; min-height: 60px; }
+}
+/* read-only (guests) */
+.mode-title { margin: 0; font-family: var(--display); font-weight: 600; font-size: 20px; display: flex; align-items: center; gap: 8px; }
+.rules-panel.ro .mode-now { margin-top: 4px; }
+@media (max-width: 560px) {
+  .modes { gap: 2px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mode { transition: none; }
+}
+.mode-svg { display: block; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.35)); transition: transform 0.2s; }
+.mode:hover .mode-svg { transform: rotate(-6deg) scale(1.08); }
+.mode.on .mode-svg { transform: scale(1.1); }

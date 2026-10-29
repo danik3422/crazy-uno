@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import type { Card, ThemeId } from '../../game/types';
 import { cardImage } from '../../three/textures';
+import './CardLoader.css';
 
 const FACES: Card[] = [
   { id: 1, color: 'red', type: 'num', value: 7 },

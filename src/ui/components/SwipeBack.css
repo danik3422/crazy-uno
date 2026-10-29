@@ -1,0 +1,8 @@
+/* swipe in from the left edge to go back (home-screen app): a solid tab that slides out of the edge */
+.swipe-back {
+  position: fixed; left: 0; top: 50%; z-index: 300; width: 52px; height: 64px; border-radius: 0 32px 32px 0;
+  display: grid; place-items: center; padding-left: 8px; pointer-events: none; opacity: 0; transform: translate(-52px, -50%);
+  background: #1c0a24; color: #fff;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4); transition: background 0.15s, color 0.15s;
+}
+.swipe-back.ready { background: linear-gradient(180deg, #fff09a, #ffc61a); color: #3a1d00; }

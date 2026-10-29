@@ -1,0 +1,126 @@
+.plate { position: relative; display: inline-flex; flex-direction: column; align-items: flex-start; gap: 5px; user-select: none; }
+.plate-name {
+  font-family: var(--display); font-weight: 600; font-size: 14px; color: #fff; white-space: nowrap; max-width: 190px;
+  overflow: hidden; text-overflow: ellipsis; padding: 4px 30px 4px 10px; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  background: linear-gradient(90deg, #1690d6 0%, #36c2ff 65%, rgba(54, 194, 255, 0) 100%);
+  clip-path: polygon(0 0, 100% 0, 94% 100%, 0 100%); border-top: 2px solid rgba(255, 255, 255, 0.55);
+}
+.plate-body { display: flex; align-items: flex-end; gap: 8px; }
+.plate-ava { border: 4px solid #fff; border-radius: 12px; box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35); transition: box-shadow 0.25s, transform 0.25s; }
+.plate-count {
+  display: grid; place-items: center; min-width: 30px; height: 40px; padding-inline: 5px; background: #fff; color: #15151a; border-radius: 6px;
+  font-family: var(--display); font-weight: 900; font-size: 18px; font-variant-numeric: tabular-nums;
+  box-shadow: 4px -4px 0 -1px #fff, 4px -4px 0 1px #15151a, 0 6px 12px rgba(0, 0, 0, 0.3);
+  border: 2px solid #15151a;
+}
+.plate.cur .plate-name { background: linear-gradient(90deg, #ff9d00 0%, #ffd84a 65%, rgba(255, 216, 74, 0) 100%); color: #3a1d00; text-shadow: none; }
+.plate.cur .plate-ava { transform: scale(1.06); box-shadow: 0 0 0 4px #ffd84a, 0 0 34px 10px rgba(255, 196, 60, 0.75); animation: halo 1.2s ease-in-out infinite; }
+.plate.off .plate-name { background: linear-gradient(90deg, #6b7486 0%, #9aa6bd 65%, rgba(154, 166, 189, 0) 100%); }
+.plate.win .plate-name { background: linear-gradient(90deg, #26a556, #7dff8a 70%, rgba(125, 255, 138, 0)); color: #032a10; }
+.plate-uno {
+  position: absolute; right: -18px; top: 14px; font-family: var(--display); font-weight: 900; font-size: 13px; color: #fff;
+  background: linear-gradient(180deg, #ff6a5a, #d91e12); border: 2px solid #fff; padding: 3px 8px; border-radius: 8px;
+  transform: rotate(12deg); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35); animation: pulse 0.8s infinite;
+}
+.me-plate { pointer-events: none; }
+@media (max-width: 560px) {
+  .plate-name { font-size: 11px; max-width: 110px; padding: 3px 18px 3px 7px; }
+  .plate-count { min-width: 24px; height: 30px; font-size: 14px; }
+  .plate-ava { border-width: 3px; }
+  .me-plate .plate-ava { width: 44px !important; height: 44px !important; }
+  .me-plate .avatar-emoji { font-size: 27px !important; }
+}
+.ava-wrap { position: relative; display: inline-flex; }
+/* a seat changing hands (person <-> stand-in bot): the new face flips in */
+.swap-in, .plate-name { animation: swap-in 0.45s cubic-bezier(.2, 1.3, .4, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .swap-in, .plate-name { animation: none; }
+}
+.plate.team.t0 .plate-ava { border-color: #ff8a7a; }
+.plate.team.t1 .plate-ava { border-color: #8ac0ff; }
+/* long names: wrap onto a second line instead of being cut with "…" (names are at most 16 characters) */
+/* the plate takes the width the name needs (up to its max), and only wraps past that */
+.plate-name {
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: clip;
+  overflow-wrap: break-word;
+  line-height: 1.15;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  width: max-content;
+  max-width: 190px;
+}
+@media (max-width: 560px) {
+  .plate-name { max-width: 104px; font-size: 11px; }
+}
+.me-plate .plate-name { display: none; }
+/* opponents: a compact glass card — face, name, a little stack of cards */
+.oplate {
+  position: relative; display: flex; align-items: center; gap: 9px; padding: 6px 12px 6px 6px; border-radius: 18px; user-select: none;
+  background: rgba(14, 4, 18, 0.55); border: 1px solid rgba(255, 255, 255, 0.14); backdrop-filter: blur(8px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28); transition: border-color 0.25s, box-shadow 0.25s, transform 0.25s;
+}
+.oplate .oplate-ava { border: 3px solid #fff; border-radius: 14px; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3); }
+.oplate-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.oplate .plate-name {
+  background: none; clip-path: none; border: 0; padding: 0; width: max-content; max-width: 132px;
+  font-family: var(--display); font-weight: 600; font-size: 13.5px; color: #fff; text-shadow: none;
+}
+.oplate-count {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 6px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12); font-family: var(--display); font-weight: 900; font-size: 13px; font-variant-numeric: tabular-nums;
+}
+.oplate-away { font-size: 10.5px; font-weight: 600; color: #ffd2cc; }
+.oplate.cur { border-color: var(--gold); transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3), 0 0 0 3px rgba(255, 216, 74, 0.18), 0 0 28px rgba(255, 196, 60, 0.35); }
+.oplate.cur .plate-name { color: var(--gold); }
+/* No Mercy: knocked out of the round */
+.oplate.out { opacity: 0.55; filter: grayscale(0.85); }
+.oplate.off { opacity: 0.85; }
+.oplate.off .oplate-ava { filter: grayscale(0.6); }
+.oplate.win { border-color: #7dff8a; }
+.oplate .plate-uno { top: -10px; right: -12px; }
+.oplate-team { position: absolute; top: -11px; left: 12px; font-size: 10px; font-weight: 800; padding: 1px 8px; border-radius: 999px; color: #fff; white-space: nowrap; }
+.oplate.team.t0 .oplate-team { background: var(--red); }
+.oplate.team.t1 .oplate-team { background: var(--blue); }
+.oplate.team.t0 .oplate-ava { border-color: #ff9a8c; }
+.oplate.team.t1 .oplate-ava { border-color: #9ac8ff; }
+.oplate.small { padding: 4px 9px 4px 4px; gap: 6px; border-radius: 14px; }
+.oplate.small .plate-name { font-size: 11px; max-width: 86px; }
+.oplate.small .oplate-count { font-size: 11px; padding: 1px 6px 1px 5px; }
+.oplate.small .oplate-ava { border-width: 2px; border-radius: 11px; }
+/* my own card count: a small badge on the avatar corner, like the opponents' */
+.me-plate .plate-body { position: relative; }
+.me-plate .plate-count {
+  position: absolute; right: -8px; bottom: -6px; min-width: 26px; height: 26px; padding: 0 6px; border-radius: 999px; border: 2px solid #fff;
+  background: #15151a; color: #fff; font-size: 13px; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+}
+.me-plate .plate-ava { border-radius: 14px; }
+/* crowded phone table: face and card count only, so neighbouring plates never overlap */
+.oplate.tiny { padding: 3px 7px 3px 3px; gap: 5px; }
+.oplate.tiny .plate-name { display: none; }
+@media (orientation: landscape) and (max-height: 520px) {
+  .me-plate .plate-ava { width: 34px !important; height: 34px !important; border-width: 2px; border-radius: 10px; }
+  .me-plate .avatar-emoji { font-size: 21px !important; }
+  .me-plate .plate-count { min-width: 20px; height: 20px; font-size: 10.5px; right: -6px; bottom: -5px; padding: 0 4px; border-width: 1.5px; }
+}
+/* whose turn: a burst of golden rays turning slowly behind their portrait */
+.oplate.cur .ava-wrap::before, .plate.cur .ava-wrap::before {
+  content: ''; position: absolute; left: 50%; top: 50%; width: 230%; aspect-ratio: 1; translate: -50% -50%; z-index: -1; pointer-events: none;
+  border-radius: 50%;
+  background:
+    radial-gradient(closest-side, rgba(255, 236, 150, 0.95) 0%, rgba(255, 196, 60, 0.6) 34%, rgba(255, 170, 30, 0) 70%),
+    repeating-conic-gradient(from 0deg, rgba(255, 220, 110, 0.85) 0deg 9deg, rgba(255, 220, 110, 0) 9deg 30deg);
+  -webkit-mask-image: radial-gradient(closest-side, #000 35%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 35%, transparent 100%);
+  animation: turn-rays 6s linear infinite, turn-rays-in 0.35s ease-out;
+}
+.oplate.cur .ava-wrap, .plate.cur .ava-wrap { isolation: isolate; }
+@media (prefers-reduced-motion: reduce) {
+  .oplate.cur .ava-wrap::before, .plate.cur .ava-wrap::before { animation: none; }
+}
+@keyframes halo { 50% { box-shadow: 0 0 0 4px #fff2a0, 0 0 46px 16px rgba(255, 196, 60, 0.9); } }
+@keyframes swap-in { from { transform: rotateY(90deg) scale(0.8); opacity: 0; } }
+@keyframes turn-rays { to { rotate: 360deg; } }
+@keyframes turn-rays-in { from { opacity: 0; scale: 0.4; } }

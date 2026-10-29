@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { CODE_LEN, normalizeCode } from '../../net/protocol';
 import { AvatarImg, AvatarPicker } from '../components/AvatarImg';
 import { FitLetter } from '../components/FitLetter';
+import './Home.css';
 
 const MascotStage = lazy(() => import('../components/MascotStage'));
 

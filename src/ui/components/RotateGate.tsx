@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { canFullscreen, enterFullscreen, isIOS, usePhone } from '../hooks/phone';
+import './RotateGate.css';
 
 /** A phone outline that turns on its side, with the table glowing on its screen. */
 function PhoneTurn() {

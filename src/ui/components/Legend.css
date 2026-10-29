@@ -1,0 +1,11 @@
+.legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; width: 100%; text-align: left; }
+.legend .li { display: flex; gap: 10px; align-items: center; }
+.legend img { width: 44px; height: 66px; flex: none; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.4)); }
+.legend b { display: block; }
+.legend small { color: var(--muted); font-size: 13px; line-height: 1.3; display: block; }
+@media (max-width: 760px) {
+  .legend { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .legend { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

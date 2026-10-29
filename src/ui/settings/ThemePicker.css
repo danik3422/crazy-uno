@@ -1,0 +1,43 @@
+.theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.theme-tile {
+  display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 8px 8px 12px; border-radius: 16px; cursor: pointer;
+  background: rgba(0, 0, 0, 0.25); border: 3px solid transparent; transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.theme-tile:hover:not(:disabled) { transform: translateY(-2px); }
+.theme-tile.on { border-color: var(--gold); box-shadow: 0 0 22px rgba(255, 208, 74, 0.45); }
+.theme-tile:disabled { opacity: 0.45; cursor: default; }
+.theme-tile b { font-family: var(--display); font-size: 15px; padding-inline: 4px; }
+.theme-tile small { color: var(--muted); font-size: 12px; line-height: 1.3; padding-inline: 4px; }
+.theme-floor { position: relative; height: 104px; border-radius: 10px; overflow: hidden; display: flex; justify-content: center; align-items: center; gap: 0; }
+.theme-floor img { width: 52px; height: 78px; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.45)); }
+.theme-floor img:first-child { transform: rotate(-14deg) translateX(10px); }
+.theme-floor img:last-child { transform: rotate(10deg) translateX(-10px) translateY(4px); }
+.th-classic .theme-floor { background: radial-gradient(ellipse at 50% 55%, #ffd25e 0%, #f0401e 40%, #3c0505 90%); }
+.th-neon .theme-floor {
+  background:
+    linear-gradient(transparent 0 92%, rgba(255, 46, 136, 0.7) 92% 100%) 0 0 / 100% 16px,
+    linear-gradient(90deg, transparent 0 92%, rgba(46, 230, 255, 0.6) 92% 100%) 0 0 / 16px 100%,
+    radial-gradient(ellipse at 50% 55%, #4a0a5a 0%, #05010c 85%);
+}
+.th-space .theme-floor {
+  background:
+    radial-gradient(1.5px 1.5px at 15% 25%, #fff 50%, transparent 51%) 0 0 / 60px 50px,
+    radial-gradient(1px 1px at 60% 70%, #fff 50%, transparent 51%) 0 0 / 45px 40px,
+    radial-gradient(circle at 85% 20%, #e8603a 0 14px, transparent 15px),
+    radial-gradient(ellipse at 40% 60%, #3a2a8a 0%, #02010a 85%);
+}
+.th-halloween .theme-floor {
+  background:
+    repeating-radial-gradient(circle at 50% 60%, transparent 0 16px, rgba(243, 233, 210, 0.22) 16px 17px),
+    repeating-conic-gradient(from 0deg at 50% 60%, transparent 0 28deg, rgba(243, 233, 210, 0.2) 28deg 30deg),
+    radial-gradient(ellipse at 50% 60%, #ff7a1a 0%, #3a0f2e 55%, #0b0310 95%);
+}
+/* table look: small swatches */
+.theme-grid.compact { display: flex; flex-wrap: wrap; gap: 12px; }
+.compact .theme-tile { width: 68px; padding: 0; border: 0; background: none; align-items: center; text-align: center; gap: 6px; box-shadow: none; }
+.compact .theme-tile.on { box-shadow: none; }
+.compact .theme-floor { width: 64px; height: 64px; border-radius: 16px; border: 3px solid transparent; transition: border-color 0.15s; }
+.compact .theme-tile.on .theme-floor { border-color: var(--edge); box-shadow: 0 0 0 3px rgba(255, 208, 74, 0.6); }
+.compact .theme-floor img, .compact .theme-floor img:first-child { width: 26px; height: 39px; transform: rotate(-10deg); }
+.compact .theme-tile b { font-family: var(--body); font-weight: 600; font-size: 13px; color: var(--muted); padding: 0; }
+.compact .theme-tile.on b { color: var(--ink); }

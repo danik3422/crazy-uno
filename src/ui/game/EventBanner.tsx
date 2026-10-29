@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import './EventBanner.css';
 
 export interface Banner {
   id: number;

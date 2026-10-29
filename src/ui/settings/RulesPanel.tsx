@@ -2,6 +2,8 @@ import { useId, useState } from 'react';
 import { presetOf, PRESETS, RULE_GROUPS, RULES } from '../../game/content';
 import type { Rules } from '../../game/types';
 import { ModeIcon } from './ModeIcon';
+import './settings.css';
+import './RulesPanel.css';
 
 interface Props {
   rules: Rules;

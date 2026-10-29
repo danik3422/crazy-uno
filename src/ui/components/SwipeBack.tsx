@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { isStandalone } from '../hooks/phone';
+import './SwipeBack.css';
 
 /** how far from the left edge a swipe has to start, and how far it has to go */
 const EDGE = 28;

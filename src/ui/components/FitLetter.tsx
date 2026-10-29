@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
+import './FitLetter.css';
 
 /**
  * A letter that always fits its tile: after layout (and again once fonts load) it measures

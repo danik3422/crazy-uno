@@ -1,0 +1,20 @@
+/* turn clock: a pill over the avatar with the seconds left; its fill drains as time runs out */
+.turn-timer {
+  position: absolute; left: 50%; top: -13px; translate: -50% 0; z-index: 2; pointer-events: none; isolation: isolate;
+  display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px 2px 6px; border-radius: 999px; overflow: hidden;
+  background: #1d2a22; color: #fff; border: 2px solid #fff; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+  font-weight: 900; font-size: 14px; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.turn-timer-fill { position: absolute; inset: 0; transform-origin: left center; background: #22b85a; z-index: -1; }
+.turn-timer-ico { width: 14px; height: 14px; flex: none; }
+.turn-timer-num { min-width: 1.1em; text-align: center; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35); }
+.turn-timer[data-c='yellow'] .turn-timer-fill { background: #f0a800; }
+.turn-timer[data-c='red'] { background: #5a0d08; animation: timer-beat 0.5s ease-in-out infinite; }
+.turn-timer[data-c='red'] .turn-timer-fill { background: #ec2e1e; }
+.oplate .turn-timer { top: auto; bottom: -12px; }
+.oplate.small .turn-timer, .oplate.tiny .turn-timer { font-size: 11px; bottom: -10px; padding: 1px 6px 1px 4px; border-width: 1.5px; }
+.oplate.small .turn-timer-ico, .oplate.tiny .turn-timer-ico { width: 11px; height: 11px; }
+@media (orientation: landscape) and (max-height: 520px) {
+  .turn-timer { font-size: 12px; top: -11px; }
+}
+@keyframes timer-beat { 50% { scale: 1.15; } }

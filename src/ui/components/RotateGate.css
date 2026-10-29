@@ -1,0 +1,44 @@
+/* held upright: the whole game waits behind this screen */
+.rotate-gate {
+  position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  padding: max(24px, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px));
+  text-align: center; color: #fff;
+  background: radial-gradient(ellipse at 50% 35%, rgba(255, 200, 80, 0.22), transparent 55%), linear-gradient(180deg, #5c24a0, #2a0c52);
+  animation: fade 0.25s;
+}
+.rotate-gate h2 { margin: 0; font-family: var(--display); font-weight: 900; font-size: clamp(22px, 6.4vw, 28px); line-height: 1.15; text-wrap: balance; max-width: 22ch; }
+.rotate-gate p { margin: 0; max-width: 32ch; font-size: 15px; line-height: 1.45; color: rgba(255, 240, 255, 0.8); text-wrap: pretty; }
+.rotate-gate .rg-btn { display: inline-flex; align-items: center; gap: 10px; margin-top: 6px; }
+.rotate-gate .rg-ios { font-size: 13.5px; padding: 10px 14px; border-radius: 14px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.16); }
+.rg-phone { overflow: visible; filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.35)); }
+.rg-turn { transform-origin: 60px 60px; animation: rg-turn 2.6s cubic-bezier(.6, 0, .25, 1) infinite; }
+.rg-arrow { animation: rg-arrow 2.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .rg-turn { animation: none; transform: rotate(90deg); }
+  .rg-arrow { animation: none; }
+}
+/* in the menu and the room: how the game is meant to be held */
+.phone-tip {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px; width: 100%;
+  padding: 8px 8px 8px 12px; border-radius: 16px; text-align: left; color: #fff;
+  background: linear-gradient(90deg, rgba(255, 216, 74, 0.16), rgba(255, 216, 74, 0.06)); border: 1px solid rgba(255, 216, 74, 0.4);
+}
+.phone-tip .pt-icon { display: grid; place-items: center; color: var(--gold); animation: pt-tilt 3s ease-in-out infinite; }
+.phone-tip .pt-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.phone-tip .pt-text b { font-family: var(--display); font-weight: 600; font-size: 13px; line-height: 1.25; }
+.phone-tip .pt-text small { font-size: 11.5px; line-height: 1.3; color: rgba(255, 240, 230, 0.72); }
+.phone-tip .pt-btn {
+  width: 40px; height: 40px; border-radius: 12px; border: 0; display: grid; place-items: center; cursor: pointer; color: #3a1d00;
+  background: linear-gradient(180deg, #fff09a, #ffc61a 55%, #f59a00); box-shadow: 0 3px 0 #a85d00;
+}
+.phone-tip .pt-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #a85d00; }
+.phone-tip .pt-close { width: 28px; height: 28px; border-radius: 50%; border: 0; display: grid; place-items: center; cursor: pointer; background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.8); }
+@media (prefers-reduced-motion: reduce) {
+  .phone-tip .pt-icon { animation: none; }
+}
+/* the rotate screen reaches every edge, the strip under the home indicator included */
+html.gate-on, html.gate-on body { background: #2a0c52; }
+/* the rotate screen paints the strip below itself too */
+.rotate-gate { top: 0; left: 0; right: 0; bottom: auto; height: 100lvh; min-height: 100%; box-shadow: 0 25vmax 0 0 #2a0c52; }
+@keyframes rg-turn { 0%, 18% { transform: rotate(0deg); } 50%, 82% { transform: rotate(90deg); } 100% { transform: rotate(0deg); } }
+@keyframes rg-arrow { 0%, 12% { opacity: 1; } 40%, 85% { opacity: 0; } 100% { opacity: 1; } }

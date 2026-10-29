@@ -1,0 +1,24 @@
+.rematch { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+.rematch-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.rematch-list li {
+  display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px 4px 4px; border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28); font-size: 13px; font-weight: 700; transition: background 0.25s;
+}
+.rematch-list li .avatar { border-radius: 50% !important; border: 2px solid #fff; }
+.rematch-list li.ok { background: rgba(38, 165, 86, 0.55); }
+.rematch-list li.away { opacity: 0.55; }
+.rm-st { font-size: 11px; font-weight: 600; color: var(--muted); display: inline-flex; align-items: center; gap: 5px; }
+.rematch-list li.ok .rm-st { color: #d6ffe2; }
+.rematch-hint { margin: 0; text-align: center; }
+.rematch-count { display: flex; align-items: center; gap: 12px; font-weight: 700; }
+.rematch-count b {
+  font-family: var(--display); font-weight: 900; font-size: 40px; line-height: 1; color: var(--gold);
+  animation: count-pop 0.5s cubic-bezier(.2, 1.6, .4, 1);
+}
+.rematch-sub .btn { font-size: 13px; padding: 7px 12px; background: transparent; color: var(--muted); }
+.rematch-sub .btn:hover { color: var(--ink); background: rgba(255, 255, 255, 0.08); }
+.rematch-list .rm-name {
+  white-space: normal; overflow: hidden; text-overflow: clip; overflow-wrap: break-word; line-height: 1.15;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+@keyframes count-pop { from { transform: scale(1.8); opacity: 0; } }

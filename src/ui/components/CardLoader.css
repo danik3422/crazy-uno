@@ -1,0 +1,17 @@
+.card-loader { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.card-loader h2 { margin: 6px 0 0; font-family: var(--display); font-weight: 900; font-size: clamp(20px, 4vw, 26px); }
+.card-loader p { margin: 0; color: var(--muted); max-width: 36ch; }
+.shuffle { position: relative; width: 150px; height: 120px; }
+.shuffle img {
+  position: absolute; left: 50%; top: 50%; width: 64px; height: 96px; margin: -48px 0 0 -32px;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.4));
+  animation: riffle 1.5s cubic-bezier(.55, 0, .35, 1) infinite;
+  animation-delay: calc(var(--i) * 0.07s);
+  z-index: calc(10 - var(--i));
+}
+.shuffle img:nth-child(odd) { --dir: -1; }
+.shuffle img:nth-child(even) { --dir: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .shuffle img { animation: none; }
+}
+@keyframes riffle { 0%, 100% { transform: translate(0, calc(var(--i) * -1.5px)) rotate(0); } 30% { transform: translate(calc(var(--dir) * 52px), 6px) rotate(calc(var(--dir) * 14deg)); } 55% { transform: translate(calc(var(--dir) * 40px), -10px) rotate(calc(var(--dir) * -6deg)); } 80% { transform: translate(0, calc(var(--i) * -1.5px - 14px)) rotate(0); } }

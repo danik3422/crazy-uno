@@ -1,6 +1,6 @@
 import { createRoot } from 'react-dom/client';
+import './styles/base.css';
 import App from './app/App';
-import './styles.css';
 import { repaintCards } from './three/textures';
 
 // Card faces are painted onto canvases, so the display font should be ready first.

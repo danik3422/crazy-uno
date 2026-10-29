@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { TEAM_NAMES } from '../../game/content';
+import './TeamBox.css';
 
 /**
  * One side in the teams format: a tinted box with the team's name and head count,

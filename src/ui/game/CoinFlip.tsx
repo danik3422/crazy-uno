@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type React from 'react';
 import { CoinHeads, CoinTails } from './CoinFaces';
+import './CoinFlip.css';
 
 type Side = 'heads' | 'tails';
 interface Props {

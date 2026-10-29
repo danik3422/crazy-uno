@@ -1,0 +1,7 @@
+.net-banner {
+  position: fixed; left: 50%; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; backdrop-filter: blur(6px);
+}
+.loading-screen { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; background: var(--stage); padding: 24px 16px; animation: fade 0.2s; }
+.loading-screen.leaving { animation: loading-out 0.45s forwards; pointer-events: none; }
+@keyframes loading-out { to { opacity: 0; transform: scale(1.04); } }

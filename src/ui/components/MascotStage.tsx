@@ -4,7 +4,9 @@ import * as THREE from 'three';
 import type { Card } from '../../game/types';
 import { Mascot } from '../../three/Mascot';
 import { useGlRecovery } from '../../three/useGlRecovery';
+import { cardFaceGeometry } from '../../three/cardShape';
 import { cardTexture } from '../../three/textures';
+import './MascotStage.css';
 
 const HERO: Card[] = [
   { id: 1, color: 'red', type: 'num', value: 7 },
@@ -13,7 +15,7 @@ const HERO: Card[] = [
   { id: 4, color: 'green', type: 'dare' },
   { id: 5, color: 'blue', type: 'draw2' },
 ];
-const plane = new THREE.PlaneGeometry(1, 1.5);
+const plane = cardFaceGeometry();
 
 /** One card of the menu fan: deals in from below, then sways; spreads wider while the pointer is over the stage. */
 function FanCard({ card, i }: { card: Card; i: number }) {
@@ -36,10 +38,10 @@ function FanCard({ card, i }: { card: Card; i: number }) {
   return (
     <group ref={g}>
       <mesh geometry={plane} position-z={0.002}>
-        <meshStandardMaterial map={tex} alphaTest={0.5} roughness={0.4} />
+        <meshStandardMaterial map={tex} roughness={0.4} />
       </mesh>
       <mesh geometry={plane} position-z={-0.002} rotation-y={Math.PI}>
-        <meshStandardMaterial map={back} alphaTest={0.5} roughness={0.4} />
+        <meshStandardMaterial map={back} roughness={0.4} />
       </mesh>
     </group>
   );

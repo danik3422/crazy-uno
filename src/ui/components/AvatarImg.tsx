@@ -1,4 +1,5 @@
 import { type Avatar, avatarOf, HUMAN_AVATARS, robotDataUrl } from '../../game/avatars';
+import './AvatarImg.css';
 
 interface Props {
   id?: string;

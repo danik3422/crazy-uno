@@ -1,6 +1,7 @@
 import { type CSSProperties, lazy, Suspense } from 'react';
 import type { Card } from '../../game/types';
 import { cardImage } from '../../three/textures';
+import './Hero.css';
 
 const MascotStage = lazy(() => import('./MascotStage'));
 

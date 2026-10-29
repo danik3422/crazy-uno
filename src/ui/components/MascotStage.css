@@ -1,0 +1,2 @@
+.mascot-stage { width: min(820px, 100vw); height: 260px; margin-bottom: -22px; }
+.mascot-stage canvas { touch-action: pan-y; }

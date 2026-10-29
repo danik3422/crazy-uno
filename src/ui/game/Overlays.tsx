@@ -8,6 +8,7 @@ import { SoundMenu } from '../components/SoundMenu';
 import { CoinFlip } from './CoinFlip';
 import { RematchVote } from './RematchVote';
 import type { OnlineCtx } from './onlineCtx';
+import './Overlays.css';
 
 interface Props {
   game: GameView;
@@ -90,7 +91,7 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
         <p className="muted">⚖️ {by.name} положил(а) +4</p>
         <h2>Оспорить?</h2>
         <p className="small muted">
-          Если у {by.name} была карта того цвета, что лежал до +4, — {by.name} тянет 4 вместо тебя. Если всё было честно, ты тянешь 6.
+          Если у {by.name} была карта того цвета, что лежал до +4, или обычная «Цвет» — {by.name} тянет 4 вместо тебя. Если всё было честно, ты тянешь 6.
         </p>
         <div className="row center">
           <button className="btn big blue" onClick={() => game.declineChallenge()}>Принять</button>

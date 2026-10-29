@@ -11,6 +11,7 @@ import { loadLocalSetup, localGameConfig, saveLocalSetup } from './localSetup';
 import { inviteFromUrl, setUrlRoom } from './roomUrl';
 import { useRemoteGame } from './useRemoteGame';
 import { useServerCheck } from './useServerCheck';
+import './App.css';
 
 type Screen = 'home' | 'local-setup' | 'local-game' | 'online';
 

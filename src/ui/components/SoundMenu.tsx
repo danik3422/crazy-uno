@@ -1,6 +1,7 @@
 import { useState, useSyncExternalStore } from 'react';
 import { sound } from '../../audio/sound';
 import { IconMusic, IconMute, IconSound } from './Icons';
+import './SoundMenu.css';
 
 /** Speaker button with two switches: music and sound effects. */
 export function SoundMenu() {

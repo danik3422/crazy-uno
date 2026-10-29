@@ -2,6 +2,7 @@ import { COLORS, NO_MERCY_TYPES, SPECIAL, WILD_TYPES } from '../../game/content'
 import { buildDeck } from '../../game/deck';
 import type { Card, CardType, Rules } from '../../game/types';
 import { cardImage } from '../../three/textures';
+import './Legend.css';
 
 const ALL = Object.keys(SPECIAL) as Exclude<CardType, 'num'>[];
 

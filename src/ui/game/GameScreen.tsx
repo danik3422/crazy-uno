@@ -20,6 +20,7 @@ import { useLocalBots } from './useLocalBots';
 import { useRoundStart } from './useRoundStart';
 import { useTableEffects } from './useTableEffects';
 import { useTableSounds } from './useTableSounds';
+import './GameScreen.css';
 
 interface Props {
   game: GameView;

@@ -1,0 +1,37 @@
+.event {
+  position: fixed; inset: 0; z-index: 40; pointer-events: none; display: flex; justify-content: center; align-items: flex-start;
+  padding: calc(64px + env(safe-area-inset-top, 0px)) 16px 0; perspective: 900px; overflow: hidden;
+  animation: event-out 3s forwards;
+}
+.event-rays {
+  position: absolute; left: 50%; top: 110px; width: 140vmax; height: 140vmax; margin: -70vmax 0 0 -70vmax; border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 208, 74, 0.14) 0 8deg, transparent 8deg 22deg);
+  mask-image: radial-gradient(circle, #000 0, transparent 30%);
+  -webkit-mask-image: radial-gradient(circle, #000 0, transparent 30%);
+  animation: rays 6s linear infinite;
+}
+.event-card {
+  position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto auto;
+  column-gap: 16px; row-gap: 2px; align-items: center; text-align: left;
+  background: var(--black); border: 5px solid var(--edge); border-radius: 22px; padding: 14px 22px 16px 16px;
+  max-width: min(520px, 100%);
+  box-shadow: 0 0 0 5px var(--gold), 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 70px rgba(255, 208, 74, 0.35);
+  animation: event-in 0.75s cubic-bezier(.2, 1.4, .35, 1) both;
+}
+.event-icon { grid-row: 1 / 4; font-size: 56px; line-height: 1; animation: wobble 0.8s 0.5s ease-in-out 2; }
+.event-tag {
+  justify-self: start; font-family: var(--display); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--black); background: var(--gold); padding: 2px 9px; border-radius: 999px;
+}
+.event-title { font-family: var(--display); font-weight: 900; font-size: clamp(20px, 5vw, 30px); line-height: 1.15; color: var(--gold); }
+.event-sub { font-size: 15px; font-weight: 500; color: var(--ink); }
+@media (orientation: landscape) and (max-height: 520px) {
+  /* banners and buttons over the table, sized for a short screen */
+  .event { padding-top: calc(8px + env(safe-area-inset-top, 0px)); }
+  .event-card { transform-origin: top center; scale: 0.72; }
+  .event-rays { top: 60px; }
+}
+@keyframes event-out { 0%, 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(-20px); } }
+@keyframes rays { to { transform: rotate(360deg); } }
+@keyframes event-in { from { transform: rotateX(-110deg) translateY(-40px) scale(0.5); opacity: 0; } 60% { opacity: 1; } }
+@keyframes wobble { 25% { transform: rotate(-14deg) scale(1.15); } 75% { transform: rotate(12deg) scale(1.1); } }

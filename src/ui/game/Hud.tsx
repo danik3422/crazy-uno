@@ -2,8 +2,11 @@ import { standIn } from '../../game/avatars';
 import { CNAME, HEX, TEAM_NAMES } from '../../game/content';
 import type { GameView } from '../../game/view';
 import { AvatarImg } from '../components/AvatarImg';
-import { TurnRing } from './TurnRing';
+import { TurnTimer } from './TurnTimer';
 import type { OnlineCtx } from './onlineCtx';
+import './Hud.css';
+import './Plates.css';
+import './UnoCall.css';
 
 export interface Toast {
   id: number;
@@ -105,7 +108,7 @@ export function Hud({ game, toasts, bombLeft, online, locked, roundLeft }: Props
               <span className="ava-wrap">
                 <AvatarImg id={seatP.avatar} name={seatP.name} bot={seatP.bot} size={58} className="plate-ava" />
                 {!locked && s.cur === game.seat() && s.turnDeadline !== null && s.phase !== 'over' && (
-                  <TurnRing key={s.turn} deadline={s.turnDeadline} total={s.turnTotal} offset={game.clockOffset} />
+                  <TurnTimer key={s.turn} deadline={s.turnDeadline} total={s.turnTotal} offset={game.clockOffset} />
                 )}
               </span>
               <span className="plate-count">{seatP.hand.length}</span>

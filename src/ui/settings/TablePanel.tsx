@@ -3,6 +3,8 @@ import { effectiveTable, QUICK, TABLE_CHOICES } from '../../game/content';
 import { teamsProblem } from '../../game/teams';
 import type { Table } from '../../game/types';
 import { ModeIcon } from './ModeIcon';
+import './settings.css';
+import './TablePanel.css';
 
 interface Props {
   table: Table;

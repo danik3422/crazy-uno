@@ -13,6 +13,7 @@ import { enterFullscreen, SMALL_SCREEN, useMedia } from '../hooks/phone';
 import { RulesPanel } from '../settings/RulesPanel';
 import { TablePanel } from '../settings/TablePanel';
 import { ThemePicker } from '../settings/ThemePicker';
+import './Setup.css';
 
 interface Props {
   cfg: LocalSetup;

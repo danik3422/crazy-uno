@@ -2,6 +2,7 @@ import type { State } from '../../game/types';
 import type { Warmup } from '../../net/protocol';
 import { AvatarImg } from '../components/AvatarImg';
 import { CardLoader } from '../components/CardLoader';
+import './LoadingCurtain.css';
 
 interface Props {
   s: State;

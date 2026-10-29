@@ -13,6 +13,7 @@ import { RulesPanel } from '../settings/RulesPanel';
 import { TablePanel } from '../settings/TablePanel';
 import { SwapTeamIcon, TeamBox } from '../components/TeamBox';
 import { ThemePicker } from '../settings/ThemePicker';
+import './Lobby.css';
 
 interface Props {
   conn: Connection;

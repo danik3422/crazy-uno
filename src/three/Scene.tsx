@@ -7,7 +7,7 @@ import { standIn } from '../game/avatars';
 import { TEAM_NAMES } from '../game/content';
 import { AvatarImg } from '../ui/components/AvatarImg';
 import { IconStack } from '../ui/components/Icons';
-import { TurnRing } from '../ui/game/TurnRing';
+import { TurnTimer } from '../ui/game/TurnTimer';
 import { Card3D } from './Card3D';
 import { DeckStack } from './DeckStack';
 import { dealTiming } from '../net/protocol';
@@ -19,6 +19,7 @@ import { RING_R, RING_Z, arena, computeTargets, deckCenter, deckSpot, seatAngle,
 import { Mascot } from './Mascot';
 import { PlayFx, StackFx } from './PlayFx';
 import { Podium } from './Podium';
+import '../ui/game/Plates.css';
 
 interface Props {
   game: GameView;
@@ -149,10 +150,8 @@ function CameraRig({ portrait, compact, finale, focus }: { portrait: boolean; co
  * One arrow of the direction ring, flat on the table: a band along the circle that ends in a broad,
  * sharp head. Built in the ring's own plane (XY), so the squash of the ring keeps it a clean shape.
  */
-function ringArrowGeometry(R: number, arc: number) {
-  const w = 0.075;
-  const headW = 0.27;
-  const headLen = 0.5 / R; // in radians
+function ringArrowGeometry(R: number, arc: number, w = 0.15, headW = 0.4, headLenAbs = 0.62) {
+  const headLen = headLenAbs / R; // in radians
   const s = new THREE.Shape();
   const steps = 40;
   const end = arc - headLen;
@@ -189,8 +188,14 @@ function DirectionArrows({ dir, at }: { dir: 1 | -1; at: [number, number, number
   const R = RING_R;
   const ARC = 1.9;
   const geo = useMemo(() => ringArrowGeometry(R, ARC), [R]);
+  // a wider, faint copy under each arrow: a soft halo, so the arrows glow on the floor
+  const haloGeo = useMemo(() => ringArrowGeometry(R, ARC + 0.04, 0.34, 0.64, 0.78), [R]);
   const mat = useMemo(
     () => new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.6, toneMapped: false, side: THREE.DoubleSide, depthWrite: false }),
+    [],
+  );
+  const halo = useMemo(
+    () => new THREE.MeshBasicMaterial({ color: '#fff3c4', transparent: true, opacity: 0.22, toneMapped: false, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }),
     [],
   );
   const speed = useRef(0);
@@ -204,7 +209,7 @@ function DirectionArrows({ dir, at }: { dir: 1 | -1; at: [number, number, number
   useFrame((_, dt) => {
     const now = nowSec();
     const racing = now < fxState.carouselUntil;
-    speed.current += (dir * (racing ? 7 : 0.45) - speed.current) * Math.min(1, dt * (racing ? 6 : 2));
+    speed.current += (dir * (racing ? 7 : 0.7) - speed.current) * Math.min(1, dt * (racing ? 6 : 2));
     spin.current.rotation.y -= speed.current * dt;
     let pulse = 0;
     const f = flip.current;
@@ -214,7 +219,8 @@ function DirectionArrows({ dir, at }: { dir: 1 | -1; at: [number, number, number
       pulse = Math.sin(Math.PI * p);
       if (p >= 1) flip.current = null;
     } else flipG.current.scale.y = dir;
-    mat.opacity = 0.72 + pulse * 0.28;
+    mat.opacity = 0.8 + pulse * 0.2;
+    halo.opacity = 0.2 + pulse * 0.35;
   });
   return (
     <group position={[at[0], 0.035, at[2]]} scale={[1, 1, RING_Z]}>
@@ -222,7 +228,10 @@ function DirectionArrows({ dir, at }: { dir: 1 | -1; at: [number, number, number
         {/* the shape lies in XY; +90° about X maps its angles onto the seat angles (x = cos a, z = sin a) */}
         <group ref={flipG} rotation-x={Math.PI / 2} scale={[1, dir, 1]}>
           {[0, 1].map(k => (
-            <mesh key={k} geometry={geo} material={mat} rotation-z={k * Math.PI} />
+            <group key={k} rotation-z={k * Math.PI}>
+              <mesh geometry={haloGeo} material={halo} position-z={0.004} />
+              <mesh geometry={geo} material={mat} />
+            </group>
           ))}
         </group>
       </group>
@@ -339,7 +348,7 @@ function PlayerPlates({ game, view, dealing }: { game: GameView; view: View; dea
                 {/* someone dropped out: a bot sits in under its own name and face until they are back */}
                 <AvatarImg id={p.offline ? sub.avatar : p.avatar} name={p.offline ? sub.name : p.name} bot={p.bot} size={view.portrait ? 40 : view.compact ? 34 : 54} className="oplate-ava" />
                 {cur && !dealing && s.turnDeadline !== null && (
-                  <TurnRing key={s.turn} deadline={s.turnDeadline} total={s.turnTotal} offset={game.clockOffset} />
+                  <TurnTimer key={s.turn} deadline={s.turnDeadline} total={s.turnTotal} offset={game.clockOffset} />
                 )}
               </span>
               <span className="oplate-info">

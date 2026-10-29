@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { MemberInfo, Rematch } from '../../net/protocol';
 import { AvatarImg } from '../components/AvatarImg';
+import './RematchVote.css';
 
 interface Props {
   me: string;
