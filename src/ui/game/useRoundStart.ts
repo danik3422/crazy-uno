@@ -28,6 +28,7 @@ export function useRoundStart(game: GameView, local: Game | null, version: numbe
   useLayoutEffect(() => {
     fxState.dealAt = Infinity;
     fxState.dealEnd = Infinity;
+    fxState.revealFrom = Infinity;
     // card ids start over every round: forget where last round's cards were
     lastPlace.clear();
     setStage('loading');
@@ -43,6 +44,8 @@ export function useRoundStart(game: GameView, local: Game | null, version: numbe
     fxState.dealAt = at;
     fxState.dealEnd = end;
     const now = nowSec();
+    // the cards already in the hands (a reconnect) all fly in at once: they are not draws to show off
+    fxState.revealFrom = Math.max(end, now) + 0.8;
     const later = (sec: number, f: () => void) => timers.current.push(setTimeout(f, Math.max(0, sec - now) * 1000));
     if (end <= now) {
       // joined late (reconnect): no show, straight to the table

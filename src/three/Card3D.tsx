@@ -5,11 +5,13 @@ import type { Card, ThemeId } from '../game/types';
 import { DRAG_HEIGHT, drag, dropZone, keySel } from './drag';
 import { SPIN_TIME, fxState, nowSec } from './fxState';
 import { lastPlace, spawn, type Target } from './layout';
+import { isPhone } from '../ui/hooks/phone';
+import { cardBodyGeometry, cardFaceGeometry, CARD_H, CARD_W } from './cardShape';
 import { cardTexture } from './textures';
 
-const CARD_W = 1;
-const CARD_H = 1.5;
-const plane = new THREE.PlaneGeometry(CARD_W, CARD_H);
+/** the printed faces, cut to the card's rounded outline */
+const plane = cardFaceGeometry();
+const X_AXIS = new THREE.Vector3(1, 0, 0);
 const Y_AXIS = new THREE.Vector3(0, 1, 0);
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
 const THICK = 0.012;
@@ -18,25 +20,57 @@ const DRAW_GAP = 0.16;
 const deckQueue = { at: 0 };
 
 /** The card's body: a thin rounded slab, so a tilted card shows a real edge instead of a paper plane. */
-const body = (() => {
-  const w = CARD_W - 0.01;
-  const h = CARD_H - 0.01;
-  const r = 0.11;
-  const s = new THREE.Shape();
-  s.moveTo(-w / 2 + r, -h / 2);
-  s.lineTo(w / 2 - r, -h / 2);
-  s.quadraticCurveTo(w / 2, -h / 2, w / 2, -h / 2 + r);
-  s.lineTo(w / 2, h / 2 - r);
-  s.quadraticCurveTo(w / 2, h / 2, w / 2 - r, h / 2);
-  s.lineTo(-w / 2 + r, h / 2);
-  s.quadraticCurveTo(-w / 2, h / 2, -w / 2, h / 2 - r);
-  s.lineTo(-w / 2, -h / 2 + r);
-  s.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + r, -h / 2);
-  const g = new THREE.ExtrudeGeometry(s, { depth: THICK, bevelEnabled: false, curveSegments: 4 });
-  g.translate(0, 0, -THICK / 2);
-  return g;
+const body = cardBodyGeometry(THICK);
+const edgeMat = new THREE.MeshStandardMaterial({ color: '#e4ddcf', roughness: 0.7 });
+
+/** Opponents' cards stand on a glossy floor and show a faint reflection (computers only: it doubles their draws). */
+const REFLECTIONS = !isPhone();
+/** mirrors anything through the table plane (y = 0) */
+const MIRROR_Y = new THREE.Matrix4().makeScale(1, -1, 1);
+/** where the back face sits inside a card (see the back mesh below) */
+const BACK_LOCAL = new THREE.Matrix4().compose(
+  new THREE.Vector3(0, 0, -THICK / 2 - 0.0015),
+  new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, Math.PI)),
+  new THREE.Vector3(1, 1, 1),
+);
+/** the reflection fades out away from the line where the card touches the floor */
+const reflectFade = (() => {
+  const cv = document.createElement('canvas');
+  cv.width = 4;
+  cv.height = 128;
+  const ctx = cv.getContext('2d')!;
+  const g = ctx.createLinearGradient(0, 0, 0, 128);
+  g.addColorStop(0, '#000');
+  g.addColorStop(0.55, '#333');
+  g.addColorStop(1, '#fff');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 4, 128);
+  return new THREE.CanvasTexture(cv);
 })();
-const edgeMat = new THREE.MeshStandardMaterial({ color: '#efeadf', roughness: 0.65 });
+
+/** A soft glow the shape of a card, behind cards you can play right now. Shared: they all pulse together. */
+const glowPlane = new THREE.PlaneGeometry(CARD_W * 1.42, CARD_H * 1.3);
+const glowMat = (() => {
+  const W = 132;
+  const H = 186;
+  const cv = document.createElement('canvas');
+  cv.width = W;
+  cv.height = H;
+  const ctx = cv.getContext('2d')!;
+  ctx.filter = 'blur(7px)';
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.roundRect(18, 18, W - 36, H - 36, 16);
+  ctx.fill();
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.MeshBasicMaterial({ map: tex, color: '#fff2b0', transparent: true, opacity: 0.9, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending });
+})();
+
+/** The card you just drew shows up big in front of you for a moment before it goes into your hand. */
+const REVEAL = { up: 0.42, hold: 0.6, down: 0.4, size: 1.4 };
+/** how many of your cards left the deck in the same frame (a +4 sends four at once: no big reveal then) */
+const revealBatch = { frame: -1, count: 0 };
 
 const easeInOut = (p: number) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
 /** a toss: leaves the hand with speed and glides in */
@@ -63,6 +97,8 @@ interface Flight {
   toss: boolean;
   /** the card turns over on the way (face down -> face up or back): it rolls around its long side */
   flip: boolean;
+  /** first stop in front of the camera, then the rest of the way (the card you just drew) */
+  via?: { pos: THREE.Vector3; q: THREE.Quaternion; frame: number; always: boolean };
 }
 const NORMAL = new THREE.Vector3();
 const TO_CAM = new THREE.Vector3();
@@ -105,6 +141,8 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
   const frontMat = useRef<THREE.MeshStandardMaterial>(null!);
   const frontRef = useRef<THREE.Mesh>(null!);
   const backRef = useRef<THREE.Mesh>(null!);
+  const glowRef = useRef<THREE.Mesh>(null!);
+  const reflRef = useRef<THREE.Mesh>(null);
   const hovered = useRef(false);
   const startAt = useRef<number | null>(null);
   const placed = useRef(false);
@@ -172,7 +210,9 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     window.addEventListener('pointercancel', up);
   };
 
-  useFrame((_, rawDt) => {
+  useFrame((st, rawDt) => {
+    // the same number for every card within one frame
+    const frameKey = st.clock.elapsedTime;
     // a long frame (tab switch, GC pause) must not teleport cards: cap the step
     const dt = Math.min(rawDt, 1 / 30);
     const g = ref.current;
@@ -284,7 +324,9 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
         // several cards leaving the deck at once (draw until playable, +N penalties): one after another
         let t0 = now;
         const leavesDeck = (fromDeck || lastZone.current === 'deck') && !dealing;
-        if (leavesDeck) {
+        // after a reconnect the hands are laid out all at once; real draws leave the deck one after another
+        const relayout = now < fxState.revealFrom;
+        if (leavesDeck && !relayout) {
           t0 = Math.max(now, deckQueue.at);
           deckQueue.at = t0 + DRAW_GAP;
         }
@@ -294,6 +336,20 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
         const fromQ = g.quaternion.clone();
         if (flip) fromQ.multiply(FLIP);
         flight.current = { t0, dur, from: g.position.clone(), fromQ, apex: (toss ? 0.5 : 0.45) + dist * 0.1, fromS: g.scale.x, toss, flip };
+        if (tt.reveal && tt.zone === 'hand' && !dealing && !relayout && (leavesDeck || hopFromPrev.current)) {
+          if (revealBatch.frame !== frameKey) {
+            revealBatch.frame = frameKey;
+            revealBatch.count = 0;
+          }
+          revealBatch.count++;
+          // in front of the camera, over the near half of the table, facing you
+          const pos = new THREE.Vector3(dropZone.x, 0.9, dropZone.z + 0.9).lerp(camera.position, 0.3);
+          // leaning back a little, like the cards in your hand: facing the camera head-on it caught a glare
+          const q = camera.quaternion.clone().multiply(new THREE.Quaternion().setFromAxisAngle(X_AXIS, -0.38));
+          flight.current.via = { pos, q, frame: frameKey, always: tt.reveal === 'always' };
+          flight.current.dur = REVEAL.down;
+          flight.current.flip = false;
+        }
         if (tt.zone === 'discard') {
           // the slam when it lands; the pile's flash and ring wait for the same moment
           slamAt.current = t0 + dur;
@@ -352,7 +408,31 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     if (spinning) y += Math.sin((1 - (fxState.spinUntil - now) / SPIN_TIME) * Math.PI) * 0.7;
     // a scripted hop in progress finishes even through a spin (the spin would snap the card over);
     // a card picked up by the finger or caught by the swirl leaves it and springs on from where it is
-    const f = flight.current;
+    let f = flight.current;
+    // several cards left the deck together (a penalty): they fly straight into the hand
+    if (f?.via && !f.via.always && revealBatch.frame === f.via.frame && revealBatch.count > 1) {
+      f = flight.current = { ...f, via: undefined, dur: THREE.MathUtils.clamp(0.42 + Math.hypot(tt.pos[0] - f.from.x, tt.pos[2] - f.from.z) * 0.05, 0.5, 0.75) };
+    }
+    if (f?.via && !dragging && !chaos) {
+      const v = f.via;
+      const el = now - f.t0;
+      if (el < REVEAL.up + REVEAL.hold) {
+        // up from the deck, turning over to face you, growing big; then a short hold with a gentle bob
+        const p = THREE.MathUtils.clamp(el / REVEAL.up, 0, 1);
+        const e = easeInOut(p);
+        const bob = el > REVEAL.up ? Math.sin((el - REVEAL.up) * 7) * 0.025 : 0;
+        g.position.set(f.from.x + (v.pos.x - f.from.x) * e, f.from.y + (v.pos.y - f.from.y) * e + Math.sin(Math.PI * e) * 0.4 + bob, f.from.z + (v.pos.z - f.from.z) * e);
+        fq.copy(f.fromQ).slerp(v.q, e);
+        g.quaternion.copy(fq);
+        g.scale.setScalar(f.fromS + (REVEAL.size - f.fromS) * e);
+        vel.x.v = vel.y.v = vel.z.v = vel.s.v = 0;
+        frontMat.current.color.setScalar(1);
+        if (glowRef.current) glowRef.current.visible = false;
+        return;
+      }
+      // then into the hand like any other card
+      f = flight.current = { ...f, via: undefined, t0: f.t0 + REVEAL.up + REVEAL.hold, from: v.pos.clone(), fromQ: v.q.clone(), fromS: REVEAL.size, apex: 0.15 };
+    }
     if (f && !dragging && !chaos) {
       // waiting its turn in a multi-card draw: stays on top of the deck until then
       const p = THREE.MathUtils.clamp((now - f.t0) / f.dur, 0, 1);
@@ -378,7 +458,7 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
       const size = f.fromS + ((tt.scale ?? 1) - f.fromS) * e;
       g.scale.setScalar(size * (1 + Math.sin(Math.PI * p) * 0.1));
       vel.s.v = 0;
-      const shade = tt.dim ? 0.45 : 1;
+      const shade = tt.dim ? 0.5 : 1;
       const c = frontMat.current.color;
       c.setScalar(c.r + (shade - c.r) * Math.min(1, dt * 8));
       return;
@@ -427,15 +507,39 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     } else g.scale.setScalar(smoothDamp(g.scale.x, sTarget, vel.s, 0.12, dt));
 
     // playable cards are simply raised (see layout); the rest are dimmed
-    const shade = tt.dim ? 0.62 : 1;
+    const shade = tt.dim ? 0.42 : 1;
     const c = frontMat.current.color;
     c.setScalar(c.r + (shade - c.r) * k);
+  });
+
+  // after the card has moved: the glow behind a playable card, and the reflection of an opponent's card
+  useFrame(st => {
+    const g = ref.current;
+    const tt = tRef.current;
+    const glow = glowRef.current;
+    const settled = !flight.current;
+    glow.visible = tt.interactive && tt.zone === 'hand' && settled && g.visible && !(drag.id === card.id && drag.moved);
+    if (glow.visible) glowMat.opacity = 0.75 + Math.sin(st.clock.elapsedTime * 4) * 0.25;
+    const refl = reflRef.current;
+    if (!refl) return;
+    // only a card standing on the table in an opponent's row (not one flying past or lying flat)
+    refl.visible = tt.zone === 'opp' && g.visible && g.position.y < 1.6 && !flight.current;
+    if (refl.visible) {
+      g.updateMatrix();
+      refl.matrix.multiplyMatrices(MIRROR_Y, g.matrix).multiply(BACK_LOCAL);
+    }
   });
 
   const front = cardTexture(card);
   const back = cardTexture(null, theme);
 
   return (
+    <>
+    {REFLECTIONS && (
+      <mesh ref={reflRef} geometry={plane} matrixAutoUpdate={false} visible={false} renderOrder={-10}>
+        <meshBasicMaterial map={back} alphaMap={reflectFade} transparent opacity={0.3} depthWrite={false} side={THREE.DoubleSide} toneMapped={false} />
+      </mesh>
+    )}
     <group
       ref={ref}
       onPointerOver={e => {
@@ -460,11 +564,13 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     >
       <mesh geometry={body} material={edgeMat} castShadow />
       <mesh ref={frontRef} geometry={plane} position-z={THICK / 2 + 0.0015}>
-        <meshStandardMaterial ref={frontMat} map={front} alphaTest={0.5} roughness={0.38} metalness={0} />
+        <meshStandardMaterial ref={frontMat} map={front} roughness={0.38} metalness={0} />
       </mesh>
       <mesh ref={backRef} geometry={plane} position-z={-THICK / 2 - 0.0015} rotation={[0, Math.PI, Math.PI]}>
-        <meshStandardMaterial map={back} alphaTest={0.5} roughness={0.38} />
+        <meshStandardMaterial map={back} roughness={0.38} />
       </mesh>
+      <mesh ref={glowRef} geometry={glowPlane} material={glowMat} position-z={-THICK / 2 - 0.006} visible={false} />
     </group>
+    </>
   );
 });

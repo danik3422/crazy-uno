@@ -18,6 +18,11 @@ export interface Target {
   hidden?: boolean;
   /** smaller cards for big hands, so they still fit on screen */
   scale?: number;
+  /**
+   * on its way from the deck a card of yours is first shown big in front of you:
+   * 'always' for the card you drew to play, 'single' when it comes alone (not part of a +2 / +4 batch)
+   */
+  reveal?: 'always' | 'single';
 }
 
 export interface View {
@@ -241,6 +246,7 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
           pos: [x, h.y + lift + ny * layer + uy * up - Math.abs(off) * sp * 0.02, h.z + nz * layer + uz * up],
           rot: [faceUp ? tilt : tilt + PI, 0, -off * Math.min(0.035, 0.4 / rowN)],
           zone: 'hand', interactive, dim, delay: dealDelay(c.dealIdx), scale: cs,
+          reveal: !faceUp || over ? undefined : s.drawn && c.id === s.lastDrawn ? 'always' : 'single',
         });
       });
       return;
@@ -274,20 +280,22 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
       });
       return;
     }
-    // a held fan of fixed width: more cards squeeze closer together instead of growing a huge arc
-    // side seats fan toward the camera, so they get a narrower fan and smaller cards than the far seat
-    const half = Math.min(((m - 1) / 2) * sp, v.portrait ? 0.8 : 1.15) * (1 - side * 0.45);
-    const oscale = (m > 10 ? 0.85 : 1) * (1 - side * (v.portrait ? 0.22 : 0.12));
-    const spread = Math.min(0.42, 0.035 * ((m - 1) / 2));
+    // a wall of cards standing upright on the table, backs to the camera, in one neat overlapping row:
+    // a fixed width, so more cards squeeze closer together instead of growing a huge arc.
+    // Side seats stand turned toward the middle, so they get a narrower row and slightly smaller cards
+    const half = Math.min(((m - 1) / 2) * sp * 1.15, v.portrait ? 0.85 : 1.3) * (1 - side * 0.4);
+    const oscale = (m > 10 ? 0.86 : 0.95) * (1 - side * (v.portrait ? 0.2 : 0.1));
     const step = Math.min(0.022, 0.3 / Math.max(m, 1)) * (1 - side * 0.5);
     p.hand.forEach((c, k) => {
-      const u = m > 1 ? (k - (m - 1) / 2) / ((m - 1) / 2) : 0; // -1 … 1 across the fan
-      const bend = u * u * 0.14;
-      const stack = k * step; // each next card a hair closer to the viewer, so the fan overlaps cleanly
+      const u = m > 1 ? (k - (m - 1) / 2) / ((m - 1) / 2) : 0; // -1 … 1 along the row
+      const bend = u * u * 0.08; // the ends curve in a little, like a hand of cards
+      const stack = k * step; // each next card a hair closer to the viewer, so the row overlaps cleanly
       out.set(c.id, {
-        pos: [base[0] + lx[0] * u * half + nx * bend + bx * stack, 0.8, base[2] + lx[2] * u * half + nz * bend + bz * stack],
-        // the back texture is drawn for cards lying on the table; standing ones turn it upright
-        rot: [0.2, face, u * spread + PI],
+        // the bottom edge rests on the table
+        pos: [base[0] + lx[0] * u * half + nx * bend + bx * stack, 0.75 * oscale + 0.02, base[2] + lx[2] * u * half + nz * bend + bz * stack],
+        // the back texture is drawn for cards lying on the table; standing ones turn it upright.
+        // A barely-there lean and tilt keep it from looking like a printed strip
+        rot: [0.06, face, u * 0.05 + PI],
         zone: 'opp', interactive: false, dim: false, delay: dealDelay(c.dealIdx), scale: oscale,
       });
     });

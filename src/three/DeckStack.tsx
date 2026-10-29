@@ -1,11 +1,12 @@
 import { useFrame } from '@react-three/fiber';
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { CARD_R, roundedRect } from './cardShape';
 import type { ThemeId } from '../game/types';
 import { DECK_SLIDE_MS, SHUFFLE_MS } from '../net/protocol';
 import { fxState, nowSec } from './fxState';
 import { DECK_TOP, type Vec3 } from './layout';
-import { cardTexture } from './textures';
+import { cardTexture, repaint } from './textures';
 
 /** the stack is drawn as this many thick "cards" (each stands for a few real ones) */
 const LAYERS = 22;
@@ -25,19 +26,10 @@ const REST_YAW = -0.35;
 
 /** One layer of the deck: a rounded card shape with the back on both faces and card edges around. */
 const slabGeometry = (() => {
-  const r = 0.11;
-  const s = new THREE.Shape();
-  s.moveTo(-W / 2 + r, -L / 2);
-  s.lineTo(W / 2 - r, -L / 2);
-  s.quadraticCurveTo(W / 2, -L / 2, W / 2, -L / 2 + r);
-  s.lineTo(W / 2, L / 2 - r);
-  s.quadraticCurveTo(W / 2, L / 2, W / 2 - r, L / 2);
-  s.lineTo(-W / 2 + r, L / 2);
-  s.quadraticCurveTo(-W / 2, L / 2, -W / 2, L / 2 - r);
-  s.lineTo(-W / 2, -L / 2 + r);
-  s.quadraticCurveTo(-W / 2, -L / 2, -W / 2 + r, -L / 2);
+  // the same outline as a single card, scaled to the layer (the back texture is stretched the same way)
+  const s = roundedRect(W, L, CARD_R * W);
   // a hair thinner than a layer: neighbours never share a face, so nothing flickers between them
-  const g = new THREE.ExtrudeGeometry(s, { depth: H * 0.9, bevelEnabled: false, curveSegments: 5 });
+  const g = new THREE.ExtrudeGeometry(s, { depth: H * 0.9, bevelEnabled: false, curveSegments: 10 });
   // lie flat: the shape goes onto the table plane, the thickness points up (0 … depth)
   g.rotateX(-Math.PI / 2);
   return g;
@@ -148,7 +140,13 @@ export function DeckStack({ at, center, theme, slideAt, portrait }: { at: Vec3; 
   // before the first frame, so the top cards never show up at the resting spot for a moment
   useLayoutEffect(() => place(nowSec()), [at, center, slideAt, yawMid]);
 
+  const painted = useRef(repaint.version);
   useFrame(() => {
+    // the fonts came in after the deck was made: its copy of the back texture uploads the repainted canvas
+    if (painted.current !== repaint.version) {
+      painted.current = repaint.version;
+      if (materials[0].map) materials[0].map.needsUpdate = true;
+    }
     const now = nowSec();
     place(now);
     const dealAt = fxState.dealAt;

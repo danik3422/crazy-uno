@@ -163,13 +163,10 @@ export function drawCard(ctx: CanvasRenderingContext2D, card: Card | null, theme
   const wild = card.color === 'wild';
   const col = wild ? HEX.black : HEX[card.color as keyof typeof HEX];
 
-  // white frame with a hairline outline, so the silhouette stays crisp on any background
-  rr(ctx, 1, 1, W - 2, H - 2, 30);
+  // the white frame, edge to edge: the 3D card cuts its own smooth outline, so no drawn rim is needed
+  rr(ctx, 0, 0, W, H, 30);
   ctx.fillStyle = EDGE;
   ctx.fill();
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = 'rgba(40,30,20,.25)';
-  ctx.stroke();
 
   // the colour face: lit from the top-left, a little darker toward the bottom-right
   rr(ctx, 13, 13, W - 26, H - 26, 21);
@@ -312,12 +309,9 @@ function seeded(seed: number) {
 }
 
 function backFrame(ctx: CanvasRenderingContext2D, edge: string, fill: CanvasGradient | string) {
-  rr(ctx, 1, 1, W - 2, H - 2, 30);
+  rr(ctx, 0, 0, W, H, 30);
   ctx.fillStyle = edge;
   ctx.fill();
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = 'rgba(40,30,20,.25)';
-  ctx.stroke();
   rr(ctx, 13, 13, W - 26, H - 26, 21);
   ctx.save();
   ctx.clip();
@@ -516,6 +510,9 @@ const texCache = new Map<string, THREE.CanvasTexture>();
 const texSource = new Map<string, { card: Card | null; theme: ThemeId }>();
 
 /** Fonts came in late: repaint every card already drawn with a fallback font (and drop cached images). */
+/** bumped every time the cards are repainted: copies of a card texture (the deck's back) re-upload then */
+export const repaint = { version: 0 };
+
 export function repaintCards() {
   for (const [key, t] of texCache) {
     const src = texSource.get(key);
@@ -524,9 +521,25 @@ export function repaintCards() {
     const ctx = cv.getContext('2d')!;
     ctx.setTransform(TEX_SCALE, 0, 0, TEX_SCALE, 0, 0);
     drawCard(ctx, src.card, src.theme);
+    fillCorners(ctx);
     t.needsUpdate = true;
   }
   urlCache.clear();
+  repaint.version++;
+}
+
+/**
+ * The see-through corners of a GPU texture get the frame's own colour underneath: the 3D card is cut to
+ * its outline anyway, and this way the blurred, smaller copies the GPU uses far away never mix in black.
+ */
+function fillCorners(ctx: CanvasRenderingContext2D) {
+  const [r, g, b] = ctx.getImageData(ctx.canvas.width / 2, 2, 1, 1).data;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = 'destination-over';
+  ctx.fillStyle = `rgb(${r},${g},${b})`;
+  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.restore();
 }
 
 export function cardTexture(card: Card | null, theme: ThemeId = 'classic'): THREE.CanvasTexture {
@@ -540,6 +553,7 @@ export function cardTexture(card: Card | null, theme: ThemeId = 'classic'): THRE
     const ctx = cv.getContext('2d')!;
     ctx.scale(TEX_SCALE, TEX_SCALE);
     drawCard(ctx, card, theme);
+    fillCorners(ctx);
     t = new THREE.CanvasTexture(cv);
     t.colorSpace = THREE.SRGBColorSpace;
     t.anisotropy = 16; // clamped to what the GPU supports

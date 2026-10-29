@@ -31,6 +31,8 @@ export const fxState = {
   /** opening deal (perf seconds): cards stay in the deck until dealAt, Infinity while the table is loading */
   dealAt: Infinity,
   dealEnd: Infinity,
+  /** no big reveal of drawn cards before this (perf seconds): the hands being laid out at the start or after a reconnect are not draws */
+  revealFrom: Infinity,
   /** barrel-plane mascot: a swoop across the arena, victory laps, or a bombing run on one player */
   mascot: { at: -100, mode: 'fly' as MascotMode, seed: 0, target: 0 },
   /** bombing run: cards that land in a hand during [at, until) burst out of the explosion instead of leaving the deck */
