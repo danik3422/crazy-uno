@@ -95,7 +95,15 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outl
    home-screen app iOS can report the screen shorter than it is (status bar, a rotation), and the strip
    left below the page used to show a bare dark-red background. The pages themselves stay transparent. */
 html, body { overscroll-behavior: none; }
-html { background: #4a0606; }
+/* the colour Safari shows behind its bars and past the page edges; on phones the backdrop fades into it top and bottom */
+html { background: var(--page-edge, #4a0606); }
+@media (max-width: 900px) {
+  :root {
+    --page-edge: #d42c1c;
+    /* a tall glow for an upright screen: warm in the middle, the same red as the browser bars at the very top and bottom */
+    --stage: radial-gradient(ellipse 150% 70% at 50% 40%, #ffcf5e 0%, #f5631e 24%, #d42c1c 52%, #d42c1c 100%);
+  }
+}
 html body { background: transparent; }
 body::before {
   content: ''; position: fixed; z-index: -1; left: 0; top: 0; width: 100%;

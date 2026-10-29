@@ -7,6 +7,17 @@ const GRAVES =
   '<svg viewBox="0 0 400 60" preserveAspectRatio="none"><path d="M0 60V44c40-8 80-12 130-10 60 2 110-10 170-8 40 1 70 6 100 10v24z"/>' +
   '<path d="M60 40v-18a10 10 0 0 1 20 0v18zM150 36v-14a8 8 0 0 1 16 0v14zM262 34v-20a11 11 0 0 1 22 0v20zM330 40v-12h-6v-4h6v-6h4v6h6v4h-6v12z"/></svg>';
 
+/** The colour at the top and bottom edges of each table's page on a phone: the browser bars take it too. */
+const EDGE: Record<ThemeId, string> = { classic: '#d42c1c', neon: '#05010c', space: '#02010a', halloween: '#07020f' };
+
+/** Tints the browser's bars (Safari, Chrome on phones) and the area behind them to match the page. */
+export function setBrowserTint(theme: ThemeId) {
+  const edge = EDGE[theme];
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', edge);
+  // classic keeps the stylesheet's own edge (it differs between phone and desktop)
+  document.documentElement.style.setProperty('--page-edge', theme === 'classic' ? '' : edge);
+}
+
 /** What lives on the page behind the menus, per table (static markup, styled in pageBackdrop.css). */
 const SCENES: Record<ThemeId, string> = {
   classic: '<i class="pb-rays"></i><i class="pb-beam b1"></i><i class="pb-beam b2"></i><i class="pb-floor"></i>',
@@ -40,6 +51,7 @@ export function usePageTheme(theme: ThemeId) {
         body.prepend(el);
       }
       el.className = `page-backdrop pb-${theme}`;
+      setBrowserTint(theme);
       el.innerHTML = SCENES[theme];
     };
     const vt = (document as Document & { startViewTransition?: (f: () => void) => unknown }).startViewTransition;
@@ -53,6 +65,7 @@ export function usePageTheme(theme: ThemeId) {
       if (shown.current) document.body.classList.remove(`page-${shown.current}`);
       shown.current = null;
       document.getElementById('page-backdrop')?.remove();
+      setBrowserTint('classic');
     },
     [],
   );

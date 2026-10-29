@@ -6,6 +6,7 @@ import { DEBUG, fxState, nowSec } from './fxState';
 import { landingTime } from './PlayFx';
 import type { View } from './layout';
 import { THEMES } from './themes';
+import { setBrowserTint } from '../ui/hooks/pageTheme';
 import { isPhone } from '../ui/hooks/phone';
 
 /** Arena colours for every theme and current colour (each theme keeps its own in its folder). */
@@ -141,6 +142,13 @@ export function Arena({ color, theme, view, center }: Props) {
     shownColor.current = color;
     arm();
   }, [color]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // the browser bars on a phone take the arena's dark edge, and go back to the menu red when the game ends
+  useEffect(() => {
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', pal.outer);
+    document.documentElement.style.setProperty('--page-edge', pal.outer);
+  }, [pal.outer]);
+  useEffect(() => () => setBrowserTint('classic'), []);
 
   useLayoutEffect(() => {
     scene.background = new THREE.Color(pal.outer);
