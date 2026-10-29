@@ -195,7 +195,7 @@ describe('Game engine', () => {
     expect(g.s.cur).not.toBe(who);
     expect(g.s.players[who].hand.length).toBe(before + 1);
     expect(g.s.discard.length).toBe(pile); // nothing was played for them
-    expect(g.s.log.at(-1)).toContain('тянет карту');
+    expect(g.s.log.at(-1)?.k).toBe('log.timeoutDraw');
   });
 
   it('a waiting penalty is taken in full when the clock runs out', () => {
@@ -219,7 +219,7 @@ describe('Game engine', () => {
     while (g.cp().bot) g.botAct();
     clock += 31_000;
     g.timeoutTurn(true);
-    expect(g.s.log.some(l => l.includes('автопилот'))).toBe(true);
+    expect(g.s.log.some(l => l.k === 'log.autopilot')).toBe(true);
   });
 
   it('plays the turn for a person whose clock ran out (autopilot on)', () => {

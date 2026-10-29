@@ -25,7 +25,7 @@ function play(level: BotLevel, rules: Rules, players: number, seed: number) {
     g.botAct();
     expect(g.totalCards()).toBe(total);
     // imagined games never leak into the real one
-    expect(g.s.log.slice(before).every(l => !l.includes('🏆') || g.s.phase === 'over')).toBe(true);
+    expect(g.s.log.slice(before).every(l => !['log.wins', 'log.teamWins'].includes(l.k) || g.s.phase === 'over')).toBe(true);
   }
   const ids = new Set([...g.s.deck, ...g.s.discard, ...g.setAside(), ...g.s.players.flatMap(p => p.hand)].map(c => c.id));
   expect(ids.size).toBe(total);
@@ -59,7 +59,7 @@ describe('bot levels', () => {
     while (g.cp().bot) g.botAct();
     clock += 60_000;
     g.timeoutTurn();
-    expect(g.s.log.some(l => l.includes('автопилот'))).toBe(true);
+    expect(g.s.log.some(l => l.k === 'log.autopilot')).toBe(true);
   });
 
   it('easy bots forget UNO more often and catch less than hard ones', () => {

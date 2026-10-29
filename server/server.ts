@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { msg as text } from '../src/i18n/msg';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { CODE_ALPHABET, CODE_LEN, normalizeCode, type ClientMsg, type ServerMsg } from '../src/net/protocol';
 import { DEFAULT_LIMITS, Limits, type LimitOptions } from './limits';
@@ -112,7 +113,7 @@ export async function createUnoServer(opts: ServerOptions) {
       if (room && room !== r) room.disconnect(ws);
       const res = r.join(name, ws, token, typeof avatar === 'string' ? avatar : undefined);
       if (typeof res === 'string') {
-        send({ t: 'error', code: res, msg: res === 'full' ? 'В комнате нет мест' : 'Не получилось войти' });
+        send({ t: 'error', code: res, msg: text(res === 'full' ? 'err.full' : 'err.joinFailed') });
         return;
       }
       room = r;
@@ -120,8 +121,8 @@ export async function createUnoServer(opts: ServerOptions) {
     };
 
     const create = (msg: Extract<ClientMsg, { t: 'create' }>) => {
-      if (rooms.size >= MAX_ROOMS) return send({ t: 'error', code: 'full', msg: 'Сервер переполнен, попробуй позже' });
-      if (!limits.rooms.take(ip)) return send({ t: 'error', code: 'slow-down', msg: 'Слишком много новых комнат подряд. Подожди пару минут' });
+      if (rooms.size >= MAX_ROOMS) return send({ t: 'error', code: 'full', msg: text('err.serverFull') });
+      if (!limits.rooms.take(ip)) return send({ t: 'error', code: 'slow-down', msg: text('err.slowRooms') });
       const r = new Room(newCode(), opts.room);
       rooms.set(r.code, r);
       enter(r, String(msg.name ?? ''), undefined, msg.avatar);
@@ -131,8 +132,8 @@ export async function createUnoServer(opts: ServerOptions) {
       const r = rooms.get(normalizeCode(String(msg.code ?? '')));
       if (!r) {
         // wrong codes are counted, so codes cannot be guessed by trying them all
-        if (!limits.badJoins.take(ip)) return send({ t: 'error', code: 'slow-down', msg: 'Слишком много неверных кодов. Подожди пару минут' });
-        return send({ t: 'error', code: 'no-room', msg: 'Комната не найдена. Проверь код' });
+        if (!limits.badJoins.take(ip)) return send({ t: 'error', code: 'slow-down', msg: text('err.slowJoins') });
+        return send({ t: 'error', code: 'no-room', msg: text('err.noRoom') });
       }
       enter(r, String(msg.name ?? ''), typeof msg.token === 'string' ? msg.token : undefined, msg.avatar);
     };

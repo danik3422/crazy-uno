@@ -1,5 +1,7 @@
-import { CNAME, COLORS, CPLURAL, EVENTS, GROUP_DARES } from './content';
-import { pick, type Rng } from './random';
+import { msg, type Msg } from '../i18n/msg';
+import type { Params, StrKey } from '../i18n/types';
+import { COLORS, EVENTS, GROUP_DARE_COUNT } from './content';
+import { pick, randomIndex, type Rng } from './random';
 import { activeSeats } from './rules';
 import type { Card, EventId, Fx, FxKind, Player, State } from './types';
 
@@ -24,8 +26,8 @@ export interface EventTools {
   shedRandom(p: Player, k: number): number;
   /** every hand moves on to the next player */
   rotateHands(): void;
-  say(message: string): void;
-  fx(kind: FxKind, text?: string, extra?: Partial<Fx>): void;
+  say(k: StrKey, p?: Params): void;
+  fx(kind: FxKind, text?: Msg, extra?: Partial<Fx>): void;
 }
 
 /** Minimum turns between events, chance per turn after that, and the gap after which one is forced. */
@@ -56,36 +58,38 @@ export function fireEvent(t: EventTools, forced?: EventId): boolean {
   const ev = EVENTS[id];
   const randomPlayer = () => pick(active, rng);
   const randomColor = () => pick(COLORS, rng);
-  const banner = (sub: string, target?: number) => {
-    t.fx('event', ev.title, { sub, icon: ev.icon, target });
-    t.say(`${ev.icon} ${ev.title} ${sub}`);
+  const title = msg(`ev.${id}`);
+  const banner = (k: StrKey, p?: Params, target?: number) => {
+    const sub = msg(k, p);
+    t.fx('event', title, { sub, icon: ev.icon, target });
+    t.say('log.event', { icon: ev.icon, title, sub });
   };
 
   switch (id) {
     case 'meteor': {
       const target = randomPlayer();
       const got = t.give(s.players[target], 10).length;
-      banner(`Прилетел в ${s.players[target].name}: +${got} карт!`, target);
+      banner('evs.meteor', { who: s.players[target].name, n: got }, target);
       t.fx('meteor', undefined, { target });
       break;
     }
     case 'recolor':
       s.players.forEach(pl => pl.hand.forEach(c => { if (c.color !== 'wild') c.color = randomColor(); }));
       s.color = randomColor();
-      banner(`Цвета перемешаны, сейчас ${CNAME[s.color].toLowerCase()}`);
+      banner('evs.recolor', { color: s.color });
       t.fx('spin');
       break;
     case 'mono': {
       const col = randomColor();
       s.players.forEach(pl => pl.hand.forEach(c => { if (c.color !== 'wild') c.color = col; }));
       s.color = col;
-      banner(`Сегодня всё ${CPLURAL[col]}!`);
+      banner('evs.mono', { color: col });
       t.fx('spin');
       break;
     }
     case 'carousel':
       t.rotateHands();
-      banner('Все карты уехали к соседу');
+      banner('evs.carousel');
       t.fx('carousel');
       break;
     case 'robin': {
@@ -95,49 +99,50 @@ export function fireEvent(t: EventTools, forced?: EventId): boolean {
       const poor = s.players[order[order.length - 1]];
       const m = rich === poor ? 0 : Math.min(2, rich.hand.length - 1);
       for (let i = 0; i < m; i++) poor.hand.push(t.takeRandomCard(rich));
-      banner(m ? `${rich.name} отдаёт ${m} карт(ы) игроку ${poor.name}` : 'Отнимать не у кого, все равны', order[0]);
+      if (m) banner('evs.robin', { a: rich.name, n: m, b: poor.name }, order[0]);
+      else banner('evs.robinNone', undefined, order[0]);
       break;
     }
     case 'upside':
-      banner('На ближайшие ходы стол вверх ногами');
+      banner('evs.upside');
       t.fx('upside');
       break;
     case 'blind':
       s.blindTurns = n;
-      banner('Целый круг карты лежат рубашкой вверх. Удачи!');
+      banner('evs.blind');
       break;
     case 'blitz':
       s.blitzTurns = n;
-      banner('Круг на скорость: 7 секунд на ход, иначе +2');
+      banner('evs.blitz');
       break;
     case 'lightning': {
       const target = randomPlayer();
       s.skipNext.push(target);
-      banner(`Попала в ${s.players[target].name}: пропуск следующего хода`, target);
+      banner('evs.lightning', { who: s.players[target].name }, target);
       t.fx('lightning', undefined, { target });
       break;
     }
     case 'bomber': {
       const target = randomPlayer();
       const got = t.give(s.players[target], 3).length;
-      banner(`Летит прямо на ${s.players[target].name}: +${got} карты!`, target);
+      banner('evs.bomber', { who: s.players[target].name, n: got }, target);
       t.fx('bomber', undefined, { target });
       break;
     }
     case 'jackpot': {
       const target = randomPlayer();
       const m = t.shedRandom(s.players[target], 3);
-      banner(m ? `${s.players[target].name} сбрасывает ${m} карт(ы)!` : `${s.players[target].name} и так почти пуст`, target);
+      banner(m ? 'evs.jackpot' : 'evs.jackpotNone', { who: s.players[target].name, n: m }, target);
       t.fx('jackpot', undefined, { target });
       break;
     }
     case 'group':
-      s.dare = pick(GROUP_DARES, rng);
-      banner('Задание для всех сразу');
+      s.dare = msg('groupDare', { i: randomIndex(GROUP_DARE_COUNT, rng) });
+      banner('evs.group');
       s.phase = 'group';
       return true;
     case 'coin':
-      banner(`${p.name}, орёл или решка?`);
+      banner('evs.coin', { who: p.name });
       if (!p.bot) {
         // a person guesses; the engine waits in the 'coin' phase
         s.coin = null;
@@ -158,12 +163,11 @@ export function flipCoin(t: EventTools, guess: 'heads' | 'tails') {
   const result = rng() < 0.5 ? 'heads' : 'tails';
   const win = guess === result;
   s.coin = { guess, result, win };
-  const side = result === 'heads' ? 'орёл' : 'решка';
   if (win) {
     const m = t.shedRandom(p, 2);
-    t.say(`🪙 Выпал ${side}. ${p.name} угадал(а) и сбрасывает ${m}`);
+    t.say('log.coinWin', { side: result, who: p.name, n: m });
   } else {
     t.give(p, 2);
-    t.say(`🪙 Выпал ${side}. ${p.name} не угадал(а) и тянет 2`);
+    t.say('log.coinLose', { side: result, who: p.name });
   }
 }

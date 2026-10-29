@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { randomHumanAvatar } from '../game/avatars';
+import { render, t, useLang, type Msg } from '../i18n';
 import { Game, type LocalSetup } from '../game/engine';
 import { Connection, errorLeavesRoom, savedAvatar, savedName } from '../net/connection';
 import { CardLoader } from '../ui/components/CardLoader';
@@ -27,7 +28,8 @@ export default function App() {
   const [name, setNameState] = useState(savedName);
   const [avatar, setAvatarState] = useState(() => savedAvatar() ?? randomHumanAvatar());
   const [invite] = useState(inviteFromUrl);
-  const [notice, setNotice] = useState<string | null>(null);
+  useLang(); // the whole app re-renders in a new language
+  const [notice, setNotice] = useState<Msg | null>(null);
 
   // local game
   const [setup, setSetup] = useState<LocalSetup>(loadLocalSetup);
@@ -125,10 +127,10 @@ export default function App() {
       return (
         <div className="loading-screen">
           <CardLoader
-            title={code ? `Заходим в комнату ${code}` : 'Создаём комнату'}
-            sub={conn.status === 'reconnecting' ? 'Связь пропала, пробуем ещё раз…' : 'Тасуем колоду и ставим стулья'}
+            title={code ? t('home.joining', { code }) : t('home.creating')}
+            sub={conn.status === 'reconnecting' ? t('home.reconnecting') : t('home.shuffling')}
           >
-            <button className="btn" onClick={leaveRoom}>Отмена</button>
+            <button className="btn" onClick={leaveRoom}>{t('cancel')}</button>
           </CardLoader>
         </div>
       );
@@ -171,7 +173,7 @@ export default function App() {
       setAvatar={setAvatar}
       invite={invite}
       busy={conn.status === 'connecting'}
-      error={notice}
+      error={notice ? render(notice) : null}
       onLocal={() => setScreen('local-setup')}
       onCreate={() => goOnline(() => conn.create())}
       onJoin={c => goOnline(() => conn.join(c))}

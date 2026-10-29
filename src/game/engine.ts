@@ -1,12 +1,14 @@
 import { Observable } from '../lib/observable';
 import { BOT_SKILL, botCatchers, botDecision, pickBotCard } from './bot';
-import { CNAME, COLORS, CPLURAL, DARES, DEFAULT_TABLE, effectiveTable, MERCY_LIMIT, PUNISH, TABLE_CHOICES, TEAM_NAMES } from './content';
+import { cardMsg, msg, type Msg } from '../i18n/msg';
+import { COLORS, DARE_COUNT, DEFAULT_TABLE, effectiveTable, MERCY_LIMIT, PUNISH_COUNT, TABLE_CHOICES } from './content';
 import { eventDue, fireEvent, flipCoin, type EventTools } from './events';
 import { buildDeck } from './deck';
 import { pick, randomIndex, seededRng, shuffle, type Rng } from './random';
-import { activeSeats, canPlayCard, cardName, drawValue, isCatchable, nextSeat, playableCard, sameTeam } from './rules';
+import { activeSeats, canPlayCard, drawValue, isCatchable, nextSeat, playableCard, sameTeam } from './rules';
 import { teamsOf, teamsProblem } from './teams';
 import type { Card, Choice, Color, EventId, Fx, FxKind, Player, Rules, State, Table, ThemeId } from './types';
+import type { Params, StrKey } from '../i18n/types';
 
 export interface GameConfig {
   /** in seat order; `team` counts only in the teams format (see seatByTeams) */
@@ -78,7 +80,7 @@ export class Game extends Observable {
       return;
     }
     const players: Player[] = cfg.players.map((p, i) => ({
-      name: p.name.trim() || `Игрок ${i + 1}`,
+      name: p.name.trim() || `#${i + 1}`,
       bot: p.bot,
       avatar: p.avatar,
       hand: [],
@@ -150,7 +152,7 @@ export class Game extends Observable {
       loser: null,
       punishment: null,
     };
-    this.say(`Раздали по ${table.handSize}. Первым ходит ${players[this.s.cur].name}. Удачи, она понадобится.`);
+    this.say('log.dealt', { n: table.handSize, who: players[this.s.cur].name });
     this.openWith(first);
     this.beginTurn();
   }
@@ -177,7 +179,7 @@ export class Game extends Observable {
     const p = this.cp();
     switch (first.type) {
       case 'skip':
-        this.say(`💤 Первая карта — Пропуск: ${p.name} пропускает ход`);
+        this.say('log.firstSkip', { who: p.name });
         s.cur = this.nextIdx();
         break;
       case 'rev': {
@@ -185,19 +187,19 @@ export class Game extends Observable {
         const dealer = this.nextIdx(s.cur, s.players.length - 1);
         this.reverse();
         s.cur = dealer;
-        this.say(`⇄ Первая карта — Разворот: начинает раздающий, ${s.players[dealer].name}, и в другую сторону`);
+        this.say('log.firstRev', { who: s.players[dealer].name });
         break;
       }
       case 'draw2':
         // like a +2 laid on them: they draw 2 and miss the turn (or answer it, with the stacking rule)
         this.addPending(first);
-        this.say(`📚 Первая карта — +2: ${p.name} начинает со штрафа`);
+        this.say('log.firstDraw2', { who: p.name });
         break;
       case 'wild':
         s.wildStart = true;
         // some colour is needed until they pick one; nobody can move before that
         s.color = pick(COLORS, this.rng);
-        this.say(`🎨 Первая карта — Цвет: ${p.name} выбирает цвет`);
+        this.say('log.firstWild', { who: p.name });
         break;
     }
   }
@@ -255,10 +257,10 @@ export class Game extends Observable {
     s.timerKind = null;
     s.challenge = null;
     if (card.color !== 'wild') s.color = card.color;
-    this.say(`${p.name} кладёт ${cardName(card)}`);
+    this.say('log.played', { who: p.name, card: cardMsg(card) });
 
     if (p.hand.length === 1 && s.rules.uno) {
-      if (s.unoCalled) this.fx('uno', `${p.name}: UNO!`);
+      if (s.unoCalled) this.fx('uno', msg('fx.uno', { who: p.name }));
       else this.openUnoCatch();
     }
     if (p.hand.length === 0) {
@@ -280,8 +282,8 @@ export class Game extends Observable {
     s.challenge = null;
     if (s.pending > 0) {
       const n = this.takePending();
-      this.say(`${p.name} тянет ${n} и тихо плачет 😭`);
-      if (n >= 6) this.fx('toast', `+${n}! 😱`);
+      this.say('log.drawPenalty', { who: p.name, n });
+      if (n >= 6) this.fx('toast', msg('fx.bigDraw', { n }));
       this.fx('shake');
       // the message comes first: in No Mercy the draw itself may knock them out and even end the round
       this.give(p, n);
@@ -304,7 +306,7 @@ export class Game extends Observable {
     s.drawn = true;
     s.lastDrawn = got.length ? got[got.length - 1].id : null;
     this.noteLack(p, asked);
-    this.say(`${p.name} тянет ${got.length > 1 ? `${got.length} карт(ы)` : got.length ? 'карту' : '… а колода пуста'}`);
+    this.say('log.drew', { who: p.name, n: got.length });
     if (!p.hand.some(c => this.playable(c))) this.advance();
     this.emitChange();
   }
@@ -314,7 +316,7 @@ export class Game extends Observable {
     if (s.phase !== 'play' || !s.drawn) return;
     // No Mercy: the card you drew to has to be played
     if (s.rules.noMercy && this.cp().hand.some(c => this.playable(c))) return;
-    this.say(`${this.cp().name} пасует`);
+    this.say('log.pass', { who: this.cp().name });
     this.advance();
     this.emitChange();
   }
@@ -323,7 +325,7 @@ export class Game extends Observable {
     const s = this.s;
     if (s.phase !== 'play' || s.unoCalled) return;
     s.unoCalled = true;
-    this.fx('uno', `${this.cp().name}: UNO!`);
+    this.fx('uno', msg('fx.uno', { who: this.cp().name }));
     this.emitChange();
   }
 
@@ -342,22 +344,22 @@ export class Game extends Observable {
         p.hand = p.hand.filter(c => c.color !== col);
         // the dumped cards go under the dump card itself
         s.discard.splice(s.discard.length - 1, 0, ...out);
-        this.say(`🧹 ${p.name} выкидывает все ${CPLURAL[col]}: ${out.length} шт.`);
+        this.say('log.dump', { who: p.name, color: col, n: out.length });
       }
       s.color = col;
       if (ch.mode === 'roulette') return this.spinRoulette(col);
       const penalty = drawValue(e.card);
       if (penalty) {
         this.addPending(e.card);
-        this.say(`Цвет ${CNAME[col].toLowerCase()}, штраф уже +${s.pending}`);
+        this.say('log.colorPenalty', { color: col, n: s.pending });
         if (e.card.type === 'wild4' && s.rules.challenge) s.challenge = { by: s.cur, target: this.nextIdx(), guilty: !!e.guilty };
-      } else if (e.card.type !== 'dump') this.say(`Цвет теперь ${CNAME[col].toLowerCase()}`);
+      } else if (e.card.type !== 'dump') this.say('log.colorNow', { color: col });
       return this.finishEffect();
     }
     if (ch.kind === 'card') {
       if (!p.hand.some(c => c.id === value)) return;
       e.giftCard = value as number;
-      s.choice = { kind: 'player', title: 'Кому дарим?', mode: 'gift' };
+      s.choice = { kind: 'player', title: msg('choice.giftTo'), mode: 'gift' };
       this.emitChange();
       return;
     }
@@ -366,12 +368,12 @@ export class Game extends Observable {
     const t = s.players[ti];
     if (ch.mode === 'swap') {
       [p.hand, t.hand] = [t.hand, p.hand];
-      this.say(`⇆ ${p.name} и ${t.name} меняются картами. Теперь у ${p.name} ${p.hand.length}, у ${t.name} ${t.hand.length}`);
+      this.say('log.swap', { a: p.name, b: t.name, na: p.hand.length, nb: t.hand.length });
       this.fx('flip');
     } else {
       const gi = p.hand.findIndex(c => c.id === e.giftCard);
       if (gi >= 0) t.hand.push(p.hand.splice(gi, 1)[0]);
-      this.say(`🎁 ${p.name} дарит ${t.name} карту. Какая щедрость!`);
+      this.say('log.gift', { a: p.name, b: t.name });
     }
     this.finishEffect();
   }
@@ -389,10 +391,10 @@ export class Game extends Observable {
     const s = this.s;
     if (s.phase !== 'dare') return;
     const p = this.cp();
-    if (accepted) this.say(`🎭 ${p.name} выполняет фант: «${s.dare}». Аплодисменты!`);
+    if (accepted) this.say('log.dareDone', { who: p.name, dare: s.dare });
     else {
       this.give(p, 2);
-      this.say(`🐔 ${p.name} струсил(а) и тянет 2`);
+      this.say('log.dareRefused', { who: p.name });
       this.fx('shake');
     }
     s.dare = null;
@@ -404,7 +406,7 @@ export class Game extends Observable {
   doneGroup() {
     if (this.s.phase !== 'group') return;
     this.s.dare = null;
-    this.say('🎤 Общий фант выполнен. Красавцы!');
+    this.say('log.groupDone');
     this.startPlay();
     this.emitChange();
   }
@@ -433,8 +435,8 @@ export class Game extends Observable {
     s.unoCatch = null;
     const penalty = s.table.unoPenalty;
     this.give(v, penalty);
-    this.say(`🫵 ${s.players[by].name} ловит ${v.name}: забыл(а) крикнуть UNO! +${penalty}`);
-    this.fx('caught', `🫵 ${s.players[by].name} поймал(а) ${v.name}! +${penalty}`);
+    this.say('log.caught', { by: s.players[by].name, who: v.name, n: penalty });
+    this.fx('caught', msg('fx.caught', { by: s.players[by].name, who: v.name, n: penalty }));
     this.fx('shake');
     this.emitChange();
   }
@@ -444,7 +446,7 @@ export class Game extends Observable {
     const s = this.s;
     if (!this.catchable() || s.unoCatch?.victim !== who) return;
     s.unoCatch = null;
-    this.fx('uno', `${s.players[who].name}: UNO! (успел)`);
+    this.fx('uno', msg('fx.lateUno', { who: s.players[who].name }));
     this.emitChange();
   }
 
@@ -457,7 +459,7 @@ export class Game extends Observable {
     const skill = BOT_SKILL[s.table.botLevel];
     const botCatcher = bots.length && this.rng() < skill.noticeUno ? pick(bots, this.rng) : null;
     s.unoCatch = { victim: s.cur, until: s.turn + 1, botCatcher, botDelay: skill.catchMs[0] + Math.floor(this.rng() * skill.catchMs[1]) };
-    this.say(`🤫 ${p.name} осталась одна карта… а «UNO!» никто не слышал`);
+    this.say('log.forgotUno', { who: p.name });
   }
 
   /** Shared screen: the person looking at it, or failing that the first person who is not the victim. */
@@ -483,15 +485,15 @@ export class Game extends Observable {
       this.give(offender, 4);
       s.pending = Math.max(0, s.pending - 4);
       if (!s.pending) s.pendingType = null;
-      this.say(`⚖️ ${me.name} оспаривает +4 и прав(а)! У ${offender.name} было чем сходить — тянет 4`);
-      this.fx('challenge', `⚖️ Попался! ${offender.name} тянет 4`);
+      this.say('log.challengeWon', { who: me.name, by: offender.name });
+      this.fx('challenge', msg('fx.challengeWon', { by: offender.name }));
       this.fx('shake');
       this.emitChange();
       return;
     }
     s.pending += 2;
-    this.say(`⚖️ ${me.name} оспаривает +4, но ${offender.name} играл(а) честно. Штраф +${s.pending}`);
-    this.fx('challenge', `⚖️ Честно! ${me.name} тянет ${s.pending}`);
+    this.say('log.challengeLost', { who: me.name, by: offender.name, n: s.pending });
+    this.fx('challenge', msg('fx.challengeLost', { who: me.name, n: s.pending }));
     this.draw();
   }
 
@@ -541,16 +543,16 @@ export class Game extends Observable {
     s.turnDeadline = null;
     s.challenge = null;
     if (s.pending > 0) {
-      this.fx('timeout', `⏰ Время! ${p.name} берёт +${s.pending}`);
+      this.fx('timeout', msg('fx.timeoutPenalty', { who: p.name, n: s.pending }));
       return this.draw();
     }
     if (s.drawn) {
-      this.say(`⏰ ${p.name} не успел(а) сходить, ход переходит дальше`);
-      this.fx('timeout', '⏰ Время! Ход пропущен');
+      this.say('log.timeoutDrawn', { who: p.name });
+      this.fx('timeout', msg('fx.timeoutSkip'));
     } else {
       // one card only, even where you normally draw until something fits
-      this.say(`⏰ ${p.name} не успел(а) и тянет карту`);
-      this.fx('timeout', '⏰ Время! +1 карта и пропуск хода');
+      this.say('log.timeoutDraw', { who: p.name });
+      this.fx('timeout', msg('fx.timeoutDraw'));
       this.give(p, 1);
     }
     this.advance();
@@ -564,8 +566,8 @@ export class Game extends Observable {
     s.turnDeadline = null;
     const turn = s.turn;
     const who = this.cp().name;
-    this.say(`⏰ ${who} не успел(а), сходил автопилот`);
-    this.fx('timeout', `⏰ Время! За ${who} сходил автопилот`);
+    this.say('log.autopilot', { who });
+    this.fx('timeout', msg('fx.autopilot', { who }));
     const sameTurn = () => s.turn === turn && (s.phase as string) !== 'over';
     // a turn can take several steps (draw, then choose a colour…); stop when a step changes nothing
     for (let i = 0; i < 12 && sameTurn(); i++) {
@@ -587,11 +589,11 @@ export class Game extends Observable {
     const n = (bomb ? 3 : 2) + this.takePending();
     this.give(p, n);
     if (bomb) {
-      this.say(`💥 БАБАХ! ${p.name} не успел(а) и тянет ${n}`);
-      this.fx('boom', '💥 БАБАХ!');
+      this.say('log.bombBoom', { who: p.name, n });
+      this.fx('boom', msg('fx.boom'));
     } else {
-      this.say(`⚡ ${p.name} не успел(а) в блице и тянет ${n}`);
-      this.fx('toast', `⚡ Время! +${n}`);
+      this.say('log.blitzLate', { who: p.name, n });
+      this.fx('toast', msg('fx.blitzLate', { n }));
       this.fx('shake');
     }
     this.advance();
@@ -606,8 +608,8 @@ export class Game extends Observable {
     let w = active[0];
     active.forEach(i => { if (s.players[i].hand.length < s.players[w].hand.length) w = i; });
     s.timeUp = true;
-    this.say(`⏱ Время вышло! Меньше всех карт у ${s.players[w].name}`);
-    this.fx('toast', '⏱ Время вышло!');
+    this.say('log.timeUp', { who: s.players[w].name });
+    this.fx('toast', msg('fx.timeUp'));
     this.win(w);
     this.emitChange();
   }
@@ -745,7 +747,7 @@ export class Game extends Observable {
     const struck = s.skipNext.indexOf(s.cur);
     if (struck >= 0) {
       s.skipNext.splice(struck, 1);
-      this.say(`🌩️ ${p.name} всё ещё дымится после молнии и пропускает ход`);
+      this.say('log.struck', { who: p.name });
       return this.advance();
     }
     if (!p.bot) {
@@ -769,18 +771,18 @@ export class Game extends Observable {
       // the round opened with a Wild: the first player names the colour, then moves as usual
       s.wildStart = false;
       s.effect = { card: this.top(), steps: 0 };
-      return this.ask({ kind: 'color', title: 'Первая карта — Цвет! Какой выбираешь?' });
+      return this.ask({ kind: 'color', title: msg('choice.firstWild') });
     }
     if (s.rouletteNext) {
       // the colour roulette hits whoever moves now: they name a colour and dig for it
       s.rouletteNext = false;
       s.effect = { card: this.top(), steps: 1 };
-      return this.ask({ kind: 'color', title: 'Рулетка! Какой цвет ищешь?', mode: 'roulette' });
+      return this.ask({ kind: 'color', title: msg('choice.roulette'), mode: 'roulette' });
     }
     if (s.dareNext) {
       s.dareNext = false;
-      const d = pick(DARES, this.rng);
-      if (p.bot) this.say(`🎭 ${p.name} получает фант: «${d}». Бот уверяет, что выполнил.`);
+      const d = msg('dare', { i: randomIndex(DARE_COUNT, this.rng) });
+      if (p.bot) this.say('log.botDare', { who: p.name, dare: d });
       else {
         s.dare = d;
         s.phase = 'dare';
@@ -831,10 +833,10 @@ export class Game extends Observable {
     if (this.rng() < 0.3) {
       const n = 3 + this.takePending();
       this.give(p, n);
-      this.say(`💥 ${p.name} запаниковал(а) от бомбы и тянет ${n}`);
-      this.fx('boom', `💥 ${p.name} подорвался!`);
+      this.say('log.botPanic', { who: p.name, n });
+      this.fx('boom', msg('fx.botPanic', { who: p.name }));
       this.advance();
-    } else this.say(`💣 ${p.name} хладнокровно разминирует бомбу 😎`);
+    } else this.say('log.botDefuse', { who: p.name });
   }
 
   /* ================= card effects ================= */
@@ -856,88 +858,88 @@ export class Game extends Observable {
     const nextName = s.players[this.nextIdx()].name;
     switch (card.type) {
       case 'num':
-        if (s.rules.sevenZero && card.value === 7) return this.ask({ kind: 'player', title: 'Семёрка! С кем меняемся картами?', mode: 'swap' });
+        if (s.rules.sevenZero && card.value === 7) return this.ask({ kind: 'player', title: msg('choice.seven'), mode: 'swap' });
         if (s.rules.sevenZero && card.value === 0) {
           this.rotateHands();
-          this.say('🔄 Ноль! Все передают свои карты дальше по кругу');
+          this.say('log.zero');
           this.fx('flip');
         }
         break;
       case 'skip':
         e.steps = 2;
-        this.say(`💤 ${nextName} пропускает ход. Обидно.`);
+        this.say('log.skip', { who: nextName });
         break;
       case 'rev':
         this.reverse();
         // with two players a reverse works like a skip
         if (n === 2) e.steps = 2;
-        this.say('⇄ Разворот! Едем в другую сторону');
+        this.say('log.rev');
         break;
       case 'draw2':
       case 'draw4':
         this.addPending(card);
-        if (s.pending > drawValue(card)) this.say(`📚 Стопка! Штраф уже +${s.pending}`);
+        if (s.pending > drawValue(card)) this.say('log.stack', { n: s.pending });
         break;
       case 'wild6':
       case 'wild10':
-        return this.ask({ kind: 'color', title: `+${drawValue(card)}! Какой цвет?` });
+        return this.ask({ kind: 'color', title: msg('choice.wildN', { n: drawValue(card) }) });
       case 'wildRev4':
         // reverse first: the +4 goes to whoever moves next in the new direction. With two players the official
         // rule is that it skips the other player and YOU draw 4 (unless you stack it back at them)
         this.reverse();
         if (n === 2) e.steps = 2;
-        this.say('⇄ Разворот +4! Едем в другую сторону');
-        return this.ask({ kind: 'color', title: 'Разворот +4! Какой цвет?' });
+        this.say('log.wildRev4');
+        return this.ask({ kind: 'color', title: msg('choice.wildRev4') });
       case 'skipAll':
         // everyone else is skipped: round the table and back to you
         e.steps = activeSeats(s).length;
-        this.say(`⊘ ${p.name} пропускает всех и ходит ещё раз`);
+        this.say('log.skipAll', { who: p.name });
         break;
       case 'discardAll': {
         const col = card.color as Color;
         const out = p.hand.filter(c => c.color === col);
         p.hand = p.hand.filter(c => c.color !== col);
         s.discard.splice(s.discard.length - 1, 0, ...out);
-        this.say(`🗑️ ${p.name} сбрасывает все ${CPLURAL[col]}: ${out.length} шт.`);
+        this.say('log.discardAll', { who: p.name, color: col, n: out.length });
         break;
       }
       case 'roulette':
         s.rouletteNext = true;
-        this.say(`🎡 Рулетка для ${nextName}!`);
-        this.fx('toast', `🎡 Рулетка для ${nextName}!`);
+        this.say('log.roulette', { who: nextName });
+        this.fx('toast', msg('log.roulette', { who: nextName }));
         break;
       case 'wild':
-        return this.ask({ kind: 'color', title: 'Какой цвет?' });
+        return this.ask({ kind: 'color', title: msg('choice.wild') });
       case 'wild4':
-        return this.ask({ kind: 'color', title: '+4! Какой цвет?' });
+        return this.ask({ kind: 'color', title: msg('choice.wildN', { n: 4 }) });
       case 'swap':
-        return this.ask({ kind: 'player', title: 'С кем меняемся картами?', mode: 'swap' });
+        return this.ask({ kind: 'player', title: msg('choice.swap'), mode: 'swap' });
       case 'gift':
-        return this.ask({ kind: 'card', title: 'Какую карту подарить?' });
+        return this.ask({ kind: 'card', title: msg('choice.gift') });
       case 'bomb':
         s.bombNext = true;
-        this.say(`💣 ${p.name} подкладывает бомбу под ${nextName}!`);
-        this.fx('toast', `💣 Бомба для ${nextName}!`);
+        this.say('log.bomb', { who: p.name, to: nextName });
+        this.fx('toast', msg('fx.bomb', { to: nextName }));
         break;
       case 'dare':
         if (s.rules.dares) {
           s.dareNext = true;
-          this.say(`🎭 ${nextName}, тебе фант!`);
+          this.say('log.dare', { who: nextName });
         }
         break;
       case 'rain':
         s.players.forEach(o => { if (o !== p && !o.out) this.give(o, 1); });
-        this.say('☔ Ливень! Все остальные тянут по карте');
-        this.fx('toast', '☔ Ливень!');
+        this.say('log.rain');
+        this.fx('toast', msg('fx.rain'));
         break;
       case 'mirror':
         this.reverse();
         if (s.pending > 0) {
-          this.say(`🪞 Отражено! +${s.pending} летит обратно`);
-          this.fx('toast', `🪞 Отражено! +${s.pending}`);
+          this.say('log.mirror', { n: s.pending });
+          this.fx('toast', msg('fx.mirror', { n: s.pending }));
         } else {
           if (n === 2) e.steps = 2;
-          this.say('🪞 Зеркало без штрафа работает как разворот');
+          this.say('log.mirrorRev');
         }
         break;
       case 'chaos': {
@@ -948,13 +950,13 @@ export class Game extends Observable {
           i = this.nextIdx(i);
           s.players[i].hand.push(all.pop()!);
         }
-        this.say('🌪 ХАОС! Все карты перемешаны и розданы заново');
-        this.fx('chaos', '🌪 ХАОС!');
+        this.say('log.chaos');
+        this.fx('chaos', msg('fx.chaos'));
         if (this.emptyHand() >= 0) break;
-        return this.ask({ kind: 'color', title: 'Хаос! Какой цвет?' });
+        return this.ask({ kind: 'color', title: msg('choice.chaos') });
       }
       case 'dump':
-        return this.ask({ kind: 'color', title: 'Карты какого цвета выкидываем?', mode: 'dump' });
+        return this.ask({ kind: 'color', title: msg('choice.dump'), mode: 'dump' });
     }
     this.finishEffect();
   }
@@ -990,7 +992,7 @@ export class Game extends Observable {
       takeRandomCard: from => this.takeRandomCard(from),
       shedRandom: (p, k) => this.shedRandom(p, k),
       rotateHands: () => this.rotateHands(),
-      say: m => this.say(m),
+      say: (k, p) => this.say(k, p),
       fx: (kind, text, extra) => this.fx(kind, text, extra),
     };
   }
@@ -1017,22 +1019,22 @@ export class Game extends Observable {
       if (worse) loser = i;
     });
     s.loser = loser >= 0 ? loser : null;
-    s.punishment = s.rules.punish ? pick(PUNISH, this.rng) : null;
+    s.punishment = s.rules.punish ? msg('punish', { i: randomIndex(PUNISH_COUNT, this.rng) }) : null;
     if (s.winTeam !== null) {
-      const names = s.players.filter((_, i) => s.teams![i] === s.winTeam).map(p => p.name).join(' и ');
-      this.say(`🏆 Команда «${TEAM_NAMES[s.winTeam]}» побеждает: ${names}!`);
-    } else this.say(`🏆 ${s.players[w].name} побеждает!`);
+      const names = s.players.filter((_, i) => s.teams![i] === s.winTeam).map(p => p.name);
+      this.say('log.teamWins', { team: msg(s.winTeam ? 'team.1' : 'team.0'), names });
+    } else this.say('log.wins', { who: s.players[w].name });
     this.fx('win');
   }
 
   /* ================= low-level helpers ================= */
 
-  private say(message: string) {
-    this.s.log.push(message);
+  private say(k: StrKey, p?: Params) {
+    this.s.log.push(msg(k, p));
     if (this.s.log.length > LOG_LIMIT) this.s.log.shift();
   }
 
-  private fx(kind: FxKind, text?: string, extra: Partial<Fx> = {}) {
+  private fx(kind: FxKind, text?: Msg, extra: Partial<Fx> = {}) {
     this.s.fx.push({ id: ++this.fxId, kind, text, ...extra });
     if (this.s.fx.length > FX_LIMIT) this.s.fx.shift();
   }
@@ -1074,8 +1076,8 @@ export class Game extends Observable {
     p.out = s.players.filter(x => x.out).length + 1;
     this.aside.push(...p.hand);
     p.hand = [];
-    this.say(`💀 ${p.name} набирает ${MERCY_LIMIT}+ карт и выбывает. Пощады нет!`);
-    this.fx('knockout', `💀 ${p.name} выбывает!`);
+    this.say('log.knockout', { who: p.name, n: MERCY_LIMIT });
+    this.fx('knockout', msg('fx.knockout', { who: p.name }));
     // the last one standing (or the last team) wins
     const left = activeSeats(s);
     if (s.phase !== 'over' && left.length && left.every(i => i === left[0] || this.sameTeam(i, left[0]))) this.win(left[0]);
@@ -1084,7 +1086,7 @@ export class Game extends Observable {
   /** Colour roulette: the current player turns up cards until one of `col` appears, keeps them all and loses the turn. */
   private spinRoulette(col: Color) {
     const p = this.cp();
-    this.say(`🎡 ${p.name} ищет ${CNAME[col].toLowerCase()}…`);
+    this.say('log.rouletteDig', { who: p.name, color: col });
     let n = 0;
     for (let i = 0; i < 200; i++) {
       const g = this.give(p, 1);
@@ -1094,8 +1096,8 @@ export class Game extends Observable {
     }
     // the digging may have knocked them out and ended the round; then that is the last word
     if ((this.s.phase as string) !== 'over') {
-      this.say(`🎡 …и тянет ${n} карт(ы)`);
-      if (n >= 4) this.fx('toast', `🎡 +${n}! 😱`);
+      this.say('log.rouletteGot', { n });
+      if (n >= 4) this.fx('toast', msg('fx.rouletteBig', { n }));
       this.fx('shake');
     }
     this.finishEffect();
@@ -1120,7 +1122,7 @@ export class Game extends Observable {
     s.deck = shuffle([...s.discard, ...this.aside], this.rng).map(c => ({ ...c, id: this.nextCardId++, dealIdx: undefined }));
     this.aside = [];
     s.discard = [top];
-    this.say('Колода кончилась, перемешали сброс 🔄');
+    this.say('log.reshuffle');
   }
 
   private takeRandomCard(from: Player): Card {

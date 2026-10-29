@@ -1,5 +1,7 @@
+import { msg, type Msg } from '../i18n/msg';
+
 /**
- * Teams (the "2 на 2" format): who plays with whom, whether the split works, and where everyone sits.
+ * Teams (the "2 on 2" format): who plays with whom, whether the split works, and where everyone sits.
  * Shared by the local setup, the online lobby, the server and the engine.
  */
 
@@ -21,11 +23,11 @@ export function teamsOf(list: readonly { team?: number }[]): TeamId[] {
 }
 
 /** Why these teams cannot play (null when they can): at least 4 players, the same number on each side. */
-export function teamsProblem(teams: readonly number[]): string | null {
-  if (teams.length < 4) return 'Для игры командами нужно 4 игрока или больше';
-  if (teams.length % 2) return 'Для игры командами нужно чётное число игроков';
+export function teamsProblem(teams: readonly number[]): Msg | null {
+  if (teams.length < 4) return msg('teams.need4');
+  if (teams.length % 2) return msg('teams.even');
   const red = teams.filter(t => t === 0).length;
-  if (red * 2 !== teams.length) return `В командах должно быть поровну игроков, сейчас ${red} на ${teams.length - red}`;
+  if (red * 2 !== teams.length) return msg('teams.uneven', { a: red, b: teams.length - red });
   return null;
 }
 

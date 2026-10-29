@@ -4,6 +4,8 @@ import type http from 'node:http';
 import path from 'node:path';
 import zlib, { brotliCompressSync, gzipSync } from 'node:zlib';
 import { normalizeCode } from '../src/net/protocol';
+import { langFrom, tr } from '../src/i18n/core';
+import type { Lang } from '../src/i18n/types';
 import type { Room } from './room';
 
 export interface StaticSiteOptions {
@@ -41,7 +43,9 @@ const escapeHtml = (v: string) =>
 const setMeta = (html: string, prop: string, value: string) =>
   html.replace(new RegExp(`(<meta (?:property|name)="${prop}" content=")[^"]*(")`), `$1${escapeHtml(value)}$2`);
 
-const playersWord = (n: number) => (n === 1 ? 'игрок' : n < 5 ? 'игрока' : 'игроков');
+/** The page's language from Accept-Language (ru / uk / be → Russian, pl → Polish, else English). */
+const langOf = (req: http.IncomingMessage): Lang =>
+  langFrom(String(req.headers['accept-language'] ?? '').split(',').map(x => x.split(';')[0].trim()).filter(Boolean));
 
 /**
  * Serves the single-file client and its few static neighbours.
@@ -67,17 +71,25 @@ export function createStaticSite({ dir, trustProxy, rooms }: StaticSiteOptions) 
     const room = code ? rooms.get(code) : undefined;
     const hostName = room?.members.find(m => m.id === room.hostId)?.name;
     const seated = room?.members.filter(m => !m.spectator).length ?? 0;
-    const key = `${origin}|${room ? `${code}|${hostName}|${seated}` : ''}`;
+    const lang = langOf(req);
+    const key = `${origin}|${lang}|${room ? `${code}|${hostName}|${seated}` : ''}`;
     const hit = pages.get(key);
     if (hit) return hit;
 
     let html = tpl;
+    // link previews and the first paint in the reader's language (the app itself may switch later)
+    const title = tr(lang, 'app.title');
+    html = html.replace(/<html lang="[^"]*"/, `<html lang="${lang}"`).replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(title)}</title>`);
+    html = setMeta(html, 'og:locale', { ru: 'ru_RU', en: 'en_US', pl: 'pl_PL' }[lang]);
+    for (const p of ['og:site_name', 'og:title', 'apple-mobile-web-app-title']) html = setMeta(html, p, title);
+    for (const p of ['og:description', 'description']) html = setMeta(html, p, tr(lang, 'og.desc'));
+    html = setMeta(html, 'og:image:alt', tr(lang, 'og.alt'));
     html = setMeta(html, 'og:image', `${origin}/og.jpg`);
     html = setMeta(html, 'og:url', room ? `${origin}/?room=${code}` : `${origin}/`);
     if (room) {
-      const title = hostName ? `${hostName} зовёт тебя в UNO` : 'Тебя зовут в UNO';
-      const desc = `Комната ${code} · ${seated} ${playersWord(seated)} за столом. Открой ссылку, впиши имя — и садись играть.`;
-      html = setMeta(html, 'og:title', title);
+      const invite = hostName ? tr(lang, 'og.invite', { name: hostName }) : tr(lang, 'og.inviteAnon');
+      const desc = tr(lang, 'og.room', { code, n: seated });
+      html = setMeta(html, 'og:title', invite);
       html = setMeta(html, 'og:description', desc);
       html = setMeta(html, 'description', desc);
     }
@@ -115,7 +127,7 @@ export function createStaticSite({ dir, trustProxy, rooms }: StaticSiteOptions) 
     // single-file build: every page route gets index.html (?room=CODE links included)
     const page = await loadPage(req, url);
     if (!page) {
-      res.writeHead(500).end('Клиент не собран: запусти npm run build');
+      res.writeHead(500).end(tr('en', 'server.noBuild'));
       return;
     }
     // the page is ~1.2 MB raw but ~0.3 MB compressed: always send the smallest the browser accepts
@@ -125,7 +137,7 @@ export function createStaticSite({ dir, trustProxy, rooms }: StaticSiteOptions) 
       'content-type': 'text/html; charset=utf-8',
       'cache-control': 'no-cache',
       etag: page.etag,
-      vary: 'Accept-Encoding',
+      vary: 'Accept-Encoding, Accept-Language',
       'x-content-type-options': 'nosniff',
       'referrer-policy': 'same-origin',
     };

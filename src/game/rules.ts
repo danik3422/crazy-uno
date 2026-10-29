@@ -1,4 +1,3 @@
-import { CNAME, SPECIAL } from './content';
 import type { Card, State } from './types';
 
 /**
@@ -37,12 +36,6 @@ export function canPlayCard(s: State, c: Card): boolean {
 /** Like `canPlayCard`, plus: after drawing you may only play the card you just drew. */
 export function playableCard(s: State, c: Card): boolean {
   return canPlayCard(s, c) && (!s.drawn || c.id === s.lastDrawn);
-}
-
-/** "7 (красный)", "+4" */
-export function cardName(c: Card): string {
-  const base = c.type === 'num' ? String(c.value) : SPECIAL[c.type].name;
-  return c.color === 'wild' ? base : `${base} (${CNAME[c.color].toLowerCase()})`;
 }
 
 /** The seat `steps` places from `from` in the current direction of play. Knocked-out players are passed over. */

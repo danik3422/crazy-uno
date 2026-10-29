@@ -1,14 +1,19 @@
 import { createRoot } from 'react-dom/client';
 import './styles/base.css';
 import App from './app/App';
+import { applyDocument, onLangChange } from './i18n/core';
 import { repaintCards } from './three/textures';
 
 // Card faces are painted onto canvases, so the display font should be ready first.
 // On a slow connection we do not wait long: the cards are repainted when the fonts arrive.
 const fonts = Promise.all([
-  document.fonts.load('900 64px "Unbounded"', 'UNO0123456789БЕЗУМНОЕ'),
-  document.fonts.load('700 30px "Rubik"', 'ПОДАРОК'),
+  // Cyrillic and Polish letters live in their own font files: ask for both
+  document.fonts.load('900 64px "Unbounded"', 'UNO0123456789\u0411\u0415\u0417\u0423\u041c\u041d\u041e\u0415 SZALONEĄĘŁŃÓŚŹŻ'),
+  document.fonts.load('700 30px "Rubik"', '\u041f\u041e\u0414\u0410\u0420\u041e\u041a GIFTPREZENTĄĘŁŃÓŚŹŻ'),
 ]).catch(() => undefined);
+applyDocument();
+// a new language: card faces print new names on their label strips
+onLangChange(() => repaintCards());
 let started = false;
 const start = () => {
   if (started) return;

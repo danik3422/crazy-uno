@@ -124,7 +124,7 @@ describe('UNO catching', () => {
     g.s.unoCatch = { victim: 1, until: g.s.turn + 1, botCatcher: null, botDelay: 0 };
     g.catchUno(2);
     expect(g.s.players[1].hand).toHaveLength(5);
-    expect(g.s.log.at(-1)).toContain('+4');
+    expect(g.s.log.at(-1)).toMatchObject({ k: 'log.caught', p: { n: 4 } });
   });
 });
 
@@ -133,7 +133,7 @@ describe('bots', () => {
     const g = game();
     g.s.players[g.s.cur].hand = [card({ color: 'blue' }), card({ color: 'blue' }), card({ color: 'green' })];
     expect(countColors(g.s.players[g.s.cur].hand).blue).toBe(2);
-    expect(botDecision(g.s, { kind: 'color', title: '' })).toBe('blue');
+    expect(botDecision(g.s, { kind: 'color', title: { k: 'choice.wild' } })).toBe('blue');
   });
 
   it('never swap hands with their partner', () => {
@@ -141,12 +141,12 @@ describe('bots', () => {
     g.s.cur = 0;
     // the partner (seat 2) has the fewest cards, but an opponent must be picked
     g.s.players[2].hand = [card({})];
-    expect(botDecision(g.s, { kind: 'player', title: '', mode: 'swap' })).not.toBe(2);
+    expect(botDecision(g.s, { kind: 'player', title: { k: 'choice.swap' }, mode: 'swap' })).not.toBe(2);
   });
 });
 
 describe('opening message', () => {
   it('names the real hand size', () => {
-    expect(game(3, { handSize: 5 }).s.log[0]).toContain('Раздали по 5');
+    expect(game(3, { handSize: 5 }).s.log[0]).toMatchObject({ k: 'log.dealt', p: { n: 5 } });
   });
 });

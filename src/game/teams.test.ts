@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { randomBot } from './avatars';
-import { BOTNAMES, DEFAULT_RULES, DEFAULT_TABLE } from './content';
+import { DEFAULT_RULES, DEFAULT_TABLE } from './content';
+import { botNames, render } from '../i18n/core';
 import { Game } from './engine';
 import { seatByTeams, teamsOf, teamsProblem } from './teams';
 
@@ -12,9 +13,10 @@ describe('teams', () => {
   });
 
   it('needs 4+ players and the same number on each side', () => {
-    expect(teamsProblem([0, 1])).toMatch(/4 игрока/);
-    expect(teamsProblem([0, 1, 0, 1, 0])).toMatch(/чётное/);
-    expect(teamsProblem([0, 0, 0, 1])).toMatch(/поровну.*3 на 1/);
+    expect(teamsProblem([0, 1])?.k).toBe('teams.need4');
+    expect(teamsProblem([0, 1, 0, 1, 0])?.k).toBe('teams.even');
+    expect(teamsProblem([0, 0, 0, 1])).toEqual({ k: 'teams.uneven', p: { a: 3, b: 1 } });
+    expect(render(teamsProblem([0, 0, 0, 1]), 'en')).toMatch(/3 vs 1/);
     expect(teamsProblem([0, 0, 1, 1])).toBeNull();
   });
 
@@ -43,6 +45,7 @@ describe('new bots', () => {
     }
     expect(names.size).toBeGreaterThan(5);
     expect(faces.size).toBeGreaterThan(2);
+    const BOTNAMES = botNames();
     const taken = BOTNAMES.slice(1).map(name => ({ name }));
     expect(randomBot(taken).name).toBe(BOTNAMES[0]);
     // every name taken: it gets a number

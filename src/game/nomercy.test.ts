@@ -168,7 +168,7 @@ describe('mercy rule', () => {
     g.draw();
     expect(g.s.players[victim].out).toBe(1);
     expect(g.s.players[victim].hand).toHaveLength(0);
-    expect(g.s.log.some(l => l.includes('выбывает'))).toBe(true);
+    expect(g.s.log.some(l => l.k === 'log.knockout')).toBe(true);
     // their cards are set aside, not back in the deck: nothing lost (the test added one card of its own, the +10)
     expect(g.s.deck.length).toBe(deckBefore - 10);
     expect(g.totalCards()).toBe(total + 1);

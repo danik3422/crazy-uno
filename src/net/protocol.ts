@@ -1,7 +1,15 @@
 import type { Rules, State, Table, ThemeId } from '../game/types';
 import type { TeamId } from '../game/teams';
+import type { Msg } from '../i18n/msg';
+import type { Lang } from '../i18n/types';
 
 /** Shared between the browser client and the Node server. */
+
+/**
+ * Bumped whenever messages change shape. 2: every text (log, toasts, prompts, dares, errors) is a key + params
+ * that each screen renders in its own language. A page from before reloads when the server answers with another version.
+ */
+export const PROTOCOL_VERSION = 2;
 
 export interface MemberInfo {
   id: string;
@@ -25,7 +33,7 @@ export interface RoomInfo {
   table: Table;
   score: Record<string, number>;
   started: boolean;
-  /** after a round: who pressed "Ещё раунд", and when the next round starts once everyone has */
+  /** after a round: who pressed "Play again", and when the next round starts once everyone has */
   rematch: Rematch | null;
 }
 
@@ -100,7 +108,8 @@ export type ClientMsg =
   | { t: 'join'; code: string; name: string; avatar?: string; token?: string }
   | { t: 'leave' }
   | { t: 'profile'; name?: string; avatar?: string }
-  | { t: 'addBot' }
+  /** lang: the host's language, for the new bot's name */
+  | { t: 'addBot'; lang?: Lang }
   | { t: 'kick'; id: string }
   /** put a seated player on a team (the host: anyone; everyone else: themselves) */
   | { t: 'team'; id: string; team: TeamId }
@@ -123,10 +132,11 @@ export type ClientMsg =
 export type ErrorCode = 'no-room' | 'full' | 'bad-request' | 'not-host' | 'kicked' | 'replaced' | 'too-few' | 'slow-down';
 
 export type ServerMsg =
-  | { t: 'joined'; code: string; token: string; id: string }
+  | { t: 'joined'; code: string; token: string; id: string; v: number }
   | { t: 'room'; room: RoomInfo }
   | { t: 'state'; view: PlayerView; now: number }
-  | { t: 'error'; code: ErrorCode; msg: string }
+  /** msg: what to tell the player, rendered in their language */
+  | { t: 'error'; code: ErrorCode; msg: Msg }
   | { t: 'left' }
   | { t: 'pong' };
 

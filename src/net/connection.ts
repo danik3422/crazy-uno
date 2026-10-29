@@ -1,6 +1,19 @@
 import { Observable } from '../lib/observable';
 import { STORAGE_KEYS, readJson, writeJson } from '../lib/storage';
-import type { Action, ClientMsg, ErrorCode, PlayerView, RoomInfo, ServerMsg } from './protocol';
+import type { Msg } from '../i18n/msg';
+import { PROTOCOL_VERSION, type Action, type ClientMsg, type ErrorCode, type PlayerView, type RoomInfo, type ServerMsg } from './protocol';
+
+/** The server speaks another protocol version (a new deploy): load the new page, once per tab session. */
+function reloadOnce(): boolean {
+  try {
+    if (sessionStorage.getItem('crazy-uno-proto-reload') === String(PROTOCOL_VERSION)) return false;
+    sessionStorage.setItem('crazy-uno-proto-reload', String(PROTOCOL_VERSION));
+  } catch {
+    return false;
+  }
+  location.reload();
+  return true;
+}
 
 export type ConnStatus = 'idle' | 'connecting' | 'open' | 'reconnecting';
 
@@ -41,7 +54,7 @@ export class Connection extends Observable {
   view: PlayerView | null = null;
   /** server clock at the moment `view` was produced */
   viewNow = 0;
-  error: { code: ErrorCode; msg: string; at: number } | null = null;
+  error: { code: ErrorCode; msg: Msg; at: number } | null = null;
   session: Session | null = readJson<Session>(STORAGE_KEYS.session);
   name = savedName();
   avatar = savedAvatar() ?? undefined;
@@ -202,6 +215,7 @@ export class Connection extends Observable {
   private onMessage(m: ServerMsg) {
     switch (m.t) {
       case 'joined':
+        if (m.v !== PROTOCOL_VERSION && reloadOnce()) return;
         this.session = { code: m.code, token: m.token };
         writeJson(STORAGE_KEYS.session, this.session);
         this.error = null;

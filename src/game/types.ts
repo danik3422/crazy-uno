@@ -1,3 +1,5 @@
+import type { Msg } from '../i18n/msg';
+
 export type Color = 'red' | 'yellow' | 'green' | 'blue';
 export type CardColor = Color | 'wild';
 export type CardType =
@@ -88,9 +90,9 @@ export type BotLevel = 'easy' | 'normal' | 'hard';
 export type ThemeId = 'classic' | 'neon' | 'space' | 'halloween';
 
 export type Choice =
-  | { kind: 'color'; title: string; mode?: 'dump' | 'roulette' }
-  | { kind: 'player'; title: string; mode: 'swap' | 'gift' }
-  | { kind: 'card'; title: string };
+  | { kind: 'color'; title: Msg; mode?: 'dump' | 'roulette' }
+  | { kind: 'player'; title: Msg; mode: 'swap' | 'gift' }
+  | { kind: 'card'; title: Msg };
 
 /**
  * handover — hot-seat curtain, waiting for the next human to take the device
@@ -110,9 +112,9 @@ export type FxKind =
 export interface Fx {
   id: number;
   kind: FxKind;
-  text?: string;
+  text?: Msg;
   /** event banner: second line and icon */
-  sub?: string;
+  sub?: Msg;
   icon?: string;
   /** player index the effect lands on */
   target?: number;
@@ -159,7 +161,8 @@ export interface State {
   skipNext: number[];
   coin: { guess: 'heads' | 'tails'; result: 'heads' | 'tails'; win: boolean } | null;
   dareNext: boolean;
-  dare: string | null;
+  /** the dare being done right now (a key + index, rendered in each reader's language) */
+  dare: Msg | null;
   phase: Phase;
   choice: Choice | null;
   effect: { card: Card; steps: number; giftCard?: number; guilty?: boolean } | null;
@@ -170,11 +173,12 @@ export interface State {
   unoCatch: { victim: number; until: number; botCatcher: number | null; botDelay: number } | null;
   /** the target of a +4 may challenge it; `guilty` stays on the server */
   challenge: { by: number; target: number; guilty: boolean } | null;
-  log: string[];
+  /** what happened, newest last: keys + params, so each screen reads it in its own language */
+  log: Msg[];
   fx: Fx[];
   turn: number;
   lastHuman: number | null;
   winner: number | null;
   loser: number | null;
-  punishment: string | null;
+  punishment: Msg | null;
 }

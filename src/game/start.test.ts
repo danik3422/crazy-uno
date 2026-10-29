@@ -17,14 +17,14 @@ function openings(rules: Rules, n = 4) {
   const found = new Map<CardType, { g: Game; first: number }>();
   for (let seed = 1; seed <= 600; seed++) {
     const g = new Game({ players: Array.from({ length: n }, (_, i) => ({ name: `P${i}`, bot: true })), rules, online: true }, { rng: seeded(seed) });
-    const name = /Первым ходит (P\d)/.exec(g.s.log[0])![1];
+    const name = String(g.s.log[0].p?.who);
     const t = g.s.discard[0].type;
     if (!found.has(t)) found.set(t, { g, first: Number(name.slice(1)) });
   }
   return found;
 }
 
-describe('the first card ("Первая карта действует")', () => {
+describe('the first card (the old "action card starts" rule)', () => {
   const found = openings({ ...rulesOf('classic'), startAction: true, events: false });
 
   it('turns up every kind of classic card but a +4', () => {
@@ -34,7 +34,7 @@ describe('the first card ("Первая карта действует")', () => 
   it('Skip: the first player misses the turn', () => {
     const { g, first } = found.get('skip')!;
     expect(g.s.cur).toBe((first + 1) % 4);
-    expect(g.s.log.some(l => l.includes('Пропуск'))).toBe(true);
+    expect(g.s.log.some(l => l.k === 'log.firstSkip')).toBe(true);
   });
 
   it('Reverse: the dealer starts and play goes the other way', () => {
@@ -61,7 +61,7 @@ describe('the first card ("Первая карта действует")', () => 
     g.botAct();
     expect(g.s.phase).toBe('play');
     expect(g.s.cur).toBe(first);
-    expect(g.s.log.at(-1)).toMatch(/Цвет теперь/);
+    expect(g.s.log.at(-1)?.k).toBe('log.colorNow');
   });
 
   it('with the rule off the pile always starts with a number (Classic, as in the 2023 Mattel rules)', () => {

@@ -1,38 +1,35 @@
+import { t } from '../i18n/core';
 import type { CardType, Color, EventId, Rules, Table, ThemeId } from './types';
 
 export const COLORS: Color[] = ['red', 'yellow', 'green', 'blue'];
 
-export const CNAME: Record<Color, string> = { red: 'Красный', yellow: 'Жёлтый', green: 'Зелёный', blue: 'Синий' };
-/** "все красные / жёлтые…" */
-export const CPLURAL: Record<Color, string> = { red: 'красные', yellow: 'жёлтые', green: 'зелёные', blue: 'синие' };
+/** Colour names in the current language (a getter: reads the language at the moment it is used). */
+export const CNAME: Record<Color, string> = Object.defineProperties({} as Record<Color, string>,
+  Object.fromEntries(COLORS.map(c => [c, { get: () => t(`color.${c}`), enumerable: true }])));
 
 export const HEX: Record<Color | 'black', string> = {
   red: '#e5413a', yellow: '#f2bf16', green: '#26a556', blue: '#2c79dc', black: '#19191d',
 };
 
-export const SPECIAL: Record<Exclude<CardType, 'num'>, { sym: string; name: string; desc: string }> = {
-  skip: { sym: '⊘', name: 'Пропуск', desc: 'Следующий пропускает ход' },
-  rev: { sym: '⇄', name: 'Разворот', desc: 'Игра идёт в обратную сторону' },
-  draw2: { sym: '+2', name: '+2', desc: 'Следующий тянет 2. Со стопкой можно отбиться своей +2' },
-  wild: { sym: '★', name: 'Цвет', desc: 'Выбираешь любой цвет' },
-  wild4: { sym: '+4', name: '+4', desc: 'Выбираешь цвет, следующий тянет 4' },
-  swap: { sym: '⇆', name: 'Обмен', desc: 'Меняешься всеми картами с кем захочешь' },
-  gift: { sym: '🎁', name: 'Подарок', desc: 'Даришь одну свою карту любому игроку' },
-  bomb: { sym: '💣', name: 'Бомба', desc: 'У следующего 10 секунд на ход, иначе +3' },
-  dare: { sym: '🎭', name: 'Фант', desc: 'Следующий получает задание. Отказался — тянет 2' },
-  rain: { sym: '☔', name: 'Ливень', desc: 'Все остальные тянут по карте' },
-  mirror: { sym: '🪞', name: 'Зеркало', desc: 'Отражает +2/+4 обратно. Кладётся на любой штраф. Без штрафа — разворот' },
-  chaos: { sym: '🌪', name: 'Хаос', desc: 'Карты всех игроков перемешиваются и раздаются поровну' },
-  dump: { sym: '🧹', name: 'Уборка', desc: 'Выбираешь цвет и сбрасываешь все свои карты этого цвета' },
+type SpecialType = Exclude<CardType, 'num'>;
+const SYMS: Record<SpecialType, string> = {
+  skip: '⊘', rev: '⇄', draw2: '+2', wild: '★', wild4: '+4', swap: '⇆', gift: '🎁', bomb: '💣', dare: '🎭', rain: '☔',
+  mirror: '🪞', chaos: '🌪', dump: '🧹',
   // UNO Show 'Em No Mercy
-  draw4: { sym: '+4', name: '+4', desc: 'Цветная +4: следующий тянет 4 и пропускает ход' },
-  skipAll: { sym: '⊘', name: 'Пропуск всех', desc: 'Все пропускают ход, ты ходишь ещё раз' },
-  discardAll: { sym: '🗑️', name: 'Сброс цвета', desc: 'Сбрасываешь все свои карты этого цвета' },
-  wildRev4: { sym: '⇄', name: 'Разворот +4', desc: 'Игра идёт обратно, и тот, кто теперь ходит, тянет 4. Вдвоём тянешь ты сам, если не отобьёшься' },
-  wild6: { sym: '+6', name: '+6', desc: 'Выбираешь цвет, следующий тянет 6' },
-  wild10: { sym: '+10', name: '+10', desc: 'Выбираешь цвет, следующий тянет 10' },
-  roulette: { sym: '🎡', name: 'Рулетка', desc: 'Следующий называет цвет и тянет карты, пока не попадётся этот цвет' },
+  draw4: '+4', skipAll: '⊘', discardAll: '🗑️', wildRev4: '⇄', wild6: '+6', wild10: '+10', roulette: '🎡',
 };
+
+/**
+ * Every special card: its symbol, and its name and description in the current language.
+ * The name is what the card faces print on their label strip (the textures are repainted when the language changes).
+ */
+export const SPECIAL = Object.fromEntries(
+  (Object.keys(SYMS) as SpecialType[]).map(k => [k, {
+    sym: SYMS[k],
+    get name() { return t(`card.${k}`); },
+    get desc() { return t(`cardDesc.${k}`); },
+  }]),
+) as Record<SpecialType, { readonly sym: string; readonly name: string; readonly desc: string }>;
 
 /** Wild cards (black, any colour may be named). */
 export const WILD_TYPES: CardType[] = ['wild', 'wild4', 'chaos', 'dump', 'wildRev4', 'wild6', 'wild10', 'roulette'];
@@ -43,166 +40,108 @@ export const NO_MERCY_TYPES: CardType[] = ['draw4', 'skipAll', 'discardAll', 'wi
 /** No Mercy: holding this many cards knocks you out. */
 export const MERCY_LIMIT = 25;
 
-export const RULES: { id: keyof Rules; name: string; desc: string; def: boolean }[] = [
-  { id: 'stack', name: 'Стопка штрафов', desc: '+2 на +2, +4 на любой штраф. Кто не отбился — тянет всё.', def: true },
-  { id: 'sevenZero', name: '7 и 0', desc: 'Семёрка: меняешься картами с кем хочешь. Ноль: все передают руки по кругу.', def: true },
-  { id: 'crazy', name: 'Безумные карты', desc: 'Обмен, Подарок, Бомба, Ливень, Зеркало, Хаос, Уборка.', def: true },
-  { id: 'dares', name: 'Фанты', desc: 'Карта 🎭 даёт следующему игроку смешное задание.', def: true },
-  { id: 'uno', name: 'Кричи «UNO!»', desc: 'Остался с одной картой и не крикнул «UNO!» — любой может нажать «Поймал!», и ты тянешь 2.', def: true },
-  { id: 'timer', name: 'Таймер хода', desc: 'Ограниченное время на ход. Не успел — тянешь карту и пропускаешь ход (или ходит автопилот, если он включён).', def: true },
-  { id: 'challenge', name: 'Оспорить +4', desc: '+4 можно класть, только если нечем сходить в цвет (обычная «Цвет» тоже считается). Думаешь, соврали — оспорь. Попался — тянет 4 сам. Ошибся — тянешь 6.', def: true },
-  { id: 'drawPlay', name: 'Тяни до победного', desc: 'Тянешь из колоды, пока не попадётся карта, которой можно сходить.', def: false },
-  { id: 'events', name: 'Безумные события', desc: 'В случайный момент случается что-то: метеорит +10, перекраска карт, молния, блиц…', def: true },
-  { id: 'punish', name: 'Наказание проигравшему', desc: 'В конце раунда у кого больше всех карт — получает задание.', def: true },
-  { id: 'startAction', name: 'Первая карта действует', desc: 'Открылась первой карта действия — она срабатывает на первого игрока: пропуск, разворот, +2 или выбор цвета. Так было в старых правилах UNO.', def: false },
-  { id: 'noMercy', name: 'No Mercy', desc: 'Колода UNO Show ’Em No Mercy: +6, +10, рулетка. Перебить штраф можно только картой не меньше. 25 карт — выбываешь.', def: false },
+const RULE_DEFAULTS: [keyof Rules, boolean][] = [
+  ['stack', true],
+  ['sevenZero', true],
+  ['crazy', true],
+  ['dares', true],
+  ['uno', true],
+  ['timer', true],
+  ['challenge', true],
+  ['drawPlay', false],
+  ['events', true],
+  ['punish', true],
+  ['startAction', false],
+  ['noMercy', false],
 ];
+
+/** Every rule: its default, and its name and description in the current language. */
+export const RULES: { readonly id: keyof Rules; readonly name: string; readonly desc: string; readonly def: boolean }[] = RULE_DEFAULTS.map(([id, def]) => ({
+  id,
+  def,
+  get name() { return t(`rule.${id}`); },
+  get desc() { return t(`ruleDesc.${id}`); },
+}));
 
 export const DEFAULT_RULES = Object.fromEntries(RULES.map(r => [r.id, r.def])) as unknown as Rules;
 
-export const DARES = [
-  'Расскажи, как прошёл твой день, голосом диктора новостей',
-  'Сделай искренний комплимент игроку справа',
-  'Изобрази животное. Остальные угадывают',
-  'До своего следующего хода говори только шёпотом',
-  'Спой припев любой песни',
-  'Сделай 10 приседаний. Карты держи в руках',
-  'Произнеси тост в честь игрока слева',
-  'Говори как пират до своего следующего хода. Арр!',
-  'Назови 5 фруктов за 5 секунд',
-  'Расскажи анекдот. Несмешной тоже засчитывается',
-  'Станцуй 10 секунд без музыки',
-  'Поменяйся местами с любым игроком',
-  'Скажи три раза быстро: «Шла Саша по шоссе и сосала сушку»',
-  'Придумай прозвище каждому игроку',
-  'Объясни правила UNO так, будто тебе пять лет',
-  'Покажи, как ты выглядишь в понедельник в 7 утра',
-  'Расскажи о самом неловком моменте этой недели',
-  'Заканчивай каждую фразу словом «капибара» до конца круга',
-  'Прорекламируй свои карты, как продавец на рынке',
-  'Сыграй в гляделки с игроком слева',
-  'Объяви следующего игрока, как ведущий бокса',
-  'Покажи свою лучшую злодейскую усмешку',
-  'Говори о себе в третьем лице до следующего хода',
-  'Пропой своё имя оперным голосом',
-  'Нарисуй пальцем в воздухе кота. Остальные ставят оценку',
-  'Расскажи, какая суперсила тебе досталась бы и почему',
-  'Изобрази любого игрока за столом. Остальные угадывают',
-  'Придумай рекламный слоган для своего соседа',
-  'Изобрази робота-пылесоса, который застрял под диваном',
-  'Сделай групповое селфи со всеми, у кого больше 5 карт',
-];
+/** How many dares, punishments and group dares each language has (the texts live in the dictionaries). */
+export const DARE_COUNT = 30;
+export const PUNISH_COUNT = 10;
+export const GROUP_DARE_COUNT = 10;
 
-export const PUNISH = [
-  'Приносит всем чай, воду или что попросят',
-  'Тасует и раздаёт в следующем раунде, громко комментируя',
-  'Весь следующий раунд говорит в рифму',
-  'Сочиняет оду победителю из четырёх строк и зачитывает с чувством',
-  'Носит титул «Картофелина раунда» до следующей своей победы',
-  'Исполняет победный танец в честь победителя',
-  'Изображает победителя. Остальные оценивают сходство',
-  'Следующий раунд обращается ко всем «ваше величество»',
-  'Рассказывает, почему проиграл, как спортивный комментатор',
-  'Делает 15 приседаний под счёт всей компании',
-];
-
-export const BOTNAMES = [
-  'Бот Валера', 'Бот Зинаида', 'Бот Кекс', 'Бот Тостер', 'Бот Пельмень', 'Бот Жорик', 'Бот Галя',
-  'Бот Батон', 'Бот Пончик', 'Бот Сырок', 'Бот Чебурек', 'Бот Люся', 'Бот Гоша', 'Бот Шпрота',
-  'Бот Борщ', 'Бот Котлета', 'Бот Тамара', 'Бот Вафля', 'Бот Кузя', 'Бот Пирожок',
-];
-
-export const EVENTS: Record<EventId, { icon: string; title: string; desc: string }> = {
-  meteor: { icon: '☄️', title: 'Метеорит!', desc: 'Падает на случайного игрока: +10 карт' },
-  recolor: { icon: '🎨', title: 'Перекраска!', desc: 'Все карты на руках меняют цвет как попало' },
-  mono: { icon: '🌈', title: 'День одного цвета', desc: 'Все цветные карты на руках становятся одного цвета' },
-  carousel: { icon: '🎠', title: 'Карусель!', desc: 'Все передают свои карты следующему игроку' },
-  robin: { icon: '🏹', title: 'Робин Гуд', desc: 'Лидер отдаёт 2 карты тому, у кого их больше всех' },
-  upside: { icon: '🙃', title: 'Вверх тормашками', desc: 'Стол переворачивается. Привыкайте' },
-  blind: { icon: '🕶️', title: 'Игра вслепую', desc: 'Целый круг ходим, не видя своих карт' },
-  blitz: { icon: '⚡', title: 'Блиц!', desc: 'Целый круг: 7 секунд на ход, иначе +2' },
-  lightning: { icon: '🌩️', title: 'Молния!', desc: 'Бьёт случайного игрока: пропуск хода' },
-  jackpot: { icon: '🍀', title: 'Джекпот!', desc: 'Случайный счастливчик сбрасывает 3 карты' },
-  group: { icon: '🎤', title: 'Общий фант', desc: 'Задание для всех сразу' },
-  coin: { icon: '🪙', title: 'Монетка судьбы', desc: 'Угадаешь — сбросишь 2 карты. Нет — тянешь 2' },
-  bomber: { icon: '✈️', title: 'Бомбардировщик!', desc: 'Маскот пролетает над столом и сбрасывает 3 карты на случайного игрока' },
+const EVENT_ICONS: Record<EventId, string> = {
+  meteor: '☄️',
+  recolor: '🎨',
+  mono: '🌈',
+  carousel: '🎠',
+  robin: '🏹',
+  upside: '🙃',
+  blind: '🕶️',
+  blitz: '⚡',
+  lightning: '🌩️',
+  jackpot: '🍀',
+  group: '🎤',
+  coin: '🪙',
+  bomber: '✈️',
 };
 
-export const THEMES_LIST: { id: ThemeId; name: string; desc: string }[] = [
-  { id: 'classic', name: 'Классика', desc: 'Яркая арена, которая перекрашивается под цвет хода' },
-  { id: 'neon', name: 'Неон', desc: 'Тёмный клуб, светящаяся сетка и неоновые фигуры' },
-  { id: 'space', name: 'Космос', desc: 'Звёзды, планета с кольцами и пролетающие астероиды' },
-  { id: 'halloween', name: 'Хэллоуин', desc: 'Паутина, летучие мыши и светящиеся тыквы' },
-];
+export const EVENTS = Object.fromEntries(
+  (Object.keys(EVENT_ICONS) as EventId[]).map(id => [id, {
+    icon: EVENT_ICONS[id],
+    get title() { return t(`ev.${id}`); },
+    get desc() { return t(`evDesc.${id}`); },
+  }]),
+) as Record<EventId, { readonly icon: string; readonly title: string; readonly desc: string }>;
+
+const THEME_IDS: ThemeId[] = ['classic', 'neon', 'space', 'halloween'];
+export const THEMES_LIST: { readonly id: ThemeId; readonly name: string; readonly desc: string }[] = THEME_IDS.map(id => ({
+  id,
+  get name() { return t(`theme.${id}`); },
+  get desc() { return t(`themeDesc.${id}`); },
+}));
 
 export const isTheme = (t: unknown): t is ThemeId => THEMES_LIST.some(x => x.id === t);
 
-export const GROUP_DARES = [
-  'Все хором поют припев любой песни, которую знают все',
-  'Все 10 секунд изображают статуи. Кто пошевелился, тот и смешной',
-  'Каждый по кругу называет слово на букву «К». Кто завис, тот хлопает остальным',
-  'Все показывают своё лучшее удивлённое лицо. Победителя выбирают голосованием',
-  'Все дают пять соседям справа и слева',
-  'Все делают волну руками, как на стадионе',
-  'Каждый по кругу говорит тост одним предложением',
-  'Все придумывают название для вашей компании. Лучшее выбирают хлопками',
-  'Все 5 секунд молча смотрят на самого серьёзного игрока',
-  'Все одновременно изображают любимое животное',
+/** How the rules are shown when setting up a game: grouped, with an icon and a one-line explanation. */
+const GROUPS: { id: 'cards' | 'party' | 'pace'; rules: { id: keyof Rules; icon: string }[] }[] = [
+  {
+    id: 'cards',
+    rules: [
+      { id: 'stack', icon: '📚' }, { id: 'sevenZero', icon: '🔄' }, { id: 'crazy', icon: '🃏' },
+      { id: 'drawPlay', icon: '♾️' }, { id: 'startAction', icon: '🎬' }, { id: 'noMercy', icon: '💀' },
+    ],
+  },
+  { id: 'party', rules: [{ id: 'uno', icon: '📣' }, { id: 'challenge', icon: '⚖️' }, { id: 'dares', icon: '🎭' }, { id: 'punish', icon: '😈' }] },
+  { id: 'pace', rules: [{ id: 'timer', icon: '⏱' }, { id: 'events', icon: '🌪' }] },
 ];
 
-/** How the rules are shown when setting up a game: grouped, with an icon and a one-line explanation. */
-export const RULE_GROUPS: { title: string; hint: string; rules: { id: keyof Rules; icon: string; short: string }[] }[] = [
-  {
-    title: 'Карты',
-    hint: 'что можно класть и как',
-    rules: [
-      { id: 'stack', icon: '📚', short: '+2 на +2, +4 на любой штраф. Кто не отбился — тянет всё' },
-      { id: 'sevenZero', icon: '🔄', short: '7 — меняешься картами с кем хочешь, 0 — все передают руки по кругу' },
-      { id: 'crazy', icon: '🃏', short: 'Бомба, Подарок, Ливень, Зеркало, Хаос, Уборка, Обмен' },
-      { id: 'drawPlay', icon: '♾️', short: 'Тянешь, пока не попадётся карта, которой можно сходить' },
-      { id: 'startAction', icon: '🎬', short: 'Первая открытая карта действия срабатывает на первого игрока' },
-      { id: 'noMercy', icon: '💀', short: 'Колода No Mercy: +6, +10, рулетка, пропуск всех. 25 карт — выбываешь' },
-    ],
-  },
-  {
-    title: 'Для компании',
-    hint: 'чтобы было шумно',
-    rules: [
-      { id: 'uno', icon: '📣', short: 'Не крикнул «UNO!» с последней картой — тебя могут поймать на +2' },
-      { id: 'challenge', icon: '⚖️', short: 'Можно оспорить +4: блефовал — тянет 4 сам, нет — ты тянешь 6' },
-      { id: 'dares', icon: '🎭', short: 'Карта «Фант» даёт следующему смешное задание' },
-      { id: 'punish', icon: '😈', short: 'У кого больше всех карт в конце — получает наказание' },
-    ],
-  },
-  {
-    title: 'Темп и сюрпризы',
-    hint: 'чтобы никто не скучал',
-    rules: [
-      { id: 'timer', icon: '⏱', short: 'Время на ход. Не успел — тянешь карту и пропускаешь ход' },
-      { id: 'events', icon: '🌪', short: 'Метеорит +10, молния, бомбардировщик и ещё 10 событий' },
-    ],
-  },
-];
+export const RULE_GROUPS: { readonly id: string; readonly title: string; readonly hint: string; rules: { readonly id: keyof Rules; readonly icon: string; readonly short: string }[] }[] = GROUPS.map(g => ({
+  id: g.id,
+  get title() { return t(`ruleGroup.${g.id}`); },
+  get hint() { return t(`ruleGroupHint.${g.id}`); },
+  rules: g.rules.map(r => ({ ...r, get short() { return t(`ruleShort.${r.id}`); } })),
+}));
 
 /** One-click rule sets. */
-export const PRESETS: { id: string; icon: string; name: string; desc: string; rules: Rules }[] = [
+export const PRESETS: { id: 'classic' | 'nomercy' | 'party' | 'chaos'; icon: string; readonly name: string; readonly desc: string; rules: Rules }[] = [
   {
     // the official rules of UNO (Mattel, 2023): no stacking, +4 only without a card to match (can be challenged),
     // draw one card and play it if it fits, and the pile starts with a number
-    id: 'classic', icon: '🎴', name: 'Классика', desc: 'Настоящие правила UNO, без сюрпризов',
+    id: 'classic', icon: '🎴', get name() { return t('preset.classic'); }, get desc() { return t('presetDesc.classic'); },
     rules: { stack: false, sevenZero: false, crazy: false, dares: false, uno: true, drawPlay: false, punish: false, events: false, timer: true, challenge: true, noMercy: false, startAction: false },
   },
   {
     // the official rules of UNO Show 'Em No Mercy, nothing added
-    id: 'nomercy', icon: '💀', name: 'No Mercy', desc: 'Оригинальные правила UNO No Mercy: +10, рулетка и 25 карт на вылет',
+    id: 'nomercy', icon: '💀', get name() { return t('preset.nomercy'); }, get desc() { return t('presetDesc.nomercy'); },
     rules: { stack: true, sevenZero: true, crazy: false, dares: false, uno: true, drawPlay: true, punish: false, events: false, timer: true, challenge: false, noMercy: true, startAction: false },
   },
   {
-    id: 'party', icon: '🎉', name: 'Вечеринка', desc: 'Безумные карты, фанты и события',
+    id: 'party', icon: '🎉', get name() { return t('preset.party'); }, get desc() { return t('presetDesc.party'); },
     rules: { stack: true, sevenZero: true, crazy: true, dares: true, uno: true, drawPlay: false, punish: true, events: true, timer: true, challenge: true, noMercy: false, startAction: false },
   },
   {
-    id: 'chaos', icon: '🌪', name: 'Полный хаос', desc: 'Всё включено. Вообще всё',
+    id: 'chaos', icon: '🌪', get name() { return t('preset.chaos'); }, get desc() { return t('presetDesc.chaos'); },
     rules: { stack: true, sevenZero: true, crazy: true, dares: true, uno: true, drawPlay: true, punish: true, events: true, timer: true, challenge: true, noMercy: false, startAction: true },
   },
 ];
@@ -251,4 +190,5 @@ export function cleanTable(raw: unknown): Table {
   };
 }
 
-export const TEAM_NAMES = ['Красные', 'Синие'];
+/** Team names in the current language: 0 red, 1 blue. */
+export const teamName = (team: number) => t(team ? 'team.1' : 'team.0');

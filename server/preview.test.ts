@@ -18,8 +18,8 @@ beforeAll(async () => {
 });
 afterAll(() => app.close());
 
-const get = async (p: string) => {
-  const r = await fetch(`http://localhost:${app.port}${p}`, { headers: { 'accept-encoding': 'gzip' } });
+const get = async (p: string, lang = 'ru-RU,ru;q=0.9') => {
+  const r = await fetch(`http://localhost:${app.port}${p}`, { headers: { 'accept-encoding': 'gzip', 'accept-language': lang } });
   return { status: r.status, enc: r.headers.get('content-encoding'), text: await r.text() };
 };
 
@@ -27,6 +27,10 @@ it('serves link previews: absolute image, and who is calling to which room', asy
   const plain = await get('/');
   expect(plain.text).toContain(`content="http://localhost:${app.port}/og.jpg"`);
   expect(plain.text).toContain('<meta property="og:title" content="Безумное UNO"');
+  expect(plain.text).toContain('<html lang="ru"');
+  // the preview speaks the reader's language
+  expect((await get('/', 'pl-PL,pl;q=0.9')).text).toContain('<meta property="og:title" content="Szalone UNO"');
+  expect((await get('/', 'de-DE')).text).toContain('<meta property="og:title" content="Crazy UNO"');
 
   const ws = new WebSocket(`ws://localhost:${app.port}/ws`);
   await new Promise(r => ws.once('open', r));

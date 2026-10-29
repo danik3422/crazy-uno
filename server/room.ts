@@ -1,12 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import { isAvatarId, randomBot } from '../src/game/avatars';
+import { PACKS } from '../src/i18n/core';
+import { msg as text } from '../src/i18n/msg';
+import { isLang } from '../src/i18n/types';
 import { EVENT_PAUSE_MS, botThinkMs } from '../src/game/bot';
 import { DEFAULT_RULES, DEFAULT_TABLE, RULES, cleanTable, isTheme } from '../src/game/content';
 import { Game } from '../src/game/engine';
 import { isTeamId, seatByTeams, teamsOf, teamsProblem, type TeamId } from '../src/game/teams';
 import type { Card, Rules, Table, ThemeId } from '../src/game/types';
 import {
-  MAX_MEMBERS, MAX_PLAYERS, REMATCH_COUNTDOWN_MS, SHUFFLE_MS, WARMUP_MAX_MS, cleanName, dealMs,
+  MAX_MEMBERS, MAX_PLAYERS, PROTOCOL_VERSION, REMATCH_COUNTDOWN_MS, SHUFFLE_MS, WARMUP_MAX_MS, cleanName, dealMs,
   type Action, type ClientMsg, type ErrorCode, type PlayerView, type RoomInfo, type ServerMsg,
 } from '../src/net/protocol';
 
@@ -63,7 +66,7 @@ interface Warmup {
 }
 
 /**
- * "Ещё раунд": every seated person who is online has to press it. Once they all have,
+ * "Play again": every seated person who is online has to press it. Once they all have,
  * a short countdown runs and the next round starts with the same loading screen and deal as the first.
  */
 interface RematchVote {
@@ -146,7 +149,7 @@ export class Room {
     const back = token ? this.members.find(m => m.token === token && !m.bot) : undefined;
     if (back) {
       if (back.sock && back.sock !== sock) {
-        this.sendTo(back.sock, { t: 'error', code: 'replaced', msg: 'Комната открыта в другой вкладке' });
+        this.sendTo(back.sock, { t: 'error', code: 'replaced', msg: text('err.replaced') });
         back.sock.close(4000, 'replaced');
       }
       back.sock = sock;
@@ -154,7 +157,7 @@ export class Room {
       if (name) back.name = this.uniqueName(name, back);
       if (isAvatarId(avatar)) back.avatar = avatar;
       if (!this.hostOnline()) this.hostId = back.id;
-      this.sendTo(sock, { t: 'joined', code: this.code, token: back.token, id: back.id });
+      this.sendTo(sock, { t: 'joined', code: this.code, token: back.token, id: back.id, v: PROTOCOL_VERSION });
       this.syncNames();
       this.broadcastRoom();
       // everyone sees the seat change hands at once (and the returner gets their cards)
@@ -166,7 +169,7 @@ export class Room {
     const m: Member = {
       id: randomUUID().slice(0, 8),
       token: randomUUID(),
-      name: this.uniqueName(name || 'Игрок'),
+      name: this.uniqueName(name || 'Player'),
       avatar: isAvatarId(avatar) ? avatar : undefined,
       bot: false,
       spectator: playing || this.players().length >= MAX_PLAYERS,
@@ -174,7 +177,7 @@ export class Room {
     };
     this.members.push(m);
     if (!this.hostId || !this.hostOnline()) this.hostId = m.id;
-    this.sendTo(sock, { t: 'joined', code: this.code, token: m.token, id: m.id });
+    this.sendTo(sock, { t: 'joined', code: this.code, token: m.token, id: m.id, v: PROTOCOL_VERSION });
     this.broadcastRoom();
     this.sendState(m);
     return m;
@@ -225,10 +228,10 @@ export class Room {
     this.flush();
   }
 
-  private addBot() {
+  private addBot(lang?: unknown) {
     if (this.players().length >= MAX_PLAYERS || this.members.length >= MAX_MEMBERS) return;
     // a random bot name and robot face, preferably ones nobody at the table has yet
-    const bot = randomBot(this.members);
+    const bot = randomBot(this.members, Math.random, PACKS[isLang(lang) ? lang : 'en'].bots);
     this.members.push({
       id: randomUUID().slice(0, 8),
       token: randomUUID(),
@@ -248,7 +251,7 @@ export class Room {
   }
 
   private uniqueName(raw: string, self?: Member) {
-    const base = cleanName(raw) || 'Игрок';
+    const base = cleanName(raw) || 'Player';
     let name = base;
     for (let i = 2; this.members.some(m => m !== self && m.name === name); i++) name = `${base.slice(0, 13)} ${i}`;
     return name;
@@ -269,7 +272,7 @@ export class Room {
     this.touch();
     const host = m.id === this.hostId;
     const needHost = () => {
-      if (!host) this.sendTo(m.sock, { t: 'error', code: 'not-host', msg: 'Это может только хост комнаты' });
+      if (!host) this.sendTo(m.sock, { t: 'error', code: 'not-host', msg: text('err.notHost') });
       return host;
     };
     const inLobby = !this.game;
@@ -288,7 +291,7 @@ export class Room {
       }
       case 'addBot':
         if (!needHost() || !inLobby) return;
-        return this.addBot();
+        return this.addBot(msg.lang);
       case 'team': {
         // the host seats anyone; everyone else picks only their own side
         const target = this.member(msg.id);
@@ -301,7 +304,7 @@ export class Room {
         const target = this.member(msg.id);
         if (!target || target === m) return;
         if (target.sock) {
-          this.sendTo(target.sock, { t: 'error', code: 'kicked', msg: 'Хост убрал тебя из комнаты' });
+          this.sendTo(target.sock, { t: 'error', code: 'kicked', msg: text('err.kicked') });
           target.sock.close(4001, 'kicked');
           target.sock = null;
         }
@@ -415,7 +418,7 @@ export class Room {
     const g = this.game;
     if (!g || g.s.phase !== 'over' || m.bot) return;
     if (force && m.id !== this.hostId) {
-      this.sendTo(m.sock, { t: 'error', code: 'not-host', msg: 'Начать без остальных может только хост' });
+      this.sendTo(m.sock, { t: 'error', code: 'not-host', msg: text('err.notHostForce') });
       return;
     }
     this.rematch ??= { ready: new Set(), startAt: null, timer: null };
@@ -464,7 +467,7 @@ export class Room {
     }
     const lineup = this.players();
     if (lineup.length < 2) {
-      this.sendTo(by.sock, { t: 'error', code: 'too-few', msg: 'Нужно хотя бы 2 игрока. Позови друзей или добавь бота' });
+      this.sendTo(by.sock, { t: 'error', code: 'too-few', msg: text('err.tooFew') });
       return;
     }
     let seated = lineup;
@@ -473,7 +476,7 @@ export class Room {
       const picked = teamsOf(lineup);
       const teamsWrong = teamsProblem(picked);
       if (teamsWrong) {
-        this.sendTo(by.sock, { t: 'error', code: 'too-few', msg: `${teamsWrong}. Поменяй команды, добавь бота или выключи «2 на 2»` });
+        this.sendTo(by.sock, { t: 'error', code: 'too-few', msg: text('err.teams', { why: teamsWrong }) });
         return;
       }
       // the sides alternate around the table
