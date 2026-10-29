@@ -1,4 +1,5 @@
 import { type Avatar, avatarOf, HUMAN_AVATARS, robotDataUrl } from '../../game/avatars';
+import { useT } from '../../i18n';
 import './AvatarImg.css';
 
 interface Props {
@@ -32,8 +33,9 @@ export function AvatarTile({ a, size = 64, className = '' }: { a: Avatar; size?:
 
 /** Grid of avatars to choose from (only the people ones; robots are reserved for bots). */
 export function AvatarPicker({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+  const t = useT();
   return (
-    <div className="avatar-grid" role="radiogroup" aria-label="Выбери аватар">
+    <div className="avatar-grid" role="radiogroup" aria-label={t('avatarPick')}>
       {HUMAN_AVATARS.map(a => (
         <button
           key={a.id}

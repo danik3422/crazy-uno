@@ -73,7 +73,7 @@
 .pc-picker { padding: 12px; border-radius: 16px; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--line); animation: fade 0.2s; }
 .btn.pc-main {
   display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 19px; padding-block: 17px; width: 100%;
-  /* long labels ("Играть на одном устройстве") wrap onto two balanced lines instead of spilling out */
+  /* long labels ("Play on one device") wrap onto two balanced lines instead of spilling out */
   white-space: normal; text-wrap: balance; line-height: 1.15; min-width: 0;
 }
 .pc-main-icon { font-size: 22px; line-height: 1; }

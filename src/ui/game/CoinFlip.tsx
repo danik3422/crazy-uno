@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useT } from '../../i18n';
 import type React from 'react';
 import { CoinHeads, CoinTails } from './CoinFaces';
 import './CoinFlip.css';
@@ -14,17 +15,18 @@ interface Props {
 const FLIP_MS = 1700;
 
 export function CoinFlip({ name, coin, onGuess, onDone }: Props) {
+  const t = useT();
   const [landed, setLanded] = useState(false);
   useEffect(() => {
     if (!coin) return;
-    const t = setTimeout(() => setLanded(true), FLIP_MS);
-    return () => clearTimeout(t);
+    const id = setTimeout(() => setLanded(true), FLIP_MS);
+    return () => clearTimeout(id);
   }, [coin]);
 
   return (
     <>
-      <p className="muted">🪙 Монетка судьбы</p>
-      <h2>{name}, орёл или решка?</h2>
+      <p className="muted">{t('coin.title')}</p>
+      <h2>{t('coin.ask', { who: name })}</h2>
       <div className="coin-stage">
         <div
           className={`coin ${coin ? 'flipping' : 'idle'}`}
@@ -36,17 +38,17 @@ export function CoinFlip({ name, coin, onGuess, onDone }: Props) {
       </div>
       {!coin && (
         <>
-          <p className="muted small">Угадаешь — сбросишь 2 карты. Нет — тянешь 2.</p>
+          <p className="muted small">{t('coin.rule')}</p>
           <div className="row center">
-            <button className="btn big" onClick={() => onGuess('heads')}>Орёл</button>
-            <button className="btn big" onClick={() => onGuess('tails')}>Решка</button>
+            <button className="btn big" onClick={() => onGuess('heads')}>{t('coin.heads')}</button>
+            <button className="btn big" onClick={() => onGuess('tails')}>{t('coin.tails')}</button>
           </div>
         </>
       )}
       {coin && landed && (
         <>
-          <p className="dare">{coin.win ? 'Угадал(а)! Минус 2 карты 🎉' : 'Мимо! Тянешь 2 🙈'}</p>
-          <button className="btn big" autoFocus onClick={onDone}>Дальше</button>
+          <p className="dare">{coin.win ? t('coin.win') : t('coin.lose')}</p>
+          <button className="btn big" autoFocus onClick={onDone}>{t('coin.next')}</button>
         </>
       )}
     </>

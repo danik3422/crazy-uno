@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { cardName } from '../../game/rules';
+import { cardMsg } from '../../i18n/msg';
+import { render, t as tr } from '../../i18n';
 import type { GameView } from '../../game/view';
 import { keySel } from '../../three/drag';
 
 /**
  * Play without a mouse: ← → pick a card, Enter or Space plays it, D draws, U calls UNO, P passes,
- * Esc lets go. Keys are matched by position (e.code), so they work on a Russian layout too.
+ * Esc lets go. Keys are matched by position (e.code), so they work on any keyboard layout.
  * Returns a sentence about the picked card for screen readers, and whether the keyboard is in use.
  */
 export function useKeyboardPlay(game: GameView, locked: boolean, onCard: (id: number) => void) {
@@ -29,7 +30,7 @@ export function useKeyboardPlay(game: GameView, locked: boolean, onCard: (id: nu
       const describe = (id: number) => {
         const c = hand.find(x => x.id === id);
         if (!c) return '';
-        return `${cardName(c)}${pickable(id) ? ', можно сходить' : ''}. Карта ${hand.indexOf(c) + 1} из ${hand.length}`;
+        return tr('kb.card', { card: render(cardMsg(c)), ok: pickable(id) ? tr('kb.ok') : '', i: hand.indexOf(c) + 1, n: hand.length });
       };
 
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
@@ -49,7 +50,7 @@ export function useKeyboardPlay(game: GameView, locked: boolean, onCard: (id: nu
         if (pickable(keySel.id)) {
           onCard(keySel.id);
           keySel.id = null;
-        } else setSaid(mine ? 'Этой картой сейчас не сходить' : 'Сейчас не твой ход');
+        } else setSaid(mine ? tr('kb.cant') : tr('kb.notYours'));
         return;
       }
       if (e.key === 'Escape') {

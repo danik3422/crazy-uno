@@ -2,6 +2,7 @@ import { PerformanceMonitor } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useCallback, useSyncExternalStore } from 'react';
 import { Game } from '../../game/engine';
+import { useT } from '../../i18n';
 import type { GameView } from '../../game/view';
 import type { RemoteGame } from '../../net/remoteGame';
 import { GameScene } from '../../three/Scene';
@@ -37,6 +38,7 @@ interface Props {
  * Plays effects for any game; drives bots and clocks only for a local one (online the server does).
  */
 export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Props) {
+  const t = useT();
   const version = useSyncExternalStore(game.subscribe, game.getVersion);
   const local = game instanceof Game ? game : null;
   const { glKey, onCreated } = useGlRecovery();
@@ -70,7 +72,11 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
     <div className="game">
       <Canvas
         key={glKey}
-        onCreated={onCreated}
+        onCreated={st => {
+          onCreated(st);
+          // debug builds: the renderer, to read draw calls and triangles per frame
+          if (DEBUG) (window as unknown as { __gl?: unknown }).__gl = st.gl;
+        }}
         shadows
         dpr={resolution.dpr}
         camera={{ fov: 42, position: [0, 9, 10] }}
@@ -99,12 +105,10 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
         />
       </Canvas>
       <Hud game={game} version={version} toasts={effects.toasts} bombLeft={bombLeft} roundLeft={locked ? null : roundLeft} online={online} locked={locked} />
-      {round.stage === 'dealing' && <div className="deal-banner">Раздаём карты…</div>}
+      {round.stage === 'dealing' && <div className="deal-banner">{t('hud.dealing')}</div>}
       <p className="sr-only" aria-live="polite">{kb.said}</p>
       {kb.active && (
-        <p className="kb-hint" aria-hidden>
-          <kbd>←</kbd><kbd>→</kbd> выбрать · <kbd>Enter</kbd> сходить · <kbd>D</kbd> взять · <kbd>U</kbd> UNO · <kbd>P</kbd> пас
-        </p>
+        <p className="kb-hint" aria-hidden dangerouslySetInnerHTML={{ __html: t('hud.keys') }} />
       )}
       {effects.flash !== null && <div key={`flash-${effects.flash}`} className="flash" />}
       {banner && <EventBanner key={`event-${banner.id}`} banner={banner} onDone={() => effects.dismissBanner(banner.id)} />}

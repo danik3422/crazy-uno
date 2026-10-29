@@ -2,6 +2,8 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { CODE_LEN, normalizeCode } from '../../net/protocol';
 import { AvatarImg, AvatarPicker } from '../components/AvatarImg';
 import { FitLetter } from '../components/FitLetter';
+import { LangSwitch } from '../components/LangSwitch';
+import { useT } from '../../i18n';
 import './Home.css';
 
 const MascotStage = lazy(() => import('../components/MascotStage'));
@@ -22,13 +24,14 @@ interface Props {
 }
 
 const FEATURES = [
-  { icon: '🌪', text: '13 безумных событий' },
-  { icon: '🎨', text: '4 темы стола' },
-  { icon: '👥', text: 'До 8 игроков' },
-  { icon: '🤖', text: 'Боты на любой вкус' },
-];
+  { icon: '🌪', key: 'home.feat.events' },
+  { icon: '🎨', key: 'home.feat.themes' },
+  { icon: '👥', key: 'home.feat.players' },
+  { icon: '🤖', key: 'home.feat.bots' },
+] as const;
 
 export function Home({ online, name, setName, avatar, setAvatar, invite, busy, error, onCreate, onJoin, onLocal }: Props) {
+  const t = useT();
   const [code, setCode] = useState(invite);
   const [picking, setPicking] = useState(false);
   const [nudge, setNudge] = useState(false);
@@ -48,32 +51,33 @@ export function Home({ online, name, setName, avatar, setAvatar, invite, busy, e
 
   return (
     <div className="home">
+      <LangSwitch className="home-lang" />
       <section className="home-hero">
         <div className="home-stage">
           <Suspense fallback={null}>
             <MascotStage />
           </Suspense>
         </div>
-        <h1 className="logo home-logo" aria-label="Безумное UNO">
+        <h1 className="logo home-logo" aria-label={t('app.title')}>
           <span className="logo-top">
-            {'БЕЗУМНОЕ'.split('').map((ch, i) => <span key={i}>{ch}</span>)}
+            {t('app.top').split('').map((ch, i) => <span key={i}>{ch}</span>)}
           </span>
           <span className="logo-uno">UNO</span>
         </h1>
         <p className="home-tag">
-          Создай комнату, кинь друзьям ссылку и играйте каждый со своего телефона. С бомбами, фантами и метеоритом на +10.
+          {t('home.tag')}
         </p>
         <ul className="home-chips">
           {FEATURES.map(f => (
-            <li key={f.text}><span aria-hidden>{f.icon}</span>{f.text}</li>
+            <li key={f.key}><span aria-hidden>{f.icon}</span>{t(f.key)}</li>
           ))}
         </ul>
       </section>
 
-      <section className="player-card" aria-label="Начать игру">
+      <section className="player-card" aria-label={t('home.start')}>
         {invite && online && (
           <div className="pc-invite">
-            <span>Тебя позвали в комнату</span>
+            <span>{t('home.invited')}</span>
             <b>{invite}</b>
           </div>
         )}
@@ -85,19 +89,19 @@ export function Home({ online, name, setName, avatar, setAvatar, invite, busy, e
             className={`pc-ava ${picking ? 'open' : ''}`}
             onClick={() => setPicking(p => !p)}
             aria-expanded={picking}
-            aria-label="Сменить аватар"
+            aria-label={t('home.changeAvatar')}
           >
             <AvatarImg id={avatar} name={name} bot={false} size={92} />
             <span className="pc-ava-edit" aria-hidden>✎</span>
           </button>
           <div className="pc-who">
-            <label htmlFor="player-name" className="pc-label">Твоё имя за столом</label>
+            <label htmlFor="player-name" className="pc-label">{t('home.nameLabel')}</label>
             <input
               id="player-name"
               ref={nameRef}
               className={`pc-name ${nudge ? 'nudge' : ''}`}
               maxLength={16}
-              placeholder="Например, Саша"
+              placeholder={t('home.namePh')}
               value={name}
               onChange={e => setName(e.target.value)}
               autoFocus={!name}
@@ -114,14 +118,14 @@ export function Home({ online, name, setName, avatar, setAvatar, invite, busy, e
 
         {offline ? (
           <p className="pc-note">
-            Онлайн-комнатам нужен игровой сервер, а эта страница открыта без него. Здесь можно играть на одном устройстве.
+            {t('home.offline')}
           </p>
         ) : (
           <>
             {!invite && (
               <button className="btn big pc-main" disabled={busy || !online} onClick={need(onCreate)}>
                 <span className="pc-main-icon" aria-hidden>＋</span>
-                {online === null ? 'Проверяем сервер…' : 'Создать комнату'}
+                {online === null ? t('home.checking') : t('home.create')}
               </button>
             )}
 
@@ -132,29 +136,29 @@ export function Home({ online, name, setName, avatar, setAvatar, invite, busy, e
                 if (online) join();
               }}
             >
-              <span className="pc-label">{invite ? 'Код комнаты' : 'Или войди по коду друга'}</span>
+              <span className="pc-label">{invite ? t('home.code') : t('home.orJoin')}</span>
               <CodeTiles value={code} onChange={setCode} />
               <button
                 className={`btn ${invite ? 'big pc-main' : 'big blue'}`}
                 type="submit"
                 disabled={!codeOk || busy || !online}
               >
-                {invite ? `Войти в комнату ${code}` : 'Войти'}
+                {invite ? t('home.joinCode', { code }) : t('home.join')}
               </button>
             </form>
 
             {invite && (
               <button className="pc-link" onClick={need(onCreate)} disabled={busy || !online}>
-                или создать свою комнату
+                {t('home.orCreate')}
               </button>
             )}
           </>
         )}
 
-        <div className="pc-divider"><span>без интернета</span></div>
+        <div className="pc-divider"><span>{t('home.noNet')}</span></div>
         <button className={`btn ${offline ? 'big pc-main' : 'pc-local'}`} onClick={onLocal}>
-          <span aria-hidden>📱</span> Играть на одном устройстве
-          {!offline && <small>все рядом, телефон по кругу</small>}
+          <span aria-hidden>📱</span> {t('home.local')}
+          {!offline && <small>{t('home.localSub')}</small>}
         </button>
       </section>
     </div>
@@ -163,6 +167,7 @@ export function Home({ online, name, setName, avatar, setAvatar, invite, busy, e
 
 /** Four coloured card-tiles over one real input: type, paste or tap to edit. */
 function CodeTiles({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const t = useT();
   const ref = useRef<HTMLInputElement>(null);
   const [focused, setFocused] = useState(false);
   useEffect(() => {
@@ -187,7 +192,7 @@ function CodeTiles({ value, onChange }: { value: string; onChange: (v: string) =
         autoCapitalize="characters"
         autoComplete="off"
         spellCheck={false}
-        aria-label="Код комнаты из 4 букв"
+        aria-label={t('home.codeAria')}
         value={value}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}

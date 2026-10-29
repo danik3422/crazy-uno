@@ -6,6 +6,7 @@ import { BOMB_FALL, BOMB_RELEASE, fxState, METEOR_FALL, nowSec, shake, SPIN_TIME
 import { spawn } from '../../three/layout';
 import type { Banner } from './EventBanner';
 import type { Toast } from './Hud';
+import type { Msg } from '../../i18n/msg';
 
 const TOAST_MS = 1900;
 const FLASH_MS = 500;
@@ -38,7 +39,7 @@ export function useTableEffects(game: GameView, version: number, onOver?: (winne
     return () => clearTimeout(t);
   }, [flash]);
 
-  const toast = useCallback((text: string, big = false) => {
+  const toast = useCallback((text: Msg, big = false) => {
     const id = Math.random();
     setToasts(t => [...t.slice(-2), { id, text, big }]);
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), TOAST_MS);
@@ -89,7 +90,7 @@ export function useTableEffects(game: GameView, version: number, onOver?: (winne
           sound.play('event');
           // the mascot sometimes flies by, unless it is about to come as the bomber anyway
           if (Math.random() < 0.5 && !s.fx.some(x => x.kind === 'bomber' && x.id > f.id)) summonMascot('fly', 0.3);
-          setBanner({ id: f.id, icon: f.icon ?? '', title: f.text ?? '', sub: f.sub ?? '' });
+          setBanner({ id: f.id, icon: f.icon ?? '', title: f.text ?? null, sub: f.sub ?? null });
           continue; // the banner shows the text, no toast
         case 'meteor':
           fxState.meteor = { at: nowSec() + 0.6, target: f.target ?? 0 };

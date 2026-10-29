@@ -1,5 +1,7 @@
 import { type ReactNode, useEffect, useState } from 'react';
-import { CNAME, COLORS, HEX, TEAM_NAMES } from '../../game/content';
+import { CNAME, COLORS, HEX, teamName } from '../../game/content';
+import { render, useT } from '../../i18n';
+import { LangSwitch } from '../components/LangSwitch';
 import type { GameView } from '../../game/view';
 import { IconCards, IconMenu } from '../components/Icons';
 import { Legend } from '../components/Legend';
@@ -22,6 +24,7 @@ interface Props {
 }
 
 export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props) {
+  const t = useT();
   const s = game.s;
   const p = game.cp();
   // modals that belong to the current player only show on that player's screen
@@ -44,32 +47,32 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
   } else if (s.phase === 'handover') {
     modal = (
       <Modal opaque>
-        <p className="muted">Передайте устройство</p>
+        <p className="muted">{t('ov.handover')}</p>
         <h2 className="huge">{p.name}</h2>
-        {s.pending > 0 && <p>Тебя ждёт штраф <b>+{s.pending}</b> 😬</p>}
-        {s.bombNext && <p>💣 Под тобой бомба. Таймер стартует, как только откроешь карты.</p>}
-        {s.dareNext && <p>🎭 И тебе достался фант.</p>}
-        <button className="btn big" autoFocus onClick={() => game.confirmHandover()}>Это я, показать карты</button>
+        {s.pending > 0 && <p dangerouslySetInnerHTML={{ __html: t('ov.penalty', { n: s.pending }) }} />}
+        {s.bombNext && <p>{t('ov.bomb')}</p>}
+        {s.dareNext && <p>{t('ov.dareNext')}</p>}
+        <button className="btn big" autoFocus onClick={() => game.confirmHandover()}>{t('ov.itsMe')}</button>
       </Modal>
     );
   } else if (s.phase === 'dare' && mine) {
     modal = (
       <Modal band>
-        <p className="muted">🎭 Фант для {p.name}</p>
-        <p className="dare">{s.dare}</p>
+        <p className="muted">{t('ov.dareFor', { who: p.name })}</p>
+        <p className="dare">{render(s.dare)}</p>
         <div className="row center">
-          <button className="btn big blue" onClick={() => game.resolveDare(false)}>Слабо… (+2) 🐔</button>
-          <button className="btn big red" autoFocus onClick={() => game.resolveDare(true)}>Выполнено!</button>
+          <button className="btn big blue" onClick={() => game.resolveDare(false)}>{t('ov.chicken')}</button>
+          <button className="btn big red" autoFocus onClick={() => game.resolveDare(true)}>{t('ov.done')}</button>
         </div>
       </Modal>
     );
   } else if (s.phase === 'group') {
     modal = (
       <Modal band>
-        <p className="muted">🎤 Общий фант для всех</p>
-        <p className="dare">{s.dare}</p>
-        <button className="btn big" autoFocus onClick={() => game.doneGroup()}>Сделали!</button>
-        {!game.isLocal && <p className="muted small">Нажать может любой. Через 25 секунд игра продолжится сама.</p>}
+        <p className="muted">{t('ov.group')}</p>
+        <p className="dare">{render(s.dare)}</p>
+        <button className="btn big" autoFocus onClick={() => game.doneGroup()}>{t('ov.groupDone')}</button>
+        {!game.isLocal && <p className="muted small">{t('ov.groupNote')}</p>}
       </Modal>
     );
   } else if (s.phase === 'coin' && mine) {
@@ -88,14 +91,14 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
     const by = s.players[s.challenge.by];
     modal = (
       <Modal band>
-        <p className="muted">⚖️ {by.name} положил(а) +4</p>
-        <h2>Оспорить?</h2>
+        <p className="muted">{t('ov.laid4', { who: by.name })}</p>
+        <h2>{t('ov.challenge')}</h2>
         <p className="small muted">
-          Если у {by.name} была карта того цвета, что лежал до +4, или обычная «Цвет» — {by.name} тянет 4 вместо тебя. Если всё было честно, ты тянешь 6.
+          {t('ov.challengeHelp', { who: by.name })}
         </p>
         <div className="row center">
-          <button className="btn big blue" onClick={() => game.declineChallenge()}>Принять</button>
-          <button className="btn big red" autoFocus onClick={() => game.challengeWild4()}>Оспорить!</button>
+          <button className="btn big blue" onClick={() => game.declineChallenge()}>{t('ov.accept')}</button>
+          <button className="btn big red" autoFocus onClick={() => game.challengeWild4()}>{t('ov.challengeBtn')}</button>
         </div>
       </Modal>
     );
@@ -103,12 +106,12 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
     const counts = Object.fromEntries(COLORS.map(c => [c, p.hand.filter(x => x.color === c).length]));
     modal = (
       <Modal band>
-        <h2>{s.choice.title}</h2>
+        <h2>{render(s.choice.title)}</h2>
         <div className="colors">
           {COLORS.map(c => (
             <button key={c} style={{ background: HEX[c] }} onClick={() => game.resolveChoice(c)}>
               {CNAME[c]}
-              <small>{counts[c]} в руке</small>
+              <small>{t('ov.inHand', { n: counts[c] })}</small>
             </button>
           ))}
         </div>
@@ -117,18 +120,18 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
   } else if (s.phase === 'choose' && mine && s.choice?.kind === 'player') {
     modal = (
       <Modal band>
-        <h2>{s.choice.title}</h2>
+        <h2>{render(s.choice.title)}</h2>
         <div className="plist">
           {s.players.map((o, i) =>
             i === s.cur || o.out ? null : (
               <button key={i} onClick={() => game.resolveChoice(i)}>
                 <span>{o.bot ? '🤖 ' : ''}{o.name}</span>
-                <span>{o.hand.length} карт</span>
+                <span>{t('ov.cards', { n: o.hand.length })}</span>
               </button>
             ),
           )}
         </div>
-        {s.choice.mode === 'swap' && <p className="muted small">У тебя сейчас {p.hand.length}</p>}
+        {s.choice.mode === 'swap' && <p className="muted small">{t('ov.youHave', { n: p.hand.length })}</p>}
       </Modal>
     );
   } else if (s.phase === 'over' && showEnd && s.winner !== null) {
@@ -142,21 +145,21 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
         <h2>
           🏆{' '}
           {s.winTeam !== null && s.teams
-            ? `Команда «${TEAM_NAMES[s.winTeam]}» побеждает!`
-            : `${s.players[s.winner].name} побеждает!`}
+            ? t('ov.teamWins', { team: teamName(s.winTeam) })
+            : t('ov.wins', { who: s.players[s.winner].name })}
         </h2>
         {s.winTeam !== null && s.teams && (
-          <p className="muted">{s.players.filter((_, i) => s.teams![i] === s.winTeam).map(p => p.name).join(' и ')}</p>
+          <p className="muted">{t('ov.names', { names: s.players.filter((_, i) => s.teams![i] === s.winTeam).map(p => p.name) })}</p>
         )}
-        {s.timeUp && <p className="muted small">⏱ Время раунда вышло: побеждает тот, у кого меньше всех карт</p>}
+        {s.timeUp && <p className="muted small">{t('ov.timeUp')}</p>}
         {s.punishment && loser && (
           <>
-            <p className="muted">Больше всех карт у {loser.name} ({loser.hand.length}). Наказание:</p>
-            <p className="dare">{s.punishment}</p>
+            <p className="muted">{t('ov.loser', { who: loser.name, n: loser.hand.length })}</p>
+            <p className="dare">{render(s.punishment)}</p>
           </>
         )}
         <div className="score">
-          <small className="muted">Победы за вечер</small>
+          <small className="muted">{t('ov.score')}</small>
           {rows.map(([n, v]) => (
             <div key={n}><span>{n}</span><b>{v}</b></div>
           ))}
@@ -175,8 +178,8 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
           />
         ) : (
           <div className="row center">
-            <button className="btn" onClick={onMenu}>В меню</button>
-            <button className="btn big" autoFocus onClick={onAgain}>Ещё раунд</button>
+            <button className="btn" onClick={onMenu}>{t('ov.toMenu')}</button>
+            <button className="btn big" autoFocus onClick={onAgain}>{t('ov.again')}</button>
           </div>
         )}
       </Modal>
@@ -188,34 +191,35 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
       <div className="corner-btns">
         <FullscreenButton />
         <SoundMenu />
-        <button className="btn glass icon-btn labeled" onClick={() => setHelp(true)} title="Что за карты">
-          <IconCards /><span>Карты</span>
+        <button className="btn glass icon-btn labeled" onClick={() => setHelp(true)} title={t('ov.cardsTitle')}>
+          <IconCards /><span>{t('ov.cardsBtn')}</span>
         </button>
-        <button className="btn glass icon-btn labeled" onClick={() => setMenu(true)} title="Меню">
-          <IconMenu /><span>Меню</span>
+        <button className="btn glass icon-btn labeled" onClick={() => setMenu(true)} title={t('ov.menu')}>
+          <IconMenu /><span>{t('ov.menu')}</span>
         </button>
       </div>
       {modal}
       {help && (
         <Modal onClose={() => setHelp(false)}>
-          <h2>Что за карты</h2>
-          <Legend rules={s.rules} />
-          <button className="btn big" onClick={() => setHelp(false)}>Понятно</button>
+          <h2>{t('ov.cardsTitle')}</h2>
+          <Legend rules={s.rules} theme={s.theme} />
+          <button className="btn big" onClick={() => setHelp(false)}>{t('ov.gotIt')}</button>
         </Modal>
       )}
       {menu && (
         <Modal onClose={() => setMenu(false)}>
-          <h2>{online ? 'Выйти из комнаты?' : 'Выйти в меню?'}</h2>
+          <h2>{online ? t('ov.leaveRoom') : t('ov.leaveGame')}</h2>
           <p>
             {online
               ? s.phase === 'over' || online.spectator
-                ? `Вернуться можно по коду ${online.code}.`
-                : 'Твоё место до конца раунда займёт бот. Если просто пропадёт связь, место вернётся само.'
-              : 'Текущий раунд пропадёт, счёт за вечер останется.'}
+                ? t('ov.backByCode', { code: online.code })
+                : t('ov.botTakes')
+              : t('ov.roundLost')}
           </p>
+          <LangSwitch className="menu-lang" />
           <div className="row center">
-            <button className="btn" onClick={() => setMenu(false)}>Остаться</button>
-            <button className="btn big" onClick={onMenu}>{online ? 'Выйти' : 'В меню'}</button>
+            <button className="btn" onClick={() => setMenu(false)}>{t('ov.stay')}</button>
+            <button className="btn big" onClick={onMenu}>{online ? t('ov.leave') : t('ov.toMenu')}</button>
           </div>
         </Modal>
       )}

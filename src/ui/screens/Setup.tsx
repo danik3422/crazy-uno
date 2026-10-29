@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
 import { avatarOf, BOT_AVATARS, HUMAN_AVATARS, randomBot } from '../../game/avatars';
-import { DEFAULT_TABLE, EVENTS, TEAM_NAMES } from '../../game/content';
+import { DEFAULT_TABLE, EVENTS, teamName } from '../../game/content';
+import { render, useT } from '../../i18n';
 import { teamsOf, teamsProblem } from '../../game/teams';
 import type { LocalSetup } from '../../game/engine';
 import { AvatarImg } from '../components/AvatarImg';
@@ -13,6 +13,7 @@ import { enterFullscreen, SMALL_SCREEN, useMedia } from '../hooks/phone';
 import { RulesPanel } from '../settings/RulesPanel';
 import { TablePanel } from '../settings/TablePanel';
 import { ThemePicker } from '../settings/ThemePicker';
+import { usePageTheme } from '../hooks/pageTheme';
 import './Setup.css';
 
 interface Props {
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
+  const t = useT();
   const players = cfg.players;
   const update = (i: number, patch: Partial<LocalSetup['players'][number]>) =>
     setCfg(c => ({ ...c, players: c.players.map((p, k) => (k === i ? { ...p, ...patch } : p)) }));
@@ -34,10 +36,7 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
   const teamsWrong = table.teams ? teamsProblem(teams) : null;
   const small = useMedia(SMALL_SCREEN);
   const theme = cfg.theme ?? 'classic';
-  useEffect(() => {
-    document.body.classList.add(`page-${theme}`);
-    return () => document.body.classList.remove(`page-${theme}`);
-  }, [theme]);
+  usePageTheme(theme);
 
   /** One editable player: avatar, name, team switch (teams format), person/bot, remove. */
   const row = (i: number) => {
@@ -46,7 +45,7 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
       <div className="prow" key={i}>
         <button
           className="ava-btn"
-          title="Сменить аватар"
+          title={t('home.changeAvatar')}
           onClick={() => {
             const pool = p.bot ? BOT_AVATARS : HUMAN_AVATARS;
             const curA = avatarOf(p.avatar, p.name, p.bot);
@@ -60,14 +59,14 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
           id={`pname${i}`}
           maxLength={16}
           value={p.name}
-          aria-label={`Имя игрока ${i + 1}`}
+          aria-label={t('setup.nameAria', { n: i + 1 })}
           onChange={e => update(i, { name: e.target.value })}
         />
         {table.teams && (
           <button
             className={`btn team-swap to${1 - teams[i]}`}
-            title={`Перевести в команду «${TEAM_NAMES[1 - teams[i]]}»`}
-            aria-label={`${p.name}: перевести в команду «${TEAM_NAMES[1 - teams[i]]}»`}
+            title={t('team.moveTo', { team: teamName(1 - teams[i]) })}
+            aria-label={t('team.moveAria', { name: p.name, team: teamName(1 - teams[i]) })}
             onClick={() => update(i, { team: teams[i] ? 0 : 1 })}
           >
             <SwapTeamIcon />
@@ -75,15 +74,15 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
         )}
         <button
           className="btn tog"
-          title={p.bot ? 'Бот — нажми, чтобы стал человеком' : 'Человек — нажми, чтобы стал ботом'}
+          title={p.bot ? t('setup.botTip') : t('setup.humanTip')}
           onClick={() => update(i, p.bot ? { bot: false, avatar: undefined } : newBot(players.filter((_, k) => k !== i)))}
         >
           <span aria-hidden>{p.bot ? '🤖' : '🙂'}</span>
-          <span className="tog-label">{p.bot ? 'Бот' : 'Человек'}</span>
+          <span className="tog-label">{p.bot ? t('setup.bot') : t('setup.human')}</span>
         </button>
         <button
           className="btn x"
-          aria-label="Убрать игрока"
+          aria-label={t('setup.remove')}
           disabled={players.length <= 2}
           onClick={() => setCfg(c => ({ ...c, players: c.players.filter((_, k) => k !== i) }))}
         >
@@ -94,20 +93,20 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
   };
 
   return (
-    <div className={`setup-page page-${cfg.theme ?? 'classic'}`}>
+    <div className="setup-page">
       <SwipeBack onBack={onBack} />
-      <button className="btn back" onClick={onBack}>← Назад</button>
-      <Hero sub="Один экран на всю компанию. Передаёте телефон или ноутбук по кругу, и пусть победит самый наглый." />
+      <button className="btn back" onClick={onBack}>{t('setup.back')}</button>
+      <Hero sub={t('setup.sub')} />
 
       <div className="setup">
         <section className="panel">
-          <h2>Игроки</h2>
+          <h2>{t('setup.players')}</h2>
           {table.teams ? (
             <div className="team-cols">
-              {([0, 1] as const).map(t => {
-                const mine = players.map((_, i) => i).filter(i => teams[i] === t);
+              {([0, 1] as const).map(side => {
+                const mine = players.map((_, i) => i).filter(i => teams[i] === side);
                 return (
-                  <TeamBox key={t} team={t} count={mine.length} empty="Пока никого: нажми ⇄ у игрока из другой команды">
+                  <TeamBox key={side} team={side} count={mine.length} empty={t('setup.teamEmpty')}>
                     {mine.length > 0 && <div className="plist-edit">{mine.map(row)}</div>}
                   </TeamBox>
                 );
@@ -118,47 +117,45 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
           )}
           <div className="row">
             <button className="btn" disabled={players.length >= 8}
-              onClick={() => setCfg(c => ({ ...c, players: [...c.players, { name: `Игрок ${c.players.length + 1}`, bot: false }] }))}>
-              + Человек
+              onClick={() => setCfg(c => ({ ...c, players: [...c.players, { name: t('setup.playerN', { n: c.players.length + 1 }), bot: false }] }))}>
+              {t('setup.addHuman')}
             </button>
             <button className="btn" disabled={players.length >= 8}
               onClick={() => setCfg(c => ({ ...c, players: [...c.players, newBot(c.players)] }))}>
-              + Бот
+              {t('setup.addBot')}
             </button>
           </div>
           <small className="muted">
-            От 2 до 8 игроков. {humans > 1
-              ? 'Людей несколько: перед каждым ходом карты прячутся, пока устройство не передадут.'
-              : 'Добавь людей, и игра будет прятать карты между ходами.'}
+            {t('setup.count')} {humans > 1 ? t('setup.manyHumans') : t('setup.oneHuman')}
           </small>
-          {teamsWrong && <p className="table-warn">{teamsWrong}: поменяй команды или добавь игрока.</p>}
+          {teamsWrong && <p className="table-warn">{t('setup.teamsFix', { why: render(teamsWrong) })}</p>}
           <PhoneTip />
-          <button className="btn big" disabled={!!teamsWrong} onClick={() => { void enterFullscreen(); onStart(); }}>Раздавай!</button>
+          <button className="btn big" disabled={!!teamsWrong} onClick={() => { void enterFullscreen(); onStart(); }}>{t('setup.deal')}</button>
         </section>
 
         <section className="panel">
-          <h2>Правила</h2>
+          <h2>{t('setup.rules')}</h2>
           <RulesPanel rules={cfg.rules} onChange={rules => setCfg(c => ({ ...c, rules }))} />
-          <h2 style={{ marginTop: 8 }}>Формат</h2>
-          <TablePanel table={table} teams={teams} onChange={t => setCfg(c => ({ ...c, table: t }))} />
+          <h2 style={{ marginTop: 8 }}>{t('setup.format')}</h2>
+          <TablePanel table={table} teams={teams} onChange={tb => setCfg(c => ({ ...c, table: tb }))} />
         </section>
       </div>
 
       <section className="panel">
-        <h2>Оформление</h2>
+        <h2>{t('setup.look')}</h2>
         <ThemePicker compact={small} value={cfg.theme ?? 'classic'} onChange={theme => setCfg(c => ({ ...c, theme }))} />
       </section>
 
       {/* the reference is long: folded away on phones, open on a big screen */}
       <details className="panel ref-panel" open={!small || undefined}>
         <summary>
-          <h2>Что за карты и события</h2>
-          <span className="ref-count">17 карт · 13 событий</span>
+          <h2>{t('setup.ref')}</h2>
+          <span className="ref-count">{t('setup.refCount')}</span>
           <svg className="chev" viewBox="0 0 24 24" width="18" height="18" aria-hidden><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </summary>
-        <Legend rules={cfg.rules} />
-        <h3 className="ref-sub">Безумные события</h3>
-        <small className="muted">Случаются сами, в случайный момент, примерно раз в 4–13 ходов.</small>
+        <Legend rules={cfg.rules} theme={theme} />
+        <h3 className="ref-sub">{t('setup.events')}</h3>
+        <small className="muted">{t('setup.eventsHint')}</small>
         <div className="legend">
           {Object.entries(EVENTS).map(([id, e]) => (
             <div className="li" key={id}>

@@ -1,13 +1,13 @@
 import { COLORS, NO_MERCY_TYPES, SPECIAL, WILD_TYPES } from '../../game/content';
 import { buildDeck } from '../../game/deck';
-import type { Card, CardType, Rules } from '../../game/types';
+import type { Card, CardType, Rules, ThemeId } from '../../game/types';
 import { cardImage } from '../../three/textures';
 import './Legend.css';
 
 const ALL = Object.keys(SPECIAL) as Exclude<CardType, 'num'>[];
 
-/** What every special card does. With `rules`, only the cards that are in that deck. */
-export function Legend({ rules }: { rules?: Rules }) {
+/** What every special card does, drawn in the table's style. With `rules`, only the cards that are in that deck. */
+export function Legend({ rules, theme = 'classic' }: { rules?: Rules; theme?: ThemeId }) {
   const types = rules ? ALL.filter(t => buildDeck(rules).some(c => c.type === t)) : ALL.filter(t => !NO_MERCY_TYPES.includes(t));
   return (
     <div className="legend">
@@ -15,7 +15,7 @@ export function Legend({ rules }: { rules?: Rules }) {
         const card: Card = { id: i, type: t, color: WILD_TYPES.includes(t) ? 'wild' : COLORS[i % 4] };
         return (
           <div className="li" key={t}>
-            <img src={cardImage(card)} alt="" width={44} height={66} />
+            <img src={cardImage(card, theme)} alt="" width={44} height={66} />
             <div>
               <b>{SPECIAL[t].name}</b>
               <small>{SPECIAL[t].desc}</small>

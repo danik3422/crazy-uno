@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useT } from '../../i18n';
 import type { MemberInfo, Rematch } from '../../net/protocol';
 import { AvatarImg } from '../components/AvatarImg';
 import './RematchVote.css';
@@ -16,8 +17,9 @@ interface Props {
   onLeave: () => void;
 }
 
-/** After a round: everybody presses "Ещё раунд"; when all have, a 5-second countdown starts the next round. */
+/** After a round: everybody presses "Play again"; when all have, a 5-second countdown starts the next round. */
 export function RematchVote({ me, members, rematch, receivedAt, isHost, onVote, onForce, onLobby, onLeave }: Props) {
+  const t = useT();
   const ready = new Set(rematch?.ready ?? []);
   const iAmReady = ready.has(me);
   const people = members.filter(m => !m.bot);
@@ -27,22 +29,22 @@ export function RematchVote({ me, members, rematch, receivedAt, isHost, onVote, 
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     if (startAt === null) return;
-    const t = setInterval(() => setNow(Date.now()), 200);
-    return () => clearInterval(t);
+    const id = setInterval(() => setNow(Date.now()), 200);
+    return () => clearInterval(id);
   }, [startAt]);
   const left = startAt === null ? null : Math.max(0, Math.ceil((startAt - now) / 1000));
 
   return (
     <div className="rematch">
-      <ul className="rematch-list" aria-label="Кто готов к следующему раунду">
+      <ul className="rematch-list" aria-label={t('rm.list')}>
         {people.map(m => {
           const ok = ready.has(m.id);
           const away = !m.connected;
           return (
             <li key={m.id} className={ok ? 'ok' : away ? 'away' : ''}>
               <AvatarImg id={m.avatar} name={m.name} bot={false} size={30} />
-              <span className="rm-name">{m.name}{m.id === me ? ' (ты)' : ''}</span>
-              <span className="rm-st">{ok ? '✓ готов' : away ? 'нет связи' : <><span className="dot-pulse" /> думает</>}</span>
+              <span className="rm-name">{m.name}{m.id === me ? t('rm.you') : ''}</span>
+              <span className="rm-st">{ok ? t('rm.ready') : away ? t('rm.away') : <><span className="dot-pulse" /> {t('rm.thinking')}</>}</span>
             </li>
           );
         })}
@@ -50,30 +52,30 @@ export function RematchVote({ me, members, rematch, receivedAt, isHost, onVote, 
 
       {left !== null ? (
         <div className="rematch-count" aria-live="polite">
-          <span>Новый раунд через</span>
+          <span>{t('rm.startsIn')}</span>
           <b key={left}>{left}</b>
         </div>
       ) : (
         <p className="muted small rematch-hint" aria-live="polite">
           {iAmReady
-            ? waitingNames.length ? `Ждём: ${waitingNames.join(', ')}` : 'Все готовы!'
-            : 'Начнём, когда все нажмут «Ещё раунд»'}
+            ? waitingNames.length ? t('rm.waitFor', { names: waitingNames.join(', ') }) : t('rm.allReady')
+            : t('rm.whenAll')}
         </p>
       )}
 
       <div className="row center">
         {iAmReady ? (
-          <button className="btn" onClick={() => onVote(false)}>Отменить</button>
+          <button className="btn" onClick={() => onVote(false)}>{t('rm.cancel')}</button>
         ) : (
-          <button className="btn big" autoFocus onClick={() => onVote(true)}>Ещё раунд</button>
+          <button className="btn big" autoFocus onClick={() => onVote(true)}>{t('ov.again')}</button>
         )}
         {isHost && left === null && iAmReady && waitingNames.length > 0 && (
-          <button className="btn big blue" onClick={onForce}>Начать без них</button>
+          <button className="btn big blue" onClick={onForce}>{t('rm.force')}</button>
         )}
       </div>
       <div className="row center rematch-sub">
-        {isHost && <button className="btn" onClick={onLobby}>В лобби</button>}
-        <button className="btn" onClick={onLeave}>Выйти из комнаты</button>
+        {isHost && <button className="btn" onClick={onLobby}>{t('rm.lobby')}</button>}
+        <button className="btn" onClick={onLeave}>{t('rm.leave')}</button>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
 import { effectiveTable, QUICK, TABLE_CHOICES } from '../../game/content';
 import { teamsProblem } from '../../game/teams';
+import { render, t, useT } from '../../i18n';
 import type { Table } from '../../game/types';
 import { ModeIcon } from './ModeIcon';
 import './settings.css';
@@ -14,26 +15,22 @@ interface Props {
   onChange?: (t: Table) => void;
 }
 
-const EVENT_NAMES = { rare: 'Редко', normal: 'Обычно', often: 'Часто' } as const;
-const BOT_NAMES = { easy: 'Лёгкие', normal: 'Обычные', hard: 'Хитрые' } as const;
-const BOT_HINTS = {
-  easy: 'кладут что попало и часто забывают «UNO!»',
-  normal: 'играют разумно, иногда ошибаются',
-  hard: 'просчитывают ходы наперёд: бьют лидера штрафами, берегут дикие карты',
-} as const;
+type BotLevel = 'easy' | 'normal' | 'hard';
+const botName = (v: BotLevel) => t(`table.bots.${v}`);
 
-const ROWS: { key: keyof typeof TABLE_CHOICES; label: string; hint: string; fmt: (v: never) => string; quick?: boolean }[] = [
-  { key: 'botLevel', label: 'Боты', hint: '', fmt: (v: keyof typeof BOT_NAMES) => BOT_NAMES[v] },
-  { key: 'handSize', label: 'Карт на старте', hint: 'сколько раздают каждому', fmt: (v: number) => `${v}`, quick: true },
-  { key: 'turnSec', label: 'Время на ход', hint: 'не успел — тянешь карту', fmt: (v: number) => `${v} с`, quick: true },
-  { key: 'roundMin', label: 'Лимит раунда', hint: 'по сигналу побеждает тот, у кого меньше карт', fmt: (v: number) => (v ? `${v} мин` : 'Нет'), quick: true },
-  { key: 'bombSec', label: 'Таймер бомбы', hint: 'на ход после карты «Бомба»', fmt: (v: number) => `${v} с` },
-  { key: 'unoPenalty', label: 'Штраф за UNO', hint: 'если поймали без «UNO!»', fmt: (v: number) => `+${v}` },
-  { key: 'events', label: 'Безумные события', hint: 'как часто что-то случается', fmt: (v: keyof typeof EVENT_NAMES) => EVENT_NAMES[v] },
+const ROWS: { key: keyof typeof TABLE_CHOICES; quick?: boolean; fmt: (v: never) => string }[] = [
+  { key: 'botLevel', fmt: (v: BotLevel) => botName(v) },
+  { key: 'handSize', fmt: (v: number) => `${v}`, quick: true },
+  { key: 'turnSec', fmt: (v: number) => t('table.sec', { n: v }), quick: true },
+  { key: 'roundMin', fmt: (v: number) => (v ? t('table.min', { n: v }) : t('table.none')), quick: true },
+  { key: 'bombSec', fmt: (v: number) => t('table.sec', { n: v }) },
+  { key: 'unoPenalty', fmt: (v: number) => `+${v}` },
+  { key: 'events', fmt: (v: 'rare' | 'normal' | 'often') => t(`table.events.${v}`) },
 ];
 
 /** Format switches (quick round, 2 on 2, autopilot) and the table's numbers, in the same calm style as the rules. */
 export function TablePanel({ table, teams, onChange }: Props) {
+  useT();
   const ro = !onChange;
   const eff = effectiveTable(table);
   const teamsWrong = table.teams ? teamsProblem(teams) : null;
@@ -46,8 +43,8 @@ export function TablePanel({ table, teams, onChange }: Props) {
       <FormatSwitch
         id="fmt-quick"
         icon="quick"
-        title="Быстрый раунд"
-        desc={`${QUICK.handSize} карт · ${QUICK.turnSec} с на ход · ${QUICK.roundMin} мин`}
+        title={t('table.quick')}
+        desc={t('table.quickDesc', { n: QUICK.handSize, s: QUICK.turnSec, m: QUICK.roundMin })}
         on={table.quick}
         ro={ro}
         onToggle={v => set({ quick: v })}
@@ -55,8 +52,8 @@ export function TablePanel({ table, teams, onChange }: Props) {
       <FormatSwitch
         id="fmt-teams"
         icon="teams"
-        title="2 на 2"
-        desc="Командами: выбери, кто с кем"
+        title={t('table.teams')}
+        desc={t('table.teamsDesc')}
         on={table.teams}
         ro={ro}
         onToggle={v => set({ teams: v })}
@@ -64,8 +61,8 @@ export function TablePanel({ table, teams, onChange }: Props) {
       <FormatSwitch
         id="fmt-autopilot"
         icon="autopilot"
-        title="Автопилот"
-        desc={table.autopilot ? 'Не успел — за тебя ходит бот' : 'Выкл.: не успел — берёшь карту'}
+        title={t('table.autopilot')}
+        desc={table.autopilot ? t('table.autopilotOn') : t('table.autopilotOff')}
         on={table.autopilot}
         ro={ro}
         onToggle={v => set({ autopilot: v })}
@@ -75,16 +72,16 @@ export function TablePanel({ table, teams, onChange }: Props) {
 
   if (ro) {
     const chips = [
-      table.quick && '⚡ Быстрый раунд',
-      table.teams && '👥 2 на 2',
-      table.autopilot && '🤖 Автопилот',
-      table.botLevel && table.botLevel !== 'normal' && `Боты: ${BOT_NAMES[table.botLevel].toLowerCase()}`,
-      `${eff.handSize} карт`,
-      `${eff.turnSec} с на ход`,
-      eff.roundMin ? `раунд ${eff.roundMin} мин` : null,
+      table.quick && t('table.chipQuick'),
+      table.teams && t('table.chipTeams'),
+      table.autopilot && t('table.chipAutopilot'),
+      table.botLevel && table.botLevel !== 'normal' && t('table.chipBots', { level: botName(table.botLevel).toLowerCase() }),
+      t('table.cards', { n: eff.handSize }),
+      t('table.perTurn', { n: eff.turnSec }),
+      eff.roundMin ? t('table.roundChip', { n: eff.roundMin }) : null,
     ].filter(Boolean) as string[];
     return (
-      <ul className="rule-chips" aria-label="Формат стола">
+      <ul className="rule-chips" aria-label={t('table.aria')}>
         {chips.map(c => <li key={c}>{c}</li>)}
       </ul>
     );
@@ -93,28 +90,29 @@ export function TablePanel({ table, teams, onChange }: Props) {
   return (
     <div className="table-panel">
       {formats}
-      {teamsWrong && <p className="table-warn" role="alert">{teamsWrong}.</p>}
+      {teamsWrong && <p className="table-warn" role="alert">{render(teamsWrong)}.</p>}
       <button type="button" className={`rules-toggle ${open ? 'open' : ''}`} aria-expanded={open} aria-controls={id} onClick={() => setOpen(o => !o)}>
-        <span>{open ? 'Свернуть настройки стола' : 'Настройки стола'}</span>
-        <span className="rules-count">{eff.handSize} карт · {eff.turnSec} с{eff.botLevel && eff.botLevel !== 'normal' ? ` · боты ${BOT_NAMES[eff.botLevel].toLowerCase()}` : ''}</span>
+        <span>{open ? t('table.collapse') : t('table.settings')}</span>
+        <span className="rules-count">{t('table.cards', { n: eff.handSize })} · {t('table.sec', { n: eff.turnSec })}{eff.botLevel && eff.botLevel !== 'normal' ? ` · ${t('table.botsSummary', { level: botName(eff.botLevel).toLowerCase() })}` : ''}</span>
         <svg className="chev" viewBox="0 0 24 24" width="18" height="18" aria-hidden><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
       {open && (
         <div className="rule-list" id={id}>
           {ROWS.map(r => {
+            const label = t(`table.row.${r.key}`);
             const hint =
-              r.key === 'botLevel' ? BOT_HINTS[eff.botLevel ?? 'normal']
-              : r.key === 'turnSec' && table.autopilot ? 'потом ходит автопилот'
-              : r.hint;
+              r.key === 'botLevel' ? t(`table.botHint.${eff.botLevel ?? 'normal'}`)
+              : r.key === 'turnSec' && table.autopilot ? t('table.hint.turnSecAuto')
+              : t(`table.hint.${r.key as Exclude<typeof r.key, 'botLevel'>}`);
             const locked = r.quick && table.quick;
             const cur = (locked ? eff : table)[r.key] ?? (r.key === 'botLevel' ? 'normal' : undefined);
             return (
               <div key={r.key} className={`rule-row num-row ${locked ? 'locked' : ''}`}>
                 <span className="rule-text">
-                  <b>{r.label}</b>
-                  <small>{locked ? 'задано быстрым раундом' : hint}</small>
+                  <b>{label}</b>
+                  <small>{locked ? t('table.byQuick') : hint}</small>
                 </span>
-                <span className="seg" role="radiogroup" aria-label={r.label}>
+                <span className="seg" role="radiogroup" aria-label={label}>
                   {(TABLE_CHOICES[r.key] as readonly (string | number)[]).map(v => (
                     <button
                       key={String(v)}

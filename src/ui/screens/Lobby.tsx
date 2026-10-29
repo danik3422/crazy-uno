@@ -1,6 +1,7 @@
 import qrcode from 'qrcode-generator';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { TEAM_NAMES, THEMES_LIST } from '../../game/content';
+import { teamName, THEMES_LIST } from '../../game/content';
+import { lang, render, useT } from '../../i18n';
 import { teamsOf, teamsProblem } from '../../game/teams';
 import type { Connection } from '../../net/connection';
 import { MAX_PLAYERS, type MemberInfo, type RoomInfo } from '../../net/protocol';
@@ -13,6 +14,7 @@ import { RulesPanel } from '../settings/RulesPanel';
 import { TablePanel } from '../settings/TablePanel';
 import { SwapTeamIcon, TeamBox } from '../components/TeamBox';
 import { ThemePicker } from '../settings/ThemePicker';
+import { usePageTheme } from '../hooks/pageTheme';
 import './Lobby.css';
 
 interface Props {
@@ -33,14 +35,17 @@ export function inviteLink(code: string) {
  * The host changes everything; guests get a short read-only summary and a "waiting" line.
  */
 export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
+  const t = useT();
   const me = room.members.find(m => m.id === room.you);
   const isHost = !!me?.host;
   const host = room.members.find(m => m.host);
-  const hostName = host?.name ?? 'хост';
+  const hostName = host?.name ?? t('lobby.host');
   const players = room.members.filter(m => !m.spectator);
   const watchers = room.members.filter(m => m.spectator);
   const [picking, setPicking] = useState(false);
-  const theme = THEMES_LIST.find(t => t.id === room.theme);
+  const theme = THEMES_LIST.find(x => x.id === room.theme);
+  // the whole page takes the room's table look, for the host and every guest
+  usePageTheme(room.theme);
   // the server tells everyone's side (their pick, or the side that is short)
   const teams = players.map(m => m.team ?? 0);
   const teamsWrong = room.table.teams ? teamsProblem(teams) : null;
@@ -67,19 +72,19 @@ export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
   };
   const addBot = (
     <li className="pl" key="add">
-      <button className="pl-add" onClick={() => conn.send({ t: 'addBot' })} aria-label="Добавить бота">
+      <button className="pl-add" onClick={() => conn.send({ t: 'addBot', lang: lang() })} aria-label={t('lobby.addBot')}>
         <span aria-hidden>+</span>
       </button>
-      <span className="pl-name muted">Бот</span>
+      <span className="pl-name muted">{t('lobby.bot')}</span>
     </li>
   );
-  const startHint = players.length < 2 ? 'Нужен ещё хотя бы один игрок: позови друга или добавь бота.' : teamsWrong ? `${teamsWrong}: поменяй команды, добавь бота или выключи «2 на 2».` : null;
+  const startHint = players.length < 2 ? t('lobby.needMore') : teamsWrong ? t('lobby.teamsFix', { why: render(teamsWrong) }) : null;
 
   return (
-    <div className={`lobby page-${room.theme}`}>
+    <div className="lobby">
       <SwipeBack onBack={onLeave} />
       <header className="lobby-top">
-        <button className="btn ghost back" onClick={onLeave}>← Выйти</button>
+        <button className="btn ghost back" onClick={onLeave}>{t('lobby.leave')}</button>
         <ConnBadge conn={conn} />
       </header>
 
@@ -88,18 +93,18 @@ export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
 
         <section className="lb-section" aria-labelledby="lb-players">
           <h2 className="lb-h" id="lb-players">
-            Игроки <span className="lb-count">{players.length} из {MAX_PLAYERS}</span>
+            {t('lobby.players')} <span className="lb-count">{t('lobby.of', { a: players.length, b: MAX_PLAYERS })}</span>
           </h2>
           {room.table.teams ? (
             <div className="team-cols two">
-              {([0, 1] as const).map(t => {
-                const mine = players.map((_, i) => i).filter(i => teams[i] === t);
+              {([0, 1] as const).map(side => {
+                const mine = players.map((_, i) => i).filter(i => teams[i] === side);
                 return (
-                  <TeamBox key={t} team={t} count={mine.length}>
+                  <TeamBox key={side} team={side} count={mine.length}>
                     <ul className="players">
                       {mine.map(tile)}
                       {/* a new bot joins the side that is short, so its tile waits there */}
-                      {canAddBot && nextTeam === t && addBot}
+                      {canAddBot && nextTeam === side && addBot}
                     </ul>
                   </TeamBox>
                 );
@@ -113,32 +118,32 @@ export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
           )}
           {picking && (
             <div className="lb-picker">
-              <span className="lb-label">Твой аватар</span>
+              <span className="lb-label">{t('lobby.yourAvatar')}</span>
               <AvatarPicker value={avatar} onChange={id => { setAvatar(id); setPicking(false); }} />
             </div>
           )}
           {watchers.length > 0 && (
             <p className="lb-note">
-              Смотрят: {watchers.map(w => w.name).join(', ')}. Сядут за стол в следующем раунде.
+              {t('lobby.watching', { names: watchers.map(w => w.name).join(', ') })}
             </p>
           )}
         </section>
 
         <section className="lb-section" aria-labelledby="lb-mode">
-          <h2 className="lb-h" id="lb-mode">Режим игры</h2>
+          <h2 className="lb-h" id="lb-mode">{t('lobby.mode')}</h2>
           <RulesPanel rules={room.rules} onChange={isHost ? rules => conn.send({ t: 'rules', rules }) : undefined} />
         </section>
 
         <section className="lb-section" aria-labelledby="lb-format">
-          <h2 className="lb-h" id="lb-format">Формат</h2>
+          <h2 className="lb-h" id="lb-format">{t('lobby.format')}</h2>
           <TablePanel table={room.table} teams={teams} onChange={isHost ? table => conn.send({ t: 'table', table }) : undefined} />
         </section>
 
         <section className="lb-section lb-theme" aria-labelledby="lb-theme">
           <h2 className="lb-h" id="lb-theme">
-            Стол {!isHost && <span className="lb-count">{theme?.name}</span>}
+            {t('lobby.table')} {!isHost && <span className="lb-count">{theme?.name}</span>}
           </h2>
-          {isHost && <ThemePicker compact value={room.theme} onChange={t => conn.send({ t: 'theme', theme: t })} />}
+          {isHost && <ThemePicker compact value={room.theme} onChange={th => conn.send({ t: 'theme', theme: th })} />}
         </section>
 
         <PhoneTip />
@@ -147,7 +152,7 @@ export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
         ) : (
           <p className="lb-waiting">
             <span className="lb-dot" aria-hidden />
-            Ждём, когда {hostName} начнёт игру
+            {t('lobby.waiting', { name: hostName })}
           </p>
         )}
       </main>
@@ -157,6 +162,7 @@ export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
 
 /** The host's start button. Sticks to the bottom of the screen when the page is long (rules open, phones). */
 function StartBar({ canStart, hint, onStart }: { canStart: boolean; hint: string | null; onStart: () => void }) {
+  const t = useT();
   const ref = useRef<HTMLDivElement>(null);
   const [stuck, setStuck] = useState(false);
   useEffect(() => {
@@ -170,7 +176,7 @@ function StartBar({ canStart, hint, onStart }: { canStart: boolean; hint: string
   return (
     <div ref={ref} className={`lb-start ${stuck ? 'stuck' : ''}`}>
       {!canStart && hint && <p className="lb-start-hint">{hint}</p>}
-      <button className="btn big start-btn" disabled={!canStart} onClick={() => { void enterFullscreen(); onStart(); }}>Начать игру</button>
+      <button className="btn big start-btn" disabled={!canStart} onClick={() => { void enterFullscreen(); onStart(); }}>{t('lobby.start')}</button>
     </div>
   );
 }
@@ -181,39 +187,41 @@ function Player({ m, me, picking, canKick, onKick, onAvatar, team, onTeam }: {
   /** switch to the other team (only when this viewer may) */
   onTeam?: () => void;
 }) {
+  const t = useT();
   const ava = <AvatarImg id={m.avatar} name={m.name} bot={m.bot} size={56} />;
-  const sub = !m.bot && !m.connected ? 'нет связи' : me ? 'это ты' : m.bot ? 'бот' : m.host ? 'хост' : '';
+  const away = !m.bot && !m.connected;
+  const sub = away ? t('lobby.offline') : me ? t('lobby.you') : m.bot ? t('lobby.botSub') : m.host ? t('lobby.hostSub') : '';
   return (
     <li className={`pl ${me ? 'me' : ''} ${!m.bot && !m.connected ? 'away' : ''}`}>
       <span className="pl-ava-wrap">
         {me ? (
-          <button className="pl-ava" onClick={onAvatar} aria-expanded={picking} aria-label="Сменить аватар" title="Сменить аватар">
+          <button className="pl-ava" onClick={onAvatar} aria-expanded={picking} aria-label={t('home.changeAvatar')} title={t('home.changeAvatar')}>
             {ava}
             <span className="pl-edit" aria-hidden>✎</span>
           </button>
         ) : (
           <span className="pl-ava">{ava}</span>
         )}
-        {m.host && <span className="pl-crown" title="Хост" aria-label="хост">👑</span>}
+        {m.host && <span className="pl-crown" title={t('lobby.hostTitle')} aria-label={t('lobby.hostSub')}>👑</span>}
         {team !== null && onTeam && (
           <button
             className={`pl-swap to${1 - team}`}
             onClick={onTeam}
-            title={`Перевести в команду «${TEAM_NAMES[1 - team]}»`}
-            aria-label={`${m.name}: перевести в команду «${TEAM_NAMES[1 - team]}»`}
+            title={t('team.moveTo', { team: teamName(1 - team) })}
+            aria-label={t('team.moveAria', { name: m.name, team: teamName(1 - team) })}
           >
             <SwapTeamIcon size={13} />
           </button>
         )}
         {canKick && (
-          <button className="pl-kick" onClick={onKick} aria-label={`Убрать ${m.name}`} title="Убрать из комнаты">
+          <button className="pl-kick" onClick={onKick} aria-label={t('lobby.kick', { name: m.name })} title={t('lobby.kickTitle')}>
             <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /></svg>
           </button>
         )}
       </span>
 
       <span className="pl-name" title={m.name}>{m.name}</span>
-      {sub && <span className={`pl-sub ${sub === 'нет связи' ? 'warn' : ''}`}>{sub}</span>}
+      {sub && <span className={`pl-sub ${away ? 'warn' : ''}`}>{sub}</span>}
     </li>
   );
 }
@@ -227,6 +235,7 @@ const IconShare = () => (
 
 /** Room code as cards (tap to copy), copy-link / QR / share buttons; the QR code opens on demand. */
 function Invite({ code }: { code: string }) {
+  const t = useT();
   const link = inviteLink(code);
   const [copied, setCopied] = useState<'link' | 'code' | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
@@ -248,30 +257,30 @@ function Invite({ code }: { code: string }) {
     }
   };
   const share = () => {
-    navigator.share?.({ title: 'Безумное UNO', text: `Залетай в UNO! Код комнаты: ${code}`, url: link }).catch(() => {});
+    navigator.share?.({ title: t('app.title'), text: t('lobby.shareText', { code }), url: link }).catch(() => {});
   };
 
   return (
-    <section className="lb-invite" aria-label="Комната">
+    <section className="lb-invite" aria-label={t('lobby.room')}>
       <div className="lb-code">
-        <span className="lb-label">{copied === 'code' ? 'Код скопирован ✓' : 'Код комнаты'}</span>
-        <button className="code-tiles small" onClick={() => copy(code, 'code')} aria-label={`Код комнаты ${code}, скопировать`} title="Скопировать код">
+        <span className="lb-label">{copied === 'code' ? t('lobby.codeCopied') : t('lobby.code')}</span>
+        <button className="code-tiles small" onClick={() => copy(code, 'code')} aria-label={t('lobby.copyCodeAria', { code })} title={t('lobby.copyCode')}>
           {code.split('').map((ch, i) => <span key={i} className={`tile t${i}`}><FitLetter ch={ch} /></span>)}
         </button>
       </div>
       <div className="lb-invite-btns">
         <button className="btn soft invite-copy" onClick={() => copy(link, 'link')}>
-          <IconLink /> {copied === 'link' ? 'Ссылка скопирована' : 'Скопировать ссылку'}
+          <IconLink /> {copied === 'link' ? t('lobby.linkCopied') : t('lobby.copyLink')}
         </button>
-        <button className={`btn soft ${qrOpen ? 'on' : ''}`} onClick={() => setQrOpen(o => !o)} aria-expanded={qrOpen} aria-label="QR-код">QR</button>
-        {'share' in navigator && <button className="btn soft" onClick={share} aria-label="Поделиться" title="Поделиться"><IconShare /></button>}
+        <button className={`btn soft ${qrOpen ? 'on' : ''}`} onClick={() => setQrOpen(o => !o)} aria-expanded={qrOpen} aria-label={t('lobby.qr')}>QR</button>
+        {'share' in navigator && <button className="btn soft" onClick={share} aria-label={t('lobby.share')} title={t('lobby.share')}><IconShare /></button>}
       </div>
       {qrOpen && (
         <div className="qr-box">
-          <div className="qr" aria-label="QR-код со ссылкой на комнату" dangerouslySetInnerHTML={{ __html: qr }} />
+          <div className="qr" aria-label={t('lobby.qrAria')} dangerouslySetInnerHTML={{ __html: qr }} />
           <div className="qr-text">
-            <p>Наведи камеру телефона, и откроется комната.</p>
-            <input id="invite-link" className="text-in" readOnly value={link} onFocus={e => e.target.select()} aria-label="Ссылка-приглашение" />
+            <p>{t('lobby.qrHint')}</p>
+            <input id="invite-link" className="text-in" readOnly value={link} onFocus={e => e.target.select()} aria-label={t('lobby.linkAria')} />
           </div>
         </div>
       )}
@@ -280,6 +289,7 @@ function Invite({ code }: { code: string }) {
 }
 
 export function ConnBadge({ conn }: { conn: Connection }) {
-  const label = conn.status === 'open' ? 'В сети' : conn.status === 'reconnecting' ? 'Переподключаемся…' : 'Подключаемся…';
+  const t = useT();
+  const label = conn.status === 'open' ? t('conn.open') : conn.status === 'reconnecting' ? t('conn.reconnecting') : t('conn.connecting');
   return <span className={`conn ${conn.status}`}>{label}</span>;
 }

@@ -1,7 +1,8 @@
 import type { State } from '../../game/types';
+import { useT } from '../../i18n';
 import type { Warmup } from '../../net/protocol';
 import { AvatarImg } from '../components/AvatarImg';
-import { CardLoader } from '../components/CardLoader';
+import { CardLoader, loaderStage } from '../components/CardLoader';
 import './LoadingCurtain.css';
 
 interface Props {
@@ -16,16 +17,17 @@ interface Props {
   onDealNow?: () => void;
 }
 
-/** "Раскладываем стол": covers the table while it loads, and online shows who everybody is waiting for. */
+/** "Setting the table": covers the table while it loads, and online shows who everybody is waiting for. */
 export function LoadingCurtain({ s, leaving, warmup, turning, onDealNow }: Props) {
+  const t = useT();
   const sub = turning.length
-    ? 'Ждём, пока все повернут телефоны горизонтально'
+    ? t('load.upright')
     : warmup && warmup.waiting.length
-      ? 'Ждём, пока у всех загрузится игра'
-      : 'Ещё секунду…';
+      ? t('load.loading')
+      : t('load.second');
   return (
-    <div className={`loading-screen ${leaving ? 'leaving' : ''}`}>
-      <CardLoader theme={s.theme} title="Раскладываем стол" sub={sub}>
+    <div className={`loading-screen ${leaving ? 'leaving' : ''}`} style={{ background: loaderStage(s.theme, s.color) }}>
+      <CardLoader theme={s.theme} title={t('load.title')} sub={sub}>
         {warmup && (
           <ul className="ready-list">
             {s.players.map((p, i) => {
@@ -36,7 +38,7 @@ export function LoadingCurtain({ s, leaving, warmup, turning, onDealNow }: Props
                   <AvatarImg id={p.avatar} name={p.name} bot={p.bot} size={28} />
                   {p.name}
                   <span className="st">
-                    {loading ? <span className="dot-pulse" /> : upright ? <span className="turn-ic" title="Поворачивает телефон">📱</span> : '✓'}
+                    {loading ? <span className="dot-pulse" /> : upright ? <span className="turn-ic" title={t('load.turning')}>📱</span> : '✓'}
                   </span>
                 </li>
               );
@@ -45,7 +47,7 @@ export function LoadingCurtain({ s, leaving, warmup, turning, onDealNow }: Props
         )}
         {onDealNow && (
           <button type="button" className="btn deal-now" onClick={onDealNow}>
-            Начать без них
+            {t('load.force')}
           </button>
         )}
       </CardLoader>

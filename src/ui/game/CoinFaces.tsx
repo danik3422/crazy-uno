@@ -1,4 +1,5 @@
 import type React from 'react';
+import { useT } from '../../i18n';
 /** The two sides of the fate coin, embossed in gold: an eagle, and the game's own logo instead of a currency sign. */
 
 const DEEP = '#7a5200';
@@ -15,13 +16,15 @@ function Embossed({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Rim({ text }: { text: string }) {
+function Rim({ side }: { side: 'heads' | 'tails' }) {
+  const t = useT();
+  const text = t(side === 'heads' ? 'coin.headsRim' : 'coin.tailsRim');
   return (
     <>
       <circle cx="60" cy="60" r="52" fill="none" stroke={DEEP} strokeWidth="1.6" strokeDasharray="1.5 3.2" opacity="0.6" />
-      <path id={`arc-${text}`} d="M 22 60 A 38 38 0 0 0 98 60" fill="none" />
+      <path id={`arc-${side}`} d="M 22 60 A 38 38 0 0 0 98 60" fill="none" />
       <text fontFamily="Unbounded, 'Arial Black', sans-serif" fontWeight="900" fontSize="9.5" letterSpacing="2.4" fill={DEEP} opacity="0.85">
-        <textPath href={`#arc-${text}`} startOffset="50%" textAnchor="middle">{text}</textPath>
+        <textPath href={`#arc-${side}`} startOffset="50%" textAnchor="middle">{text}</textPath>
       </text>
     </>
   );
@@ -30,7 +33,7 @@ function Rim({ text }: { text: string }) {
 export function CoinHeads() {
   return (
     <svg viewBox="0 0 120 120" width="100%" height="100%" aria-hidden>
-      <Rim text="ОРЁЛ" />
+      <Rim side="heads" />
       <Embossed>
         {/* left wing raised, with feather tips */}
         <path d="M56 54 C48 44 40 34 30 26 L34 34 L26 30 L31 39 L22 37 L29 45 L21 46 L30 51 L24 55 C34 57 44 58 54 60 Z" />
@@ -52,7 +55,7 @@ export function CoinHeads() {
 export function CoinTails() {
   return (
     <svg viewBox="0 0 120 120" width="100%" height="100%" aria-hidden>
-      <Rim text="РЕШКА" />
+      <Rim side="tails" />
       <g transform="translate(60 56) rotate(-12)">
         <Embossed>
           <ellipse cx="0" cy="0" rx="34" ry="20" fill="none" stroke={DEEP} strokeWidth="5" />

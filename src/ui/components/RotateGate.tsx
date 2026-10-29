@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useT } from '../../i18n';
 import { canFullscreen, enterFullscreen, isIOS, usePhone } from '../hooks/phone';
 import './RotateGate.css';
 
@@ -31,6 +32,7 @@ function PhoneTurn() {
  * turn the phone, and (where the browser can) open it full screen, which on Android also turns it for you.
  */
 export function RotateGate({ waiting = false }: { waiting?: boolean }) {
+  const t = useT();
   const { phone, portrait, fullscreen } = usePhone();
   const on = phone && portrait;
   // the page behind takes the gate's colour too: on an iPhone home-screen app the strip under the
@@ -46,16 +48,16 @@ export function RotateGate({ waiting = false }: { waiting?: boolean }) {
   return createPortal(
     <div className="rotate-gate" role="dialog" aria-modal="true" aria-labelledby="rg-title">
       <PhoneTurn />
-      <h2 id="rg-title">Поверни телефон горизонтально</h2>
-      <p>{waiting ? 'Раздача начнётся, как только все повернут телефоны.' : 'Играем только лёжа на боку: так виден весь стол, все соперники и твои карты.'}</p>
+      <h2 id="rg-title">{t('rotate.title')}</h2>
+      <p>{waiting ? t('rotate.waiting') : t('rotate.why')}</p>
       {fs && (
         <button type="button" className="btn big rg-btn" onClick={() => void enterFullscreen()}>
-          <FullscreenIcon /> Открыть на весь экран
+          <FullscreenIcon /> {t('rotate.fs')}
         </button>
       )}
       {!fs && !fullscreen && isIOS() && (
         <p className="rg-ios">
-          Совет для iPhone: «Поделиться» <ShareIcon /> → «На экран Домой». Игра откроется без панелей Safari, на весь экран.
+          {t('rotate.ios').split('{icon}')[0]}<ShareIcon />{t('rotate.ios').split('{icon}')[1]}
         </p>
       )}
     </div>,
@@ -65,10 +67,11 @@ export function RotateGate({ waiting = false }: { waiting?: boolean }) {
 
 /** Lying on its side but still inside the browser bars: a small button in the corner to go full screen. */
 export function FullscreenButton() {
+  const t = useT();
   const { phone, portrait, fullscreen } = usePhone();
   if (!phone || portrait || fullscreen || !canFullscreen()) return null;
   return (
-    <button type="button" className="btn glass icon-btn fs-btn" onClick={() => void enterFullscreen()} title="На весь экран" aria-label="На весь экран">
+    <button type="button" className="btn glass icon-btn fs-btn" onClick={() => void enterFullscreen()} title={t('fs.btn')} aria-label={t('fs.btn')}>
       <FullscreenIcon />
     </button>
   );
@@ -79,6 +82,7 @@ export function FullscreenButton() {
  * with a button that does it (where the browser can).
  */
 export function PhoneTip() {
+  const t = useT();
   const { phone, fullscreen } = usePhone();
   const [hidden, setHidden] = useState(false);
   if (!phone || fullscreen || hidden) return null;
@@ -87,15 +91,15 @@ export function PhoneTip() {
     <div className="phone-tip" role="note">
       <span className="pt-icon" aria-hidden><PhoneSideIcon /></span>
       <span className="pt-text">
-        <b>Играем горизонтально{fs ? ', на весь экран' : ''}</b>
-        <small>{fs ? 'Нажми кнопку справа — телефон повернётся сам' : isIOS() ? 'На iPhone: «Поделиться» → «На экран Домой»' : 'Поверни телефон набок, когда начнётся игра'}</small>
+        <b>{fs ? t('tip.titleFs') : t('tip.title')}</b>
+        <small>{fs ? t('tip.fs') : isIOS() ? t('tip.ios') : t('tip.turn')}</small>
       </span>
       {fs && (
-        <button type="button" className="pt-btn" onClick={() => void enterFullscreen()} aria-label="На весь экран" title="На весь экран">
+        <button type="button" className="pt-btn" onClick={() => void enterFullscreen()} aria-label={t('fs.btn')} title={t('fs.btn')}>
           <FullscreenIcon />
         </button>
       )}
-      <button type="button" className="pt-close" onClick={() => setHidden(true)} aria-label="Скрыть подсказку">
+      <button type="button" className="pt-close" onClick={() => setHidden(true)} aria-label={t('tip.hide')}>
         <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" /></svg>
       </button>
     </div>

@@ -38,7 +38,7 @@
 .uno-call:active .uno-oval { transform: rotate(-10deg) translateY(4px) scale(0.98); box-shadow: 0 0 0 3px #2a0805, 0 3px 0 #5e0703, 0 8px 16px rgba(0, 0, 0, 0.45); }
 .uno-call:focus-visible { outline: none; }
 .uno-call:focus-visible .uno-oval { box-shadow: 0 0 0 3px #2a0805, 0 0 0 7px #ffd84a, 0 7px 0 #5e0703; }
-/* "Поймал!": the same logo badge, a little wider for the longer word */
+/* "Caught!": the same logo badge, a little wider for the longer word */
 .uno-call.wide .uno-oval, .uno-call.wide .uno-rings { width: 190px; }
 .uno-call.wide .uno-word { font-size: 28px; letter-spacing: -0.01em; }
 /* whoever forgot, stuck to the oval's corner */

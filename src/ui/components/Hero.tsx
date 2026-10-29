@@ -1,4 +1,5 @@
 import { type CSSProperties, lazy, Suspense } from 'react';
+import { useT } from '../../i18n';
 import type { Card } from '../../game/types';
 import { cardImage } from '../../three/textures';
 import './Hero.css';
@@ -25,13 +26,14 @@ function FlatFan() {
 }
 
 export function Hero({ sub }: { sub: string }) {
+  const t = useT();
   return (
     <header className="hero">
       <Suspense fallback={<FlatFan />}>
         <MascotStage />
       </Suspense>
-      <h1 className="logo" aria-label="Безумное UNO">
-        {'БЕЗУМНОЕ'.split('').map((ch, i) => <span key={i}>{ch}</span>)}{' '}
+      <h1 className="logo" aria-label={t('app.title')}>
+        {t('app.top').split('').map((ch, i) => <span key={i}>{ch}</span>)}{' '}
         <span className="w">U</span><span>N</span><span>O</span>
       </h1>
       <p className="sub">{sub}</p>

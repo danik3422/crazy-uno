@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { TEAM_NAMES } from '../../game/content';
+import { teamName } from '../../game/content';
+import { useT } from '../../i18n';
 import './TeamBox.css';
 
 /**
@@ -7,11 +8,12 @@ import './TeamBox.css';
  * holding that team's players. Used by the local setup and the online lobby.
  */
 export function TeamBox({ team, count, children, empty }: { team: number; count: number; children: ReactNode; empty?: string }) {
+  const t = useT();
   return (
-    <section className={`team-box t${team}`} aria-label={`Команда «${TEAM_NAMES[team]}»`}>
+    <section className={`team-box t${team}`} aria-label={t('team.box', { team: teamName(team) })}>
       <header className="team-head">
         <span className="team-dot" aria-hidden />
-        <b>{TEAM_NAMES[team]}</b>
+        <b>{teamName(team)}</b>
         <span className="team-n">{count}</span>
       </header>
       {children}

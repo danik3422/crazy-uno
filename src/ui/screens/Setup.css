@@ -31,7 +31,6 @@
 .legend .ev-icon { width: 44px; flex: none; font-size: 34px; text-align: center; line-height: 1; }
 .prow .ava-btn { background: none; border: 0; padding: 0; cursor: pointer; border-radius: 12px; }
 .prow .ava-btn .avatar { border: 2px solid #fff; }
-.page-space.setup-page { background-image: radial-gradient(1px 1px at 20% 30%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 70% 60%, #fff 50%, transparent 51%), radial-gradient(1.5px 1.5px at 40% 80%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 85% 20%, #fff 50%, transparent 51%), var(--stage); background-size: 220px 220px, 300px 300px, 260px 260px, 180px 180px, auto; }
 /* in a team box the person/bot switch is just its icon, leaving the name room */
 .team-box .prow .btn.tog { width: 44px; min-width: 44px; padding-inline: 0; flex: none; }
 .team-box .prow .btn.tog .tog-label { display: none; }

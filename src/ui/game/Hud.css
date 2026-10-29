@@ -91,7 +91,7 @@
 .cname { font-family: var(--display); font-weight: 600; font-size: 14px; letter-spacing: 0.01em; }
 .dirIcon { font-size: 18px; opacity: 0.8; }
 .log {
-  top: calc(66px + env(safe-area-inset-top, 0px)); gap: 3px; padding: 8px 12px; border-radius: 14px; max-width: min(320px, calc(100% - 24px));
+  top: calc(66px + env(safe-area-inset-top, 0px)); gap: 3px; padding: 8px 12px; border-radius: 14px; max-width: min(320px, 22vw, calc(100% - 24px));
   background: linear-gradient(to bottom, rgba(14, 4, 18, 0.45), rgba(14, 4, 18, 0.2)); backdrop-filter: blur(6px);
   text-shadow: none; font-size: 12.5px; line-height: 1.35;
   -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), #000 60%); mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), #000 60%);
@@ -105,13 +105,57 @@
 .hud-bottom.my-turn .hint b { color: var(--gold); }
 .actions { flex-wrap: nowrap; flex: none; }
 .btn.act {
-  display: inline-flex; align-items: center; gap: 8px; padding: 11px 16px; border-radius: 14px; font-weight: 700;
-  background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.16); transition: background 0.15s, transform 0.12s;
+  position: relative; overflow: hidden; isolation: isolate;
+  display: inline-flex; align-items: center; gap: 10px; padding: 11px 18px 11px 14px; border-radius: 15px;
+  font-family: var(--display); font-weight: 700; font-size: 14.5px; letter-spacing: 0.01em;
+  background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.16); color: var(--ink);
+  transition: background 0.15s, transform 0.12s, box-shadow 0.2s, filter 0.15s;
 }
 .btn.act:hover { background: rgba(255, 255, 255, 0.18); }
-.btn.act:active { transform: translateY(1px); }
-.btn.act.primary { background: linear-gradient(180deg, #fff09a, #ffc61a 55%, #f59a00); color: #3a1d00; border-color: transparent; box-shadow: 0 3px 0 #a85d00; }
-.btn.act.danger { background: linear-gradient(180deg, #ff8a7a, #e8331f); color: #fff; border-color: transparent; box-shadow: 0 3px 0 #7a0a04; }
+.btn.act:active { transform: translateY(2px); }
+.act-label { position: relative; white-space: nowrap; }
+/* the draw button's icon: a tiny deck in the table's card back, with the penalty on it */
+.act-deck { position: relative; width: 26px; height: 30px; flex: none; }
+.act-deck img { position: absolute; width: 19px; height: 28px; border-radius: 3px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.45); }
+.act-deck img:first-child { left: 7px; top: 0; transform: rotate(10deg); opacity: 0.85; }
+.act-deck img:nth-child(2) { left: 0; top: 2px; transform: rotate(-6deg); }
+.act-deck b {
+  position: absolute; right: -8px; bottom: -5px; min-width: 22px; padding: 1px 4px; border-radius: 999px; text-align: center;
+  font-size: 11px; line-height: 1.35; color: #fff; background: #b3140b; border: 1.5px solid #fff; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+.btn.act.draw:hover .act-deck img:first-child { transform: rotate(16deg) translate(2px, -2px); }
+.act-deck img { transition: transform 0.2s; }
+
+/* "draw" when it's the thing to do: the button gleams now and then and breathes a little */
+.btn.act.primary::after, .btn.act.danger::after {
+  content: ''; position: absolute; z-index: -1; top: -20%; bottom: -20%; left: -60%; width: 40%; transform: skewX(-20deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent); animation: act-shine 2.6s ease-in-out infinite;
+}
+.btn.act.primary { animation: act-breathe 1.6s ease-in-out infinite; }
+@keyframes act-shine { 0%, 60% { left: -60%; } 100% { left: 130%; } }
+@keyframes act-breathe { 50% { transform: translateY(-1px) scale(1.035); } }
+
+/* ---- each table dresses its buttons in its own style ---- */
+/* classic: glossy game-show gold, red for a penalty */
+.hud.th-classic .btn.act.primary { background: linear-gradient(180deg, #fff3a8, #ffc61a 52%, #f29200); color: #3a1d00; border-color: rgba(255, 255, 255, 0.5); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.7), 0 4px 0 #a85d00, 0 8px 18px rgba(245, 154, 0, 0.35); }
+.hud.th-classic .btn.act.danger { background: linear-gradient(180deg, #ff8f7f, #ec3420 55%, #c41a10); color: #fff; border-color: rgba(255, 255, 255, 0.45); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.5), 0 4px 0 #7a0a04, 0 8px 18px rgba(236, 52, 32, 0.4); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
+.hud.th-classic .btn.act:active { box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.5), 0 1px 0 #7a4400; }
+/* neon: dark glass with a glowing tube round it */
+.hud.th-neon .btn.act { background: rgba(14, 4, 30, 0.75); border: 2px solid #2ee6ff; color: #dffcff; box-shadow: 0 0 10px rgba(46, 230, 255, 0.55), inset 0 0 10px rgba(46, 230, 255, 0.25); text-shadow: 0 0 6px rgba(46, 230, 255, 0.9); }
+.hud.th-neon .btn.act.primary { border-color: #ff3df0; color: #ffe6fc; box-shadow: 0 0 14px rgba(255, 61, 240, 0.8), 0 0 34px rgba(255, 61, 240, 0.35), inset 0 0 12px rgba(255, 61, 240, 0.35); text-shadow: 0 0 8px #ff3df0; }
+.hud.th-neon .btn.act.danger { border-color: #ff3b5c; color: #ffe2e7; box-shadow: 0 0 14px rgba(255, 59, 92, 0.85), 0 0 34px rgba(255, 59, 92, 0.35), inset 0 0 12px rgba(255, 59, 92, 0.35); text-shadow: 0 0 8px #ff3b5c; }
+.hud.th-neon .btn.act:hover { filter: brightness(1.2); }
+/* space: frosted glass lit by starlight */
+.hud.th-space .btn.act { background: linear-gradient(160deg, rgba(120, 160, 255, 0.22), rgba(20, 16, 60, 0.6)); border: 1px solid rgba(160, 220, 255, 0.55); color: #eef6ff; backdrop-filter: blur(8px); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
+.hud.th-space .btn.act.primary { background: linear-gradient(135deg, #8fe8ff, #6b7dff 55%, #9b5cff); color: #0b0a2a; border-color: rgba(255, 255, 255, 0.7); box-shadow: 0 0 22px rgba(143, 232, 255, 0.55), 0 6px 18px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.7); }
+.hud.th-space .btn.act.danger { background: linear-gradient(135deg, #ffb08a, #ff4d6d 55%, #a0206a); color: #fff; border-color: rgba(255, 255, 255, 0.6); box-shadow: 0 0 22px rgba(255, 77, 109, 0.55), 0 6px 18px rgba(0, 0, 0, 0.35); }
+/* halloween: a pumpkin-orange button with a witchy green glow; blood red for a penalty */
+.hud.th-halloween .btn.act { background: linear-gradient(180deg, rgba(60, 20, 70, 0.85), rgba(30, 8, 40, 0.9)); border: 2px solid #1a0820; color: #f3e9d2; box-shadow: 0 0 0 1px rgba(141, 255, 74, 0.35), 0 6px 16px rgba(0, 0, 0, 0.4); }
+.hud.th-halloween .btn.act.primary { background: linear-gradient(180deg, #ffb24a, #ff7a1a 55%, #d8520a); color: #2a0c00; border-color: #3a1200; box-shadow: inset 0 2px 0 rgba(255, 230, 170, 0.6), 0 4px 0 #6a2400, 0 0 20px rgba(141, 255, 74, 0.45); }
+.hud.th-halloween .btn.act.danger { background: linear-gradient(180deg, #e0453a, #9e1414 60%, #5a0606); color: #ffe9d6; border-color: #2a0000; box-shadow: inset 0 2px 0 rgba(255, 180, 160, 0.4), 0 4px 0 #3a0000, 0 0 20px rgba(255, 60, 40, 0.4); }
+@media (prefers-reduced-motion: reduce) {
+  .btn.act.primary, .btn.act.primary::after, .btn.act.danger::after { animation: none; }
+}
 @media (max-width: 560px) {
   .hud-bottom { width: calc(100% - 16px); bottom: calc(6px + env(safe-area-inset-bottom, 0px)); padding: 6px 8px 6px 6px; gap: 8px; border-radius: 18px; }
   .hint b { font-size: 13.5px; }
@@ -164,6 +208,9 @@
   .actions { pointer-events: auto; flex-direction: column; align-items: stretch; gap: 6px; max-width: 30%; }
   .btn.act { padding: 8px 12px; font-size: 12.5px; border-radius: 12px; gap: 6px; justify-content: center; }
   .btn.act svg { width: 15px; height: 15px; }
+  .act-deck { width: 21px; height: 24px; }
+  .act-deck img { width: 15px; height: 22px; }
+  .act-deck img:first-child { left: 5px; }
   .toast { font-size: 13px; padding: 7px 14px; }
   .toast.big { font-size: 24px; padding: 10px 20px; }
 }
