@@ -8,6 +8,7 @@ import { lastPlace, spawn, type Target } from './layout';
 import { isPhone } from '../ui/hooks/phone';
 import { cardBodyGeometry, cardFaceGeometry, CARD_H, CARD_W } from './cardShape';
 import { cardTexture } from './textures';
+import { THEMES } from './themes';
 
 /** the printed faces, cut to the card's rounded outline */
 const plane = cardFaceGeometry();
@@ -22,6 +23,10 @@ const deckQueue = { at: 0 };
 /** The card's body: a thin rounded slab, so a tilted card shows a real edge instead of a paper plane. */
 const body = cardBodyGeometry(THICK);
 const edgeMat = new THREE.MeshStandardMaterial({ color: '#e4ddcf', roughness: 0.7 });
+/** the same edge for a card held up out of the hand: drawn over its neighbours instead of cutting through them */
+const edgeMatTop = Object.assign(edgeMat.clone(), { depthTest: false, transparent: true });
+/** draw order of a held card's parts (edge, then faces) when it is drawn over the hand */
+const TOP_ORDER = 1000;
 
 /** Opponents' cards stand on a glossy floor and show a faint reflection (computers only: it doubles their draws). */
 const REFLECTIONS = !isPhone();
@@ -64,8 +69,12 @@ const glowMat = (() => {
   ctx.fill();
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
-  return new THREE.MeshBasicMaterial({ map: tex, color: '#fff2b0', transparent: true, opacity: 0.9, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending });
+  return new THREE.MeshBasicMaterial({ map: tex, color: '#fff2b0', transparent: true, opacity: 0.55, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending });
 })();
+/** Each table glows its playable cards in its own colour. */
+export function setPlayableGlow(color: string) {
+  glowMat.color.set(color);
+}
 
 /** The card you just drew shows up big in front of you for a moment before it goes into your hand. */
 const REVEAL = { up: 0.42, hold: 0.6, down: 0.4, size: 1.4 };
@@ -137,10 +146,15 @@ interface Props {
  * the card arcs up while far from its target and settles with exponential damping.
  */
 export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
+  const motion = THEMES[theme].motion;
   const ref = useRef<THREE.Group>(null!);
   const frontMat = useRef<THREE.MeshStandardMaterial>(null!);
   const frontRef = useRef<THREE.Mesh>(null!);
   const backRef = useRef<THREE.Mesh>(null!);
+  const bodyRef = useRef<THREE.Mesh>(null!);
+  const backMat = useRef<THREE.MeshStandardMaterial>(null!);
+  /** held, dragged or lifted under the pointer: drawn on top of the rest of the hand */
+  const onTop = useRef(false);
   const glowRef = useRef<THREE.Mesh>(null!);
   const reflRef = useRef<THREE.Mesh>(null);
   const hovered = useRef(false);
@@ -160,6 +174,8 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
   const launched = useRef(false);
   /** started somewhere else than its new place (online re-id), and should hop from there */
   const hopFromPrev = useRef(false);
+  /** moved to another seat without changing zone (hands swapped or passed on): fly there properly */
+  const farMove = useRef(false);
   const fq = useMemo(() => new THREE.Quaternion(), []);
   const tRef = useRef(t);
   tRef.current = t;
@@ -279,6 +295,7 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     // a new destination during a hold (e.g. a meteor still falling) waits for the impact
     const lp = lastPos.current;
     if (!lp || lp[0] !== tt.pos[0] || lp[1] !== tt.pos[1] || lp[2] !== tt.pos[2]) {
+      if (lp && launched.current && inHandZone && tt.zone === lastZone.current && Math.hypot(tt.pos[0] - lp[0], tt.pos[2] - lp[2]) > 2.5) farMove.current = true;
       if (lp && bombing && lastZone.current === 'deck') {
         dropping.current = true;
         startAt.current = fxState.drop.at + (Math.abs(card.id) % 4) * 0.14;
@@ -312,7 +329,8 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
       return;
     }
     // fly properly on the first move out of the deck and every time a card changes hands
-    const zoneChanged = tt.zone !== lastZone.current;
+    const zoneChanged = tt.zone !== lastZone.current || farMove.current;
+    farMove.current = false;
     if (!launched.current || zoneChanged) {
       const fromDeck = !launched.current && !hopFromPrev.current;
       if (zoneChanged || fromDeck || hopFromPrev.current) {
@@ -371,6 +389,23 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
       z += o[2];
     }
     const dragging = drag.id === card.id && drag.moved;
+    // a card you hold, drag or lift is drawn over the others: lifted out of an overlapping fan it would cut through its neighbours
+    // while another card is being dragged, the ones under the pointer stay down
+    const otherDragged = drag.id !== null && drag.id !== card.id && drag.moved;
+    const top = tt.zone === 'hand' && (drag.id === card.id || (!otherDragged && (hovered.current || keySel.id === card.id) && tt.interactive));
+    if (top !== onTop.current) {
+      onTop.current = top;
+      bodyRef.current.material = top ? edgeMatTop : edgeMat;
+      bodyRef.current.renderOrder = top ? TOP_ORDER : 0;
+      // without a depth test the card writes no depth either, so it must also be drawn after every glow and effect
+      // (the see-through pass, last of all), or those would paint over it
+      for (const [mesh, mat] of [[frontRef.current, frontMat.current], [backRef.current, backMat.current]] as const) {
+        mesh.renderOrder = top ? TOP_ORDER + 1 : 0;
+        mat.depthTest = !top;
+        mat.transparent = top;
+        mat.needsUpdate = true;
+      }
+    }
     const chaos = now < fxState.chaosUntil && (tt.zone === 'hand' || tt.zone === 'opp');
     if (chaos) {
       // a tornado over the pile, sized to the table (smaller on phones), low enough to stay clear of the name plates
@@ -397,10 +432,10 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
       rx = drag.over ? -1.35 : -0.95;
       ry = 0;
       rz = 0;
-    } else if ((hovered.current || keySel.id === card.id) && tt.interactive) {
+    } else if (!otherDragged && (hovered.current || keySel.id === card.id) && tt.interactive) {
       // lift toward the viewer along the card's own normal, never sideways into its neighbours
-      y += 0.3;
-      z += 0.16;
+      y += 0.3 * motion.hoverLift;
+      z += 0.16 * motion.hoverLift;
     }
 
     // the swirl wins over a spin: both at once would whip the card around
@@ -440,10 +475,15 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
       // everything else lifts off, travels and sets down softly
       const e = f.toss ? easeOut(p) : easeInOut(p);
       const arc = f.toss ? 4 * e * (1 - e) : Math.sin(Math.PI * e);
+      // the table's own way of flying: higher or lower arcs, and an S-swing sideways
+      const sw = motion.sway ? Math.sin(Math.PI * 2 * e) * motion.sway : 0;
+      const ddx = x - f.from.x;
+      const ddz = z - f.from.z;
+      const dl = Math.hypot(ddx, ddz) || 1;
       g.position.set(
-        f.from.x + (x - f.from.x) * e,
-        f.from.y + (y - f.from.y) * e + arc * f.apex,
-        f.from.z + (z - f.from.z) * e,
+        f.from.x + ddx * e - (ddz / dl) * sw,
+        f.from.y + (y - f.from.y) * e + arc * f.apex * motion.arc,
+        f.from.z + ddz * e + (ddx / dl) * sw,
       );
       eul.set(rx, ry, rz);
       tq.setFromEuler(eul);
@@ -451,6 +491,7 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
       // instead of tumbling around whatever axis happens to be shortest
       fq.copy(f.fromQ).slerp(tq, e);
       if (f.flip) fq.multiply(spinQ.setFromAxisAngle(Y_AXIS, Math.PI * (1 - e)));
+      if (motion.spin) fq.multiply(spinQ.setFromAxisAngle(Z_AXIS, motion.spin * Math.PI * 2 * (1 - e)));
       g.quaternion.copy(fq);
       vel.x.v = vel.y.v = vel.z.v = 0;
       if (p >= 1) flight.current = null;
@@ -485,7 +526,12 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     const far = dragging ? 0 : Math.min(Math.hypot(dx, dz), 6);
     g.position.x = smoothDamp(g.position.x, x, vel.x, smooth, dt);
     g.position.z = smoothDamp(g.position.z, z, vel.z, smooth, dt);
-    g.position.y = smoothDamp(g.position.y, y + far * 0.3, vel.y, smooth, dt);
+    // some tables let the cards in the hands drift gently up and down
+    // the whole hand (and each opponent's wall) bobs as one piece: cards overlap in a fan, so bobbing each on its own
+    // would push them through their neighbours
+    const group = tt.bobGroup ?? 0;
+    const bob = motion.float && !dragging && (tt.zone === 'hand' || tt.zone === 'opp') ? Math.sin(now * 1.6 + group * 1.7) * motion.float : 0;
+    g.position.y = smoothDamp(g.position.y, y + far * 0.3 + bob, vel.y, smooth, dt);
     eul.set(rx, ry, rz);
     tq.setFromEuler(eul);
     if (spinning) {
@@ -499,7 +545,7 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     // a played card lands with a little slam: it grows in flight and settles on the pile
     const slam = slamPop(now - slamAt.current);
     const base = tt.scale ?? 1;
-    const sTarget = dragging ? (drag.over ? 1.25 : 1.12) : (hovered.current || keySel.id === card.id) && tt.interactive ? base * 1.12 : base;
+    const sTarget = dragging ? (drag.over ? 1.25 : 1.12) : !otherDragged && (hovered.current || keySel.id === card.id) && tt.interactive ? base * 1.12 : base;
     if (slam) {
       // a short, exact pop: the spring would lag behind it and leave the card swollen
       g.scale.setScalar(base * (1 + slam));
@@ -519,7 +565,7 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     const glow = glowRef.current;
     const settled = !flight.current;
     glow.visible = tt.interactive && tt.zone === 'hand' && settled && g.visible && !(drag.id === card.id && drag.moved);
-    if (glow.visible) glowMat.opacity = 0.75 + Math.sin(st.clock.elapsedTime * 4) * 0.25;
+    if (glow.visible) glowMat.opacity = 0.42 + Math.sin(st.clock.elapsedTime * 3) * 0.12;
     const refl = reflRef.current;
     if (!refl) return;
     // only a card standing on the table in an opponent's row (not one flying past or lying flat)
@@ -530,7 +576,7 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     }
   });
 
-  const front = cardTexture(card);
+  const front = cardTexture(card, theme);
   const back = cardTexture(null, theme);
 
   return (
@@ -542,6 +588,7 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     )}
     <group
       ref={ref}
+      userData={{ fit: 'card', id: card.id }}
       onPointerOver={e => {
         if (!t.interactive) return;
         e.stopPropagation();
@@ -562,12 +609,12 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
         onPick(card.id);
       }}
     >
-      <mesh geometry={body} material={edgeMat} castShadow />
+      <mesh ref={bodyRef} geometry={body} material={edgeMat} castShadow />
       <mesh ref={frontRef} geometry={plane} position-z={THICK / 2 + 0.0015}>
         <meshStandardMaterial ref={frontMat} map={front} roughness={0.38} metalness={0} />
       </mesh>
       <mesh ref={backRef} geometry={plane} position-z={-THICK / 2 - 0.0015} rotation={[0, Math.PI, Math.PI]}>
-        <meshStandardMaterial map={back} roughness={0.38} />
+        <meshStandardMaterial ref={backMat} map={back} roughness={0.38} />
       </mesh>
       <mesh ref={glowRef} geometry={glowPlane} material={glowMat} position-z={-THICK / 2 - 0.006} visible={false} />
     </group>

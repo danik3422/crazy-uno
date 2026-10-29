@@ -23,12 +23,47 @@ export interface Target {
    * 'always' for the card you drew to play, 'single' when it comes alone (not part of a +2 / +4 batch)
    */
   reveal?: 'always' | 'single';
+  /** cards that bob together on a table that floats them (one hand or one opponent's wall) */
+  bobGroup?: number;
 }
 
 export interface View {
   portrait: boolean;
   /** a phone lying on its side: wide and very short */
   compact?: boolean;
+  /** width / height of the canvas (the layout fits the hand to what the camera sees) */
+  aspect?: number;
+}
+
+/**
+ * Where the camera sits during play. The vertical field of view widens on screens narrower than
+ * `fitAspect`, so the table keeps its full width on screen (4:3 monitors, narrow windows).
+ */
+export const CAMERA = {
+  landscape: { pos: [0, 7.6, 9.8] as Vec3, look: [0, 0, 0.55] as Vec3, fov: 42, fitAspect: 1.72 },
+  portrait: { pos: [0, 15, 10.6] as Vec3, look: [0, 0, 1.4] as Vec3, fov: 50, fitAspect: 0.56 },
+};
+/** how far the mouse parallax moves the camera sideways */
+export const PARALLAX_X = 0.35;
+
+export function cameraFov(v: View) {
+  const c = v.portrait ? CAMERA.portrait : CAMERA.landscape;
+  const aspect = v.aspect ?? c.fitAspect;
+  if (aspect >= c.fitAspect) return c.fov;
+  const half = Math.atan((Math.tan((c.fov * Math.PI) / 360) * c.fitAspect) / aspect);
+  return Math.min(75, (half * 360) / Math.PI);
+}
+
+/** Half the width the camera sees at a point straight ahead of it (table units), at rest. */
+export function visibleHalfWidth(v: View, y: number, z: number) {
+  const c = v.portrait ? CAMERA.portrait : CAMERA.landscape;
+  const [px, py, pz] = c.pos;
+  const [lx, ly, lz] = c.look;
+  const dx = lx - px, dy = ly - py, dz = lz - pz;
+  const len = Math.hypot(dx, dy, dz);
+  const depth = ((0 - px) * dx + (y - py) * dy + (z - pz) * dz) / len;
+  const aspect = v.aspect ?? c.fitAspect;
+  return depth * Math.tan((cameraFov(v) * Math.PI) / 360) * aspect;
 }
 
 const PI = Math.PI;
@@ -195,7 +230,8 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
     const m = p.hand.length;
     if (pi === seat && over) {
       // finale: lay the leftover hand flat in front, out of the podium's way
-      const sp = Math.min(0.7, A.hand.maxW / Math.max(m - 1, 1));
+      const flatW = Math.min(A.hand.maxW, 2 * (visibleHalfWidth(v, 0, A.hand.z - 0.3) * 0.92) - 1.0);
+      const sp = Math.min(0.7, flatW / Math.max(m - 1, 1));
       p.hand.forEach((c, k) => {
         const off = k - (m - 1) / 2;
         out.set(c.id, {
@@ -207,7 +243,9 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
       return;
     }
     if (pi === seat) {
-      const h = A.hand;
+      // never wider than the screen at the hand's depth (minus the mouse parallax and a card's width)
+      const fitW = 2 * (visibleHalfWidth(v, A.hand.y, A.hand.z) * 0.95 - PARALLAX_X) - 1.0;
+      const h = { ...A.hand, maxW: Math.min(A.hand.maxW, fitW) };
       // blind event: you still play, but you cannot see what
       const faceUp = (viewer === seat && s.blindTurns === 0) || over;
       // a big hand goes into two rows (the back row a little higher), so every card stays readable
@@ -285,10 +323,12 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
     // Side seats stand turned toward the middle, so they get a narrower row and slightly smaller cards
     const half = Math.min(((m - 1) / 2) * sp * 1.15, v.portrait ? 0.85 : 1.3) * (1 - side * 0.4);
     const oscale = (m > 10 ? 0.86 : 0.95) * (1 - side * (v.portrait ? 0.2 : 0.1));
-    const step = Math.min(0.022, 0.3 / Math.max(m, 1)) * (1 - side * 0.5);
+    // each card stands clearly in front of the one before (a card is 0.012 thick): never closer than this,
+    // or neighbours cut into each other and flicker; a big hand just makes a slightly deeper wall
+    const step = 0.026;
     p.hand.forEach((c, k) => {
       const u = m > 1 ? (k - (m - 1) / 2) / ((m - 1) / 2) : 0; // -1 … 1 along the row
-      const bend = u * u * 0.08; // the ends curve in a little, like a hand of cards
+      const bend = u * u * 0.05; // the ends curve in a little, like a hand of cards
       const stack = k * step; // each next card a hair closer to the viewer, so the row overlaps cleanly
       out.set(c.id, {
         // the bottom edge rests on the table
@@ -296,7 +336,7 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
         // the back texture is drawn for cards lying on the table; standing ones turn it upright.
         // A barely-there lean and tilt keep it from looking like a printed strip
         rot: [0.06, face, u * 0.05 + PI],
-        zone: 'opp', interactive: false, dim: false, delay: dealDelay(c.dealIdx), scale: oscale,
+        zone: 'opp', interactive: false, dim: false, delay: dealDelay(c.dealIdx), scale: oscale, bobGroup: pi + 1,
       });
     });
   });

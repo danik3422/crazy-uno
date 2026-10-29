@@ -4,6 +4,7 @@ import { useMemo, useRef, type MutableRefObject } from 'react';
 import * as THREE from 'three';
 import { avatarOf, robotDataUrl, type Avatar } from '../game/avatars';
 import type { Player } from '../game/types';
+import { lang, t as tr, useLang } from '../i18n';
 import { fxState, nowSec } from './fxState';
 import { glowTexture } from './glowTexture';
 import type { Vec3 } from './layout';
@@ -111,18 +112,22 @@ function pillPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number
 
 const labelCache = new Map<string, THREE.CanvasTexture>();
 
-/** "🏆 Победитель" / "2 место" in a pill, the name underneath. */
+/** "🏆 Winner" / "2nd place" in a pill (in the current language), the name underneath. */
 function labelTexture(place: number, name: string) {
-  const key = `${place}|${name}`;
+  const key = `${lang()}|${place}|${name}`;
   let t = labelCache.get(key);
   if (t) return t;
   t = canvasTexture(LABEL_W, LABEL_H, ctx => {
-    const text = place === 1 ? 'ПОБЕДИТЕЛЬ' : `${place} МЕСТО`;
+    const text = place === 1 ? tr('podium.winner') : tr('podium.place', { n: place });
     const [top, bottom, ink] = PILL[place];
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = `900 34px ${DISPLAY}`;
-    const pw = Math.min(LABEL_W - 20, ctx.measureText(text).width + (place === 1 ? 96 : 56));
+    const pad = place === 1 ? 96 : 56;
+    let fs = 34;
+    ctx.font = `900 ${fs}px ${DISPLAY}`;
+    // a longer word in some languages: shrink it to fit the pill
+    while (fs > 18 && ctx.measureText(text).width + pad > LABEL_W - 20) ctx.font = `900 ${--fs}px ${DISPLAY}`;
+    const pw = Math.min(LABEL_W - 20, ctx.measureText(text).width + pad);
     const px = (LABEL_W - pw) / 2;
     ctx.shadowColor = 'rgba(0,0,0,.4)';
     ctx.shadowBlur = 12;
@@ -304,7 +309,8 @@ function PodiumStep({ step, player, start, active }: { step: Step; player: Playe
   const label = useRef<THREE.Group>(null!);
   const labelMat = useRef<THREE.MeshBasicMaterial>(null!);
   const tex = useMemo(() => avatarTexture(avatarOf(player.avatar, player.name, player.bot)), [player.avatar, player.name, player.bot]);
-  const labelTex = useMemo(() => labelTexture(step.place, player.name), [step.place, player.name]);
+  const lng = useLang();
+  const labelTex = useMemo(() => labelTexture(step.place, player.name), [step.place, player.name, lng]);
 
   useFrame(() => {
     if (!active) return;

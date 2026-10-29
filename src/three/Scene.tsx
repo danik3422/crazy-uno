@@ -4,21 +4,26 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import type { GameView } from '../game/view';
 import { standIn } from '../game/avatars';
-import { TEAM_NAMES } from '../game/content';
+import { teamName } from '../game/content';
+import { useT } from '../i18n';
 import { AvatarImg } from '../ui/components/AvatarImg';
 import { IconStack } from '../ui/components/Icons';
 import { TurnTimer } from '../ui/game/TurnTimer';
-import { Card3D } from './Card3D';
+import { Card3D, setPlayableGlow } from './Card3D';
 import { DeckStack } from './DeckStack';
 import { dealTiming } from '../net/protocol';
 import { drag } from './drag';
 import { Arena, PALETTES } from './Environment';
 import { BombDrop, GoldBurst, Lightning, Meteor } from './EventFx';
-import { fxState, nowSec } from './fxState';
-import { RING_R, RING_Z, arena, computeTargets, deckCenter, deckSpot, seatAngle, type View } from './layout';
+import { DEBUG, fxState, nowSec } from './fxState';
+import { FitProbe } from './FitProbe';
+import { CAMERA, PARALLAX_X, RING_R, RING_Z, arena, cameraFov, computeTargets, deckCenter, deckSpot, seatAngle, type View } from './layout';
 import { Mascot } from './Mascot';
 import { PlayFx, StackFx } from './PlayFx';
+import { CardFx } from './cardFx/CardFx';
 import { Podium } from './Podium';
+import { THEMES } from './themes';
+import { isPhone } from '../ui/hooks/phone';
 import '../ui/game/Plates.css';
 
 interface Props {
@@ -38,7 +43,9 @@ export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dea
   const portrait = size.width / size.height < 0.9;
   // a phone lying on its side: wide but very short, so the HUD and plates get compact
   const compact = !portrait && size.height < 520;
-  const view: View = useMemo(() => ({ portrait, compact }), [portrait, compact]);
+  // rounded, so resizing a window does not rebuild the layout on every pixel
+  const aspect = Math.round((size.width / size.height) * 50) / 50;
+  const view: View = useMemo(() => ({ portrait, compact, aspect }), [portrait, compact, aspect]);
   const targets = useMemo(() => computeTargets(game, view), [game, version, view]);
   const s = game.s;
   const A = arena(view);
@@ -47,11 +54,15 @@ export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dea
   const cards = [...s.deck, ...s.discard, ...s.players.flatMap(p => p.hand)];
   const top = s.discard[s.discard.length - 1];
   const theme = s.theme ?? 'classic';
+  const Landing = THEMES[theme].Landing;
+  const lite = isPhone();
+  useLayoutEffect(() => setPlayableGlow(THEMES[theme].glow), [theme]);
 
   return (
     <>
-      <CameraRig portrait={portrait} compact={compact} finale={s.phase === 'over'} focus={A.discard} />
+      <CameraRig view={view} finale={s.phase === 'over'} focus={A.discard} />
       <ReadySignal onReady={onReady} />
+      {DEBUG && <FitProbe />}
       <ambientLight intensity={0.75} />
       <directionalLight
         position={[2, 11, 7]}
@@ -77,7 +88,9 @@ export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dea
       {/* during the finale the podium shows everyone, so the seat plates step aside */}
       {s.phase !== 'over' && <PlayerPlates game={game} view={view} dealing={dealing} />}
       {top && <PlayFx top={top} at={A.discard} />}
+      {top && Landing && <Landing top={top} at={A.discard} lite={lite} />}
       <StackFx pending={s.pending} top={top} at={A.discard} />
+      <CardFx game={game} version={version} view={view} theme={theme} pile={A.discard} />
       <DropZone at={A.discard} radius={portrait ? 2.2 : 2.6} />
       <Bomb deadline={s.timerKind === 'bomb' ? s.bombDeadline : null} offset={game.clockOffset} />
       <Explosion />
@@ -102,15 +115,18 @@ export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dea
 
 const finePointer = typeof matchMedia !== 'undefined' && matchMedia('(hover: hover) and (pointer: fine)').matches;
 
-function CameraRig({ portrait, compact, finale, focus }: { portrait: boolean; compact: boolean; finale: boolean; focus: [number, number, number] }) {
+function CameraRig({ view, finale, focus }: { view: View; finale: boolean; focus: [number, number, number] }) {
   const { camera } = useThree();
+  const { portrait, compact } = view;
+  const cam0 = portrait ? CAMERA.portrait : CAMERA.landscape;
   const look = useMemo(() => new THREE.Vector3(), []);
+  const tmpLook = useMemo(() => new THREE.Vector3(), []);
   const roll = useRef(0);
   useFrame((state, dt) => {
     const cam = camera as THREE.PerspectiveCamera;
     // finale: come down closer and look at the podium
-    const base = finale ? (portrait ? [focus[0], 6.2, 11.8] : [focus[0], 4.6, 8.6]) : portrait ? [0, 15, 10.6] : [0, 7.6, 9.8];
-    const fov = portrait ? 50 : 42;
+    const base = finale ? (portrait ? [focus[0], 6.2, 11.8] : [focus[0], 4.6, 8.6]) : cam0.pos;
+    const fov = cameraFov(view);
     if (Math.abs(cam.fov - fov) > 0.01) {
       cam.fov += (fov - cam.fov) * Math.min(1, dt * 4);
       cam.updateProjectionMatrix();
@@ -126,7 +142,7 @@ function CameraRig({ portrait, compact, finale, focus }: { portrait: boolean; co
     // a gentle sway around the podium, otherwise a light parallax that follows the pointer
     const orbit = finale ? Math.sin((now - fxState.winAt) * 0.35) * 0.25 : 0;
     // parallax only with a mouse: on touch screens the pointer jumps to every tap and the whole table would twitch
-    const px = finePointer ? state.pointer.x * 0.35 : 0;
+    const px = finePointer ? state.pointer.x * PARALLAX_X : 0;
     const py = finePointer ? state.pointer.y * 0.2 : 0;
     const tx = base[0] + px + Math.sin(orbit) * base[2] + sx;
     const tz = base[2] * Math.cos(orbit);
@@ -135,8 +151,8 @@ function CameraRig({ portrait, compact, finale, focus }: { portrait: boolean; co
     cam.position.z += (tz - cam.position.z) * Math.min(1, dt * 3);
     // on phones the results sheet takes the lower half, so aim low and lift the podium up the screen
     // lying on its side the results sit on the right, so the podium moves into the left half
-    if (finale) look.lerp(new THREE.Vector3(focus[0] + (compact ? 2.1 : 0), portrait ? -1.2 : compact ? 0.9 : 0.75, focus[2]), Math.min(1, dt * 2.5));
-    else look.lerp(new THREE.Vector3(0, 0, portrait ? 1.4 : 0.55), Math.min(1, dt * 4));
+    if (finale) look.lerp(tmpLook.set(focus[0] + (compact ? 2.1 : 0), portrait ? -1.2 : compact ? 0.9 : 0.75, focus[2]), Math.min(1, dt * 2.5));
+    else look.lerp(tmpLook.set(cam0.look[0], cam0.look[1], cam0.look[2]), Math.min(1, dt * 4));
     cam.lookAt(look);
     // "upside down" event: roll the whole view over
     roll.current += ((now < fxState.upsideUntil ? Math.PI : 0) - roll.current) * Math.min(1, dt * 2.2);
@@ -325,6 +341,7 @@ function DeckHit({ active, onClick, pending, at }: { active: boolean; onClick: (
 
 /** Avatar plates above each opponent's fan: name ribbon, portrait, card counter. */
 function PlayerPlates({ game, view, dealing }: { game: GameView; view: View; dealing: boolean }) {
+  const t = useT();
   const s = game.s;
   const seat = game.seat();
   const A = arena(view);
@@ -342,7 +359,7 @@ function PlayerPlates({ game, view, dealing }: { game: GameView; view: View; dea
           <Html key={i} position={pos} center zIndexRange={[20, 0]} pointerEvents="none">
             <div className={`oplate ${cur ? 'cur' : ''} ${i === s.winner ? 'win' : ''} ${p.offline ? 'off' : ''} ${p.out ? 'out' : ''} ${s.teams ? `team t${s.teams[i]}` : ''} ${view.portrait || view.compact ? 'small' : ''} ${(view.portrait && s.players.length > 3) || (view.compact && s.players.length > 5) ? 'tiny' : ''}`} title={p.name}>
               {s.teams && (
-                <span className="oplate-team">{s.teams[i] === s.teams[game.seat()] ? '🤝 напарник' : TEAM_NAMES[s.teams[i]]}</span>
+                <span className="oplate-team">{s.teams[i] === s.teams[game.seat()] ? t('plate.partner') : teamName(s.teams[i])}</span>
               )}
               <span className="ava-wrap swap-in" key={p.offline ? 'bot' : 'me'}>
                 {/* someone dropped out: a bot sits in under its own name and face until they are back */}
@@ -354,11 +371,11 @@ function PlayerPlates({ game, view, dealing }: { game: GameView; view: View; dea
               <span className="oplate-info">
                 <span className="plate-name" key={p.offline ? 'bot' : 'me'}>{p.offline ? sub.name : p.name}</span>
                 {p.out ? (
-                  <span className="oplate-away">💀 выбыл(а)</span>
+                  <span className="oplate-away">{t('plate.out')}</span>
                 ) : p.offline ? (
-                  <span className="oplate-away">за {p.name} · нет связи</span>
+                  <span className="oplate-away">{t('plate.away', { who: p.name })}</span>
                 ) : (
-                  <span className="oplate-count" aria-label={`${p.hand.length} карт`}><IconStack />{p.hand.length}</span>
+                  <span className="oplate-count" aria-label={t('plate.cards', { n: p.hand.length })}><IconStack />{p.hand.length}</span>
                 )}
               </span>
               {p.hand.length === 1 && s.phase !== 'over' && <span className="plate-uno">UNO!</span>}

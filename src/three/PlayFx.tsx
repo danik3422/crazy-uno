@@ -2,15 +2,12 @@ import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, type RefObject } from 'react';
 import * as THREE from 'three';
 import { HEX } from '../game/content';
-import type { Card, CardType } from '../game/types';
+import type { Card } from '../game/types';
 import { drawValue } from '../game/rules';
-import { penaltyTexture, symbolTexture } from './emblems';
+import { penaltyTexture } from './emblems';
 import { fxState, nowSec, shake } from './fxState';
 import { glowTexture } from './glowTexture';
 import type { Vec3 } from './layout';
-
-// +2 and +4 are shown by StackFx with the running total instead
-const BIG: CardType[] = ['skip', 'rev', 'wild', 'swap', 'gift', 'bomb', 'dare', 'rain', 'mirror', 'chaos', 'dump', 'skipAll', 'discardAll', 'roulette'];
 
 /* ---------- shared motion ---------- */
 
@@ -72,7 +69,7 @@ function EmblemSprites({ order, sprite, mat, glow, glowMat, blank }: {
         <spriteMaterial ref={glowMat} map={glowTexture()} transparent depthTest={false} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
       </sprite>
       {/* the sprite always has a map, so swapping in an emblem never needs a new shader */}
-      <sprite ref={sprite} renderOrder={order} visible={false}>
+      <sprite ref={sprite} renderOrder={order} visible={false} userData={{ fit: 'badge' }}>
         <spriteMaterial ref={mat} map={blank} transparent depthTest={false} toneMapped={false} />
       </sprite>
     </>
@@ -105,48 +102,38 @@ const colorOf = (c: Card['color']) => (c === 'wild' ? '#ffd23a' : HEX[c]);
  * Card3D sets `fxState.landAt` on the card's first frame in the air, so a moment after `armedAt`.
  * Returns null while still waiting for that.
  */
-function landingTime(armedAt: number, now: number): number | null {
+export function landingTime(armedAt: number, now: number): number | null {
   if (fxState.landAt > armedAt - 0.05) return Math.max(now, fxState.landAt);
   if (now - armedAt > LAND_WAIT) return now;
   return null;
 }
 
-/* ---------- action card emblem ---------- */
+/* ---------- the shared landing ring ---------- */
 
 interface Props {
   top: Card;
   at: Vec3;
 }
 
-const EMBLEM_LIFE = 1.7;
 /** world size of an emblem sprite (the round badge fills about 3/4 of it) */
 const EMBLEM_SIZE = 2.6;
 
 /**
- * Reacts to a new card on the pile: a shock ring in the card's colour,
- * and for action cards a giant emblem that drops onto the table.
+ * Reacts to a new card on the pile with a shock ring in the card's colour.
+ * What each action card does is shown by its own animation (see cardFx/).
  */
 export function PlayFx({ top, at }: Props) {
-  const sprite = useRef<THREE.Sprite>(null!);
-  const mat = useRef<THREE.SpriteMaterial>(null!);
-  const glow = useRef<THREE.Sprite>(null!);
-  const glowMat = useRef<THREE.SpriteMaterial>(null!);
   const ring = useRef<THREE.Mesh>(null!);
   const ringMat = useRef<THREE.MeshBasicMaterial>(null!);
   const start = useRef(-10);
   /** a card was played and is still in the air: the effect waits for it to touch the pile */
   const armed = useRef<number | null>(null);
   const first = useRef(true);
-  const blank = useBlankTexture();
-  const shown = useRef<Card | null>(null);
 
   useEffect(() => {
     if (first.current) { first.current = false; return; }
     armed.current = nowSec();
-    shown.current = top;
     ringMat.current.color.set(top.color === 'wild' ? '#ffffff' : HEX[top.color]);
-    glowMat.current.color.set(colorOf(top.color));
-    if (BIG.includes(top.type)) mat.current.map = symbolTexture(top);
   }, [top.id]); // only when a new card lands on the pile
 
   useFrame(() => {
@@ -159,28 +146,20 @@ export function PlayFx({ top, at }: Props) {
       }
     }
     const t = now - start.current;
-    // shock ring
     const rOn = t >= 0 && t < 0.7;
     ring.current.visible = rOn;
     if (rOn) {
       ring.current.scale.setScalar(0.6 + easeOutCubic(t / 0.7) * 4.2);
       ringMat.current.opacity = 0.9 * (1 - t / 0.7);
     }
-    const big = !!shown.current && BIG.includes(shown.current.type);
-    const on = big && t >= 0 && t < EMBLEM_LIFE;
-    sprite.current.visible = glow.current.visible = on;
-    if (on) applyMotion(emblemMotion(t, EMBLEM_LIFE), EMBLEM_SIZE, at, sprite.current, mat.current, glow.current, glowMat.current);
   });
 
   return (
-    <>
-      {/* under the cards, so it never cuts through the pile */}
-      <mesh ref={ring} rotation-x={-Math.PI / 2} position={[at[0], 0.006, at[2]]} visible={false}>
-        <ringGeometry args={[0.8, 1.0, 48]} />
-        <meshBasicMaterial ref={ringMat} transparent toneMapped={false} depthWrite={false} />
-      </mesh>
-      <EmblemSprites order={10} sprite={sprite} mat={mat} glow={glow} glowMat={glowMat} blank={blank} />
-    </>
+    // under the cards, so it never cuts through the pile
+    <mesh ref={ring} rotation-x={-Math.PI / 2} position={[at[0], 0.006, at[2]]} visible={false}>
+      <ringGeometry args={[0.8, 1.0, 48]} />
+      <meshBasicMaterial ref={ringMat} transparent toneMapped={false} depthWrite={false} />
+    </mesh>
   );
 }
 

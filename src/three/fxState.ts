@@ -17,6 +17,8 @@ export const fxState = {
   /** direction arrows race around (carousel) */
   carouselUntil: 0,
   eventAt: -100,
+  /** a colour was picked (bumped by the card effects): the floor pulses even when the colour stays the same */
+  paint: { seq: 0 },
   /** when the card just played touches the pile (the flash and the ring start then) */
   landAt: -100,
   meteor: { at: -100, target: 0 },
