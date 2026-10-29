@@ -110,8 +110,8 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
       {kb.active && (
         <p className="kb-hint" aria-hidden dangerouslySetInnerHTML={{ __html: t('hud.keys') }} />
       )}
-      {effects.flash !== null && <div key={`flash-${effects.flash}`} className="flash" />}
-      {banner && <EventBanner key={`event-${banner.id}`} banner={banner} onDone={() => effects.dismissBanner(banner.id)} />}
+      {effects.flash !== null && <div key={`flash-${effects.flash}`} className={`flash th-${s.theme ?? 'classic'}`} />}
+      {banner && <EventBanner key={`event-${banner.id}`} banner={banner} theme={s.theme ?? 'classic'} onDone={() => effects.dismissBanner(banner.id)} />}
       <Overlays game={game} version={version} score={score} onAgain={onAgain} onMenu={onMenu} online={online} locked={locked} />
       <RotateGate waiting={round.stage === 'loading'} />
       {round.curtain && (

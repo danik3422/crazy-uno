@@ -1,0 +1,5 @@
+/* a drawn event icon inline with text (the image has a little margin around the drawing) */
+.ev-ico { display: inline-block; vertical-align: middle; margin: -0.2em 0.1em -0.15em -0.05em; flex: none; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35)); }
+.ev-line { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.ev-chip { display: inline-flex; align-items: center; }
+.ev-chip .ev-ico { margin: -4px -2px; }

@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react';
 import type { Card, Color } from '../../game/types';
+import type { EventLook } from '../eventFx/look';
 import type { Vec3 } from '../layout';
 
 /** Arena colours for one current colour: the floor glow inside, the middle, the far dark, and an accent for decor. */
@@ -59,6 +60,8 @@ export interface TableTheme {
   Decor: ComponentType<DecorProps>;
   /** an extra effect of this table when a card lands on the pile (on top of the shared one) */
   Landing?: ComponentType<LandingProps>;
+  /** how the random events look here, over the classic look (see eventFx/look.ts) */
+  events?: Partial<EventLook>;
 }
 
 export const CLASSIC_MOTION: CardMotion = { arc: 1, spin: 0, sway: 0, hoverLift: 1, float: 0 };

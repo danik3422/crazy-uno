@@ -113,9 +113,9 @@ export interface Fx {
   id: number;
   kind: FxKind;
   text?: Msg;
-  /** event banner: second line and icon */
+  /** event banner: second line, and which event (its drawn icon and its look on the table) */
   sub?: Msg;
-  icon?: string;
+  event?: EventId;
   /** player index the effect lands on */
   target?: number;
 }

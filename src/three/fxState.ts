@@ -1,3 +1,5 @@
+import type { EventId } from '../game/types';
+
 /**
  * Mutable, render-loop friendly effect clock shared by 3D components.
  * Times are seconds from performance.now(); components read these inside useFrame.
@@ -17,6 +19,8 @@ export const fxState = {
   /** direction arrows race around (carousel) */
   carouselUntil: 0,
   eventAt: -100,
+  /** the random event being shown on the table (EventFx): which one, since when, aimed at whom; seq counts them */
+  event: { at: -100, id: null as EventId | null, target: 0, seq: 0 },
   /** a colour was picked (bumped by the card effects): the floor pulses even when the colour stays the same */
   paint: { seq: 0 },
   /** when the card just played touches the pile (the flash and the ring start then) */

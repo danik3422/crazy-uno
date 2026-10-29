@@ -4,7 +4,8 @@ import { render, useT } from '../../i18n';
 import { LangSwitch } from '../components/LangSwitch';
 import type { GameView } from '../../game/view';
 import { IconCards, IconMenu } from '../components/Icons';
-import { Legend } from '../components/Legend';
+import { EventIcon } from '../components/EventIcon';
+import { EventLegend, Legend } from '../components/Legend';
 import { FullscreenButton } from '../components/RotateGate';
 import { SoundMenu } from '../components/SoundMenu';
 import { CoinFlip } from './CoinFlip';
@@ -69,7 +70,7 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
   } else if (s.phase === 'group') {
     modal = (
       <Modal band>
-        <p className="muted">{t('ov.group')}</p>
+        <p className="muted ev-line"><EventIcon id="group" size={22} />{t('ov.group')}</p>
         <p className="dare">{render(s.dare)}</p>
         <button className="btn big" autoFocus onClick={() => game.doneGroup()}>{t('ov.groupDone')}</button>
         {!game.isLocal && <p className="muted small">{t('ov.groupNote')}</p>}
@@ -203,6 +204,12 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
         <Modal onClose={() => setHelp(false)}>
           <h2>{t('ov.cardsTitle')}</h2>
           <Legend rules={s.rules} theme={s.theme} />
+          {s.rules.events && (
+            <>
+              <h3 className="legend-sub">{t('setup.events')}</h3>
+              <EventLegend />
+            </>
+          )}
           <button className="btn big" onClick={() => setHelp(false)}>{t('ov.gotIt')}</button>
         </Modal>
       )}

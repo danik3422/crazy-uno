@@ -635,16 +635,28 @@ function iconTile(sym: string, draw: (ctx: Ctx) => void, size: number, px: numbe
 export function drawIcon(ctx: Ctx, sym: string, x: number, y: number, size: number): boolean {
   const draw = ICONS[key(sym)];
   if (!draw) return false;
+  stampIcon(ctx, key(sym), draw, x, y, size);
+  return true;
+}
+
+/**
+ * Paints any icon drawn in this style (`draw` works in the 100-unit box) centred at (x, y) in a `size` box,
+ * cached per key and pixel size. Used by the card icons above and the event icons (eventIcons.ts).
+ */
+export function stampIcon(ctx: Ctx, k: string, draw: (ctx: Ctx) => void, x: number, y: number, size: number) {
   const m = ctx.getTransform();
   const scale = Math.max(Math.hypot(m.a, m.b), Math.hypot(m.c, m.d)) || 1;
   const box = size * PAD;
   const px = Math.min(2048, Math.max(16, Math.ceil(box * scale)));
-  const tile = iconTile(key(sym), draw, size, px);
+  const tile = iconTile(k, draw, size, px);
   ctx.save();
   ctx.imageSmoothingQuality = 'high';
   ctx.shadowColor = 'rgba(255,255,255,0.4)';
   ctx.shadowBlur = Math.max(1, size * scale * 0.035);
   ctx.drawImage(tile, x - box / 2, y - box / 2, box, box);
   ctx.restore();
-  return true;
 }
+
+/** The drawing kit of this icon style, for icon sets kept in other files. */
+export const iconKit = { INK, TAU, lin, rad, paint, rrect, ellipse, gloss, cased, star, twinkle, drop, lw: () => LW };
+export type IconCtx = Ctx;

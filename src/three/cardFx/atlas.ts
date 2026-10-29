@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { HEX } from '../../game/content';
+import { drawEventIcon, drawFxShape } from '../themes/eventIcons';
 import { drawIcon } from '../themes/icons';
 
 /**
@@ -36,6 +37,14 @@ export const CELL_ID = {
   question: 23,
   bin: 24,
   skull: 25,
+  // random events (three/eventFx)
+  evMeteor: 26,
+  pumpkin: 27,
+  bat: 28,
+  star: 29,
+  coin: 30,
+  dart: 31,
+  bolt: 32,
 } as const;
 export type Cell = (typeof CELL_ID)[keyof typeof CELL_ID];
 
@@ -263,6 +272,63 @@ export function fxAtlas(): THREE.CanvasTexture {
   at(CELL_ID.fire, c => emoji(c, '🔥'));
   at(CELL_ID.bin, c => emoji(c, '🗑️'));
   at(CELL_ID.skull, c => emoji(c, '💀'));
+  // the event effects' own pieces: drawn icons keep their colours, silhouettes are white (tinted per particle)
+  at(CELL_ID.evMeteor, c => drawEventIcon(c, 'meteor', 0, 0, 100));
+  at(CELL_ID.coin, c => drawEventIcon(c, 'coin', 0, 0, 100));
+  at(CELL_ID.pumpkin, c => drawFxShape(c, 'pumpkin', 0, 0, 96));
+  at(CELL_ID.dart, c => drawFxShape(c, 'dart', 0, 0, 100));
+  at(CELL_ID.bat, c => {
+    c.fillStyle = W;
+    c.beginPath();
+    c.moveTo(0, -6);
+    // left wing: three scallops along the bottom edge
+    c.quadraticCurveTo(-20, -30, -58, -18);
+    c.quadraticCurveTo(-46, -8, -44, 8);
+    c.quadraticCurveTo(-36, -2, -26, 6);
+    c.quadraticCurveTo(-20, -4, -10, 8);
+    c.lineTo(0, 16);
+    c.lineTo(10, 8);
+    c.quadraticCurveTo(20, -4, 26, 6);
+    c.quadraticCurveTo(36, -2, 44, 8);
+    c.quadraticCurveTo(46, -8, 58, -18);
+    c.quadraticCurveTo(20, -30, 0, -6);
+    c.fill();
+    // head with ears
+    c.beginPath();
+    c.moveTo(-9, -8);
+    c.lineTo(-10, -24);
+    c.lineTo(-4, -16);
+    c.lineTo(4, -16);
+    c.lineTo(10, -24);
+    c.lineTo(9, -8);
+    c.arc(0, -6, 9, 0, Math.PI);
+    c.fill();
+  });
+  at(CELL_ID.star, c => {
+    radial(c, [[0, 'rgba(255,255,255,.7)'], [0.35, 'rgba(255,255,255,.12)'], [1, 'rgba(255,255,255,0)']], 62);
+    c.fillStyle = W;
+    c.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = -Math.PI / 2 + (i * Math.PI) / 5;
+      const r = i % 2 ? 17 : 42;
+      c.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    c.closePath();
+    c.fill();
+  });
+  at(CELL_ID.bolt, c => {
+    c.fillStyle = W;
+    c.beginPath();
+    c.moveTo(8, -58);
+    c.lineTo(-26, 6);
+    c.lineTo(-2, 6);
+    c.lineTo(-14, 58);
+    c.lineTo(30, -12);
+    c.lineTo(6, -12);
+    c.lineTo(22, -58);
+    c.closePath();
+    c.fill();
+  });
 
   tex = new THREE.CanvasTexture(cv);
   // the shader writes colours as they are (no colour-space conversion), so the texture is read raw too

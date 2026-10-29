@@ -1,7 +1,8 @@
-import { COLORS, NO_MERCY_TYPES, SPECIAL, WILD_TYPES } from '../../game/content';
+import { COLORS, EVENTS, NO_MERCY_TYPES, SPECIAL, WILD_TYPES } from '../../game/content';
 import { buildDeck } from '../../game/deck';
-import type { Card, CardType, Rules, ThemeId } from '../../game/types';
+import type { Card, CardType, EventId, Rules, ThemeId } from '../../game/types';
 import { cardImage } from '../../three/textures';
+import { EventIcon } from './EventIcon';
 import './Legend.css';
 
 const ALL = Object.keys(SPECIAL) as Exclude<CardType, 'num'>[];
@@ -23,6 +24,23 @@ export function Legend({ rules, theme = 'classic' }: { rules?: Rules; theme?: Th
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/** What every random event does, each with its drawn icon. */
+export function EventLegend() {
+  return (
+    <div className="legend">
+      {(Object.keys(EVENTS) as EventId[]).map(id => (
+        <div className="li" key={id}>
+          <EventIcon id={id} size={36} className="ev-icon" />
+          <div>
+            <b>{EVENTS[id].title}</b>
+            <small>{EVENTS[id].desc}</small>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

@@ -1,11 +1,11 @@
 import { avatarOf, BOT_AVATARS, HUMAN_AVATARS, randomBot } from '../../game/avatars';
-import { DEFAULT_TABLE, EVENTS, teamName } from '../../game/content';
+import { DEFAULT_TABLE, teamName } from '../../game/content';
 import { render, useT } from '../../i18n';
 import { teamsOf, teamsProblem } from '../../game/teams';
 import type { LocalSetup } from '../../game/engine';
 import { AvatarImg } from '../components/AvatarImg';
 import { Hero } from '../components/Hero';
-import { Legend } from '../components/Legend';
+import { EventLegend, Legend } from '../components/Legend';
 import { SwapTeamIcon, TeamBox } from '../components/TeamBox';
 import { PhoneTip } from '../components/RotateGate';
 import { SwipeBack } from '../components/SwipeBack';
@@ -156,17 +156,7 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
         <Legend rules={cfg.rules} theme={theme} />
         <h3 className="ref-sub">{t('setup.events')}</h3>
         <small className="muted">{t('setup.eventsHint')}</small>
-        <div className="legend">
-          {Object.entries(EVENTS).map(([id, e]) => (
-            <div className="li" key={id}>
-              <span className="ev-icon" aria-hidden>{e.icon}</span>
-              <div>
-                <b>{e.title}</b>
-                <small>{e.desc}</small>
-              </div>
-            </div>
-          ))}
-        </div>
+        <EventLegend />
       </details>
     </div>
   );

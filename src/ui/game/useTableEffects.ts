@@ -87,10 +87,11 @@ export function useTableEffects(game: GameView, version: number, onOver?: (winne
           break;
         case 'event':
           fxState.eventAt = nowSec();
+          fxState.event = { at: nowSec(), id: f.event ?? null, target: f.target ?? s.cur, seq: fxState.event.seq + 1 };
           sound.play('event');
           // the mascot sometimes flies by, unless it is about to come as the bomber anyway
           if (Math.random() < 0.5 && !s.fx.some(x => x.kind === 'bomber' && x.id > f.id)) summonMascot('fly', 0.3);
-          setBanner({ id: f.id, icon: f.icon ?? '', title: f.text ?? null, sub: f.sub ?? null });
+          setBanner({ id: f.id, event: f.event ?? null, title: f.text ?? null, sub: f.sub ?? null, top: s.phase !== 'play' });
           continue; // the banner shows the text, no toast
         case 'meteor':
           fxState.meteor = { at: nowSec() + 0.6, target: f.target ?? 0 };

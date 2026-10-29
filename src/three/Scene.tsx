@@ -14,7 +14,7 @@ import { DeckStack } from './DeckStack';
 import { dealTiming } from '../net/protocol';
 import { drag } from './drag';
 import { Arena, PALETTES } from './Environment';
-import { BombDrop, GoldBurst, Lightning, Meteor } from './EventFx';
+import { EventFx } from './eventFx/EventFx';
 import { DEBUG, fxState, nowSec } from './fxState';
 import { FitProbe } from './FitProbe';
 import { CAMERA, PARALLAX_X, RING_R, RING_Z, arena, cameraFov, computeTargets, deckCenter, deckSpot, seatAngle, type View } from './layout';
@@ -94,10 +94,7 @@ export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dea
       <DropZone at={A.discard} radius={portrait ? 2.2 : 2.6} />
       <Bomb deadline={s.timerKind === 'bomb' ? s.bombDeadline : null} offset={game.clockOffset} />
       <Explosion />
-      <Meteor game={game} view={view} />
-      <Lightning game={game} view={view} />
-      <GoldBurst game={game} view={view} />
-      <BombDrop />
+      <EventFx game={game} view={view} theme={theme} />
       <Mascot scale={portrait ? 0.6 : 0.72} portrait={portrait} />
       {/* mounted all round (hidden) so their shaders are ready: the finale must not stall */}
       <Confetti active={s.phase === 'over'} />

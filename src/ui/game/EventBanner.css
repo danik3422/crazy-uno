@@ -1,37 +1,240 @@
+/*
+ * The event card: a ticket (icon stub | text) that drops in with a spring, shimmers while it is up,
+ * and flips away after 3 s. The look comes from a handful of variables that every table sets for itself.
+ */
 .event {
   position: fixed; inset: 0; z-index: 40; pointer-events: none; display: flex; justify-content: center; align-items: flex-start;
-  padding: calc(64px + env(safe-area-inset-top, 0px)) 16px 0; perspective: 900px; overflow: hidden;
-  animation: event-out 3s forwards;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 0; perspective: 1100px; overflow: hidden;
+  /* the event's own colour: glow behind the icon */
+  --ev: #ffd04a;
+  /* classic: gold game show */
+  --body: repeating-conic-gradient(from -90deg at 50% 150%, rgba(255, 255, 255, 0.07) 0 5deg, transparent 5deg 12deg),
+    radial-gradient(120% 140% at 30% 0%, #d9243a 0%, #9c0f26 48%, #5a0618 100%);
+  --frame: linear-gradient(160deg, #fff6c2 0%, #ffd04a 28%, #c98a10 55%, #ffe58a 78%, #b0700a 100%);
+  --stub: radial-gradient(circle at 50% 48%, #fff7d0 0%, #ffd04a 42%, #e88a12 100%);
+  --perf: rgba(255, 226, 140, 0.9);
+  --title: #ffd84a;
+  --title-shadow: 0 2px 0 #7a2a00, 0 3px 0 #4a1400, 0 6px 14px rgba(0, 0, 0, 0.45);
+  --sub: #fff3dc;
+  --tag-bg: linear-gradient(#fff2b0, #ffc93a);
+  --tag-ink: #7a1020;
+  --glow: rgba(255, 200, 60, 0.55);
+  --aura: rgba(255, 208, 74, 0.38);
+  --rays: rgba(255, 220, 120, 0.22);
+  --halo: repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.75) 0 9deg, rgba(255, 255, 255, 0) 9deg 24deg);
+  --radius: 18px;
+  --bw: 4px;
 }
-.event-rays {
-  position: absolute; left: 50%; top: 110px; width: 140vmax; height: 140vmax; margin: -70vmax 0 0 -70vmax; border-radius: 50%;
-  background: repeating-conic-gradient(from 0deg, rgba(255, 208, 74, 0.14) 0 8deg, transparent 8deg 22deg);
-  mask-image: radial-gradient(circle, #000 0, transparent 30%);
-  -webkit-mask-image: radial-gradient(circle, #000 0, transparent 30%);
-  animation: rays 6s linear infinite;
+/* over the middle of the table, a little above the centre: between the far plates and your hand */
+.event.mid { align-items: center; padding-bottom: 16vh; }
+.event.ev-meteor { --ev: #ff7a2a; }
+.event.ev-recolor, .event.ev-mono { --ev: #ff5aa8; }
+.event.ev-carousel { --ev: #ff4d5a; }
+.event.ev-robin, .event.ev-jackpot { --ev: #4fe06a; }
+.event.ev-upside, .event.ev-coin { --ev: #ffd23a; }
+.event.ev-blind { --ev: #8a7cff; }
+.event.ev-blitz, .event.ev-lightning { --ev: #7fd8ff; }
+.event.ev-group { --ev: #c08cff; }
+.event.ev-bomber { --ev: #ff9a3c; }
+
+.event-fly {
+  position: relative; transform-origin: 50% 0;
+  animation: ev-in 0.85s cubic-bezier(0.2, 0.85, 0.3, 1) both, ev-out 0.42s 2.56s cubic-bezier(0.55, 0, 0.8, 0.2) forwards;
 }
+/* the card's shadow and glow follow its notched shape (a filter on a wrapper sees the mask) */
+.event-frame { position: relative; filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 16px var(--glow)); }
 .event-card {
-  position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto auto;
-  column-gap: 16px; row-gap: 2px; align-items: center; text-align: left;
-  background: var(--black); border: 5px solid var(--edge); border-radius: 22px; padding: 14px 22px 16px 16px;
-  max-width: min(520px, 100%);
-  box-shadow: 0 0 0 5px var(--gold), 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 70px rgba(255, 208, 74, 0.35);
-  animation: event-in 0.75s cubic-bezier(.2, 1.4, .35, 1) both;
+  --stub-w: 108px;
+  position: relative; display: grid; grid-template-columns: var(--stub-w) minmax(0, 1fr);
+  width: min(430px, calc(100vw - 32px)); min-height: 104px; border-radius: var(--radius); overflow: hidden;
+  padding: var(--bw); background: var(--frame);
+  /* ticket notches where the stub is torn off */
+  --notch: radial-gradient(circle 10px at calc(var(--stub-w) + var(--bw)) 0, #0000 9px, #000 10px) top / 100% 51% no-repeat,
+    radial-gradient(circle 10px at calc(var(--stub-w) + var(--bw)) 100%, #0000 9px, #000 10px) bottom / 100% 51% no-repeat;
+  -webkit-mask: var(--notch);
+  mask: var(--notch);
 }
-.event-icon { grid-row: 1 / 4; font-size: 56px; line-height: 1; animation: wobble 0.8s 0.5s ease-in-out 2; }
+.event-stub {
+  position: relative; display: grid; place-items: center; overflow: hidden; background: var(--stub);
+  border-right: 3px dashed var(--perf); border-radius: calc(var(--radius) - var(--bw)) 0 0 calc(var(--radius) - var(--bw));
+}
+.event-halo {
+  position: absolute; left: 50%; top: 50%; width: 180%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--ev) 70%, transparent) 0, transparent 46%), var(--halo);
+  -webkit-mask: radial-gradient(circle, #000 18%, transparent 62%);
+  mask: radial-gradient(circle, #000 18%, transparent 62%);
+  animation: ev-spin 10s linear infinite, ev-fade 0.5s 0.2s both;
+}
+.event-icon {
+  position: relative; width: 104px; height: 104px; margin: -6px;
+  filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.35));
+  animation: ev-pop 0.75s 0.3s cubic-bezier(0.3, 1.7, 0.5, 1) both, ev-bob 2.2s 1.05s ease-in-out infinite;
+}
+.event-body { position: relative; z-index: 1; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 3px; padding: 10px 18px 12px 16px; min-width: 0;
+  background: var(--body); border-radius: 0 calc(var(--radius) - var(--bw)) calc(var(--radius) - var(--bw)) 0;
+}
 .event-tag {
-  justify-self: start; font-family: var(--display); font-weight: 600; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--black); background: var(--gold); padding: 2px 9px; border-radius: 999px;
+  font-family: var(--display); font-weight: 700; font-size: 10px; line-height: 1; letter-spacing: 0.16em; text-transform: uppercase;
+  padding: 4px 10px 3px; border-radius: 999px; background: var(--tag-bg); color: var(--tag-ink);
+  animation: ev-fade 0.35s 0.32s both;
 }
-.event-title { font-family: var(--display); font-weight: 900; font-size: clamp(20px, 5vw, 30px); line-height: 1.15; color: var(--gold); }
-.event-sub { font-size: 15px; font-weight: 500; color: var(--ink); }
+.event-title {
+  font-family: var(--display); font-weight: 900; font-size: 27px; line-height: 1.1; color: var(--title); text-shadow: var(--title-shadow);
+  max-width: 100%; overflow-wrap: normal; transform-origin: 0 60%;
+  animation: ev-title 0.55s 0.36s cubic-bezier(0.25, 1.5, 0.45, 1) both;
+}
+.event-sub { font-size: 14.5px; font-weight: 600; line-height: 1.25; color: var(--sub); animation: ev-fade 0.4s 0.5s both; }
+.event-shine {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 36%, rgba(255, 255, 255, 0.34) 47%, rgba(255, 255, 255, 0.08) 53%, transparent 62%);
+  transform: translateX(-110%); animation: ev-shine 1.9s 0.8s ease-in-out infinite;
+}
+.event-deco { position: absolute; inset: 0; pointer-events: none; }
+/* the glow and rays behind the card */
+.event-aura {
+  position: absolute; left: 50%; top: 50%; width: 560px; height: 340px; translate: -50% -50%; border-radius: 50%;
+  background: radial-gradient(closest-side, var(--aura), transparent), repeating-conic-gradient(from 0deg, var(--rays) 0 7deg, transparent 7deg 20deg);
+  -webkit-mask: radial-gradient(closest-side, #000 30%, transparent);
+  mask: radial-gradient(closest-side, #000 30%, transparent);
+  animation: ev-aura 2.9s ease-out both, ev-spin 14s linear infinite;
+}
+
+/* ── classic: marquee bulbs chase along the top and bottom of the gold frame ── */
+.event.th-classic .event-deco {
+  --bulb: radial-gradient(circle, #fffbe0 0 2.2px, rgba(255, 214, 90, 0.75) 3.2px, transparent 4.6px);
+  background: var(--bulb) 0 2px / 16px 10px repeat-x, var(--bulb) 8px calc(100% - 2px) / 16px 10px repeat-x;
+  animation: ev-chase 0.9s steps(2) infinite;
+}
+
+/* ── neon: dark glass, a magenta outer tube and a cyan inner one, flickering on ── */
+.event.th-neon {
+  --body: linear-gradient(rgba(255, 79, 216, 0.08) 1px, transparent 1px) 0 0 / 100% 14px, linear-gradient(160deg, rgba(30, 10, 60, 0.94), rgba(10, 4, 28, 0.96));
+  --frame: linear-gradient(90deg, #ff4fd8, #ff7ae6 50%, #ff4fd8);
+  --stub: radial-gradient(circle at 50% 50%, rgba(255, 79, 216, 0.35), rgba(16, 6, 38, 0.95) 70%);
+  --perf: rgba(79, 246, 255, 0.85);
+  --title: #ffffff;
+  --title-shadow: 0 0 3px #fff, 0 0 10px #ff4fd8, 0 0 22px #ff4fd8, 0 0 34px rgba(255, 79, 216, 0.6);
+  --sub: #c9f9ff;
+  --tag-bg: transparent;
+  --tag-ink: #4ff6ff;
+  --glow: rgba(255, 79, 216, 0.85);
+  --aura: rgba(255, 79, 216, 0.3);
+  --rays: rgba(79, 246, 255, 0.12);
+  --halo: radial-gradient(circle, transparent 30%, rgba(79, 246, 255, 0.9) 31.5%, transparent 34%), repeating-conic-gradient(rgba(79, 246, 255, 0.55) 0 4deg, transparent 4deg 30deg);
+  --radius: 14px;
+  --bw: 3px;
+}
+.event.th-neon .event-tag { box-shadow: 0 0 0 1.5px #4ff6ff, 0 0 8px rgba(79, 246, 255, 0.8), inset 0 0 6px rgba(79, 246, 255, 0.6); text-shadow: 0 0 6px #4ff6ff; }
+.event.th-neon .event-deco { inset: 6px; border-radius: 9px; border: 1.5px solid rgba(79, 246, 255, 0.9); box-shadow: 0 0 6px #4ff6ff, inset 0 0 6px rgba(79, 246, 255, 0.7); animation: ev-flicker 0.9s 0.1s both; }
+.event.th-neon .event-title { animation: ev-title 0.55s 0.36s cubic-bezier(0.25, 1.5, 0.45, 1) both, ev-flicker 0.8s 0.45s both; }
+.event.th-neon .event-shine { background: linear-gradient(105deg, transparent 40%, rgba(79, 246, 255, 0.18) 48%, rgba(255, 79, 216, 0.14) 54%, transparent 62%); }
+
+/* ── space: a hologram, its foil edge running through the colours, stars drifting inside ── */
+.event.th-space {
+  --body: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0 1px, transparent 1.6px) 7px 11px / 46px 38px,
+    radial-gradient(circle, rgba(160, 220, 255, 0.7) 0 0.8px, transparent 1.4px) 25px 3px / 31px 27px,
+    linear-gradient(150deg, rgba(20, 26, 78, 0.95), rgba(36, 16, 88, 0.95) 60%, rgba(10, 14, 46, 0.97));
+  --frame: linear-gradient(90deg, #7af0ff, #b28cff, #ff8ce6, #ffe28c, #7af0ff, #b28cff) 0 0 / 300% 100%;
+  --stub: radial-gradient(circle at 42% 40%, #6a52d8 0%, #2a1a7a 45%, #0c0a32 100%);
+  --perf: rgba(170, 220, 255, 0.7);
+  --title: #f4f0ff;
+  --title-shadow: 0 0 8px rgba(122, 240, 255, 0.85), 0 0 22px rgba(178, 140, 255, 0.7), 0 2px 0 rgba(20, 10, 60, 0.8);
+  --sub: #d6e6ff;
+  --tag-bg: linear-gradient(90deg, rgba(122, 240, 255, 0.25), rgba(255, 140, 230, 0.25));
+  --tag-ink: #bff6ff;
+  --glow: rgba(140, 170, 255, 0.75);
+  --aura: rgba(130, 120, 255, 0.32);
+  --rays: rgba(170, 220, 255, 0.12);
+  --halo: conic-gradient(from 0deg, rgba(122, 240, 255, 0.7), rgba(255, 140, 230, 0.7), rgba(255, 226, 140, 0.6), rgba(122, 240, 255, 0.7));
+  --radius: 20px;
+  --bw: 3px;
+}
+.event.th-space .event-card { animation: ev-foil 3s linear infinite; }
+.event.th-space .event-tag { box-shadow: inset 0 0 0 1px rgba(191, 246, 255, 0.5); }
+/* a planet ring tilted around the icon */
+.event.th-space .event-deco {
+  inset: auto; left: calc(var(--stub-w) / 2 - 56px); top: 50%; width: 112px; height: 30px; margin-top: -10px; border-radius: 50%;
+  border: 2px solid rgba(191, 246, 255, 0.55); border-top-color: transparent; rotate: -14deg; filter: drop-shadow(0 0 4px rgba(122, 240, 255, 0.8));
+  animation: ev-fade 0.5s 0.55s both;
+}
+.event.th-space .event-shine { background: linear-gradient(105deg, transparent 36%, rgba(122, 240, 255, 0.22) 45%, rgba(255, 140, 230, 0.2) 52%, rgba(255, 226, 140, 0.16) 58%, transparent 66%); }
+
+/* ── halloween: old parchment under a purple frame, green slime dripping from the top ── */
+.event.th-halloween {
+  --body: radial-gradient(130% 120% at 50% 40%, #f6e6bd 0%, #e6cc92 60%, #b88f52 100%);
+  --frame: linear-gradient(160deg, #6a3aa8, #3a1a66 55%, #24103e);
+  --stub: radial-gradient(circle at 54% 40%, #fff2b8 0 17%, rgba(255, 230, 150, 0.55) 22%, #4a2378 44%, #1e0c34 100%);
+  --perf: rgba(106, 58, 168, 0.85);
+  --title: #ff7a1a;
+  --title-shadow: 2px 2px 0 #2a0f46, -1px -1px 0 #2a0f46, 1px -1px 0 #2a0f46, -1px 1px 0 #2a0f46, 0 5px 10px rgba(42, 15, 70, 0.4);
+  --sub: #3a1f12;
+  --tag-bg: #2a0f46;
+  --tag-ink: #9dff5a;
+  --glow: rgba(140, 255, 90, 0.5);
+  --aura: rgba(130, 255, 80, 0.26);
+  --rays: rgba(170, 120, 255, 0.14);
+  --halo: radial-gradient(circle, rgba(157, 255, 90, 0.4), transparent 60%);
+  --radius: 14px;
+  --bw: 4px;
+}
+.event.th-halloween .event-body { box-shadow: inset 0 0 22px rgba(120, 70, 20, 0.45); }
+.event.th-halloween .event-deco {
+  inset: 0 0 auto 0; height: 34px; transform-origin: 50% 0;
+  background:
+    radial-gradient(ellipse 7px 16px at 50% 0, #8dff4a 0 97%, transparent) 10px 0 / 47px 30px repeat-x,
+    radial-gradient(ellipse 5px 10px at 50% 0, #8dff4a 0 97%, transparent) 31px 0 / 33px 20px repeat-x,
+    radial-gradient(circle 3.5px at 50% 50%, #8dff4a 0 97%, transparent) 21px 21px / 47px 10px repeat-x,
+    linear-gradient(#b4ff7a, #6ad82e) top / 100% 7px no-repeat;
+  filter: drop-shadow(0 2px 0 rgba(30, 70, 10, 0.55));
+  animation: ev-drip 0.9s 0.5s cubic-bezier(0.3, 1.4, 0.5, 1) both, ev-ooze 2.6s 1.4s ease-in-out infinite;
+}
+.event.th-halloween .event-shine { background: linear-gradient(105deg, transparent 38%, rgba(255, 250, 220, 0.4) 48%, transparent 60%); }
+
+/* ── a short screen (a phone on its side): a slimmer card, right under the top edge ── */
 @media (orientation: landscape) and (max-height: 520px) {
-  /* banners and buttons over the table, sized for a short screen */
-  .event { padding-top: calc(8px + env(safe-area-inset-top, 0px)); }
-  .event-card { transform-origin: top center; scale: 0.72; }
-  .event-rays { top: 60px; }
+  .event.top { padding-top: calc(6px + env(safe-area-inset-top, 0px)); }
+  .event-card { --stub-w: 72px; width: min(360px, calc(100vw - 32px)); min-height: 74px; }
+  .event-icon { width: 76px; height: 76px; }
+  .event-body { padding: 6px 12px 7px 11px; gap: 2px; }
+  .event-tag { font-size: 8px; padding: 3px 8px 2px; }
+  .event-title { font-size: 18px; }
+  .event-sub { font-size: 11.5px; }
+  .event-aura { width: 420px; height: 220px; }
+  .event.th-space .event-deco { width: 80px; height: 22px; left: calc(var(--stub-w) / 2 - 40px); margin-top: -6px; }
 }
-@keyframes event-out { 0%, 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(-20px); } }
-@keyframes rays { to { transform: rotate(360deg); } }
-@keyframes event-in { from { transform: rotateX(-110deg) translateY(-40px) scale(0.5); opacity: 0; } 60% { opacity: 1; } }
-@keyframes wobble { 25% { transform: rotate(-14deg) scale(1.15); } 75% { transform: rotate(12deg) scale(1.1); } }
+@media (max-width: 520px) and (orientation: portrait) {
+  .event-card { --stub-w: 84px; min-height: 96px; }
+  .event-icon { width: 86px; height: 86px; }
+  .event-title { font-size: 22px; }
+  .event-sub { font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .event-fly { animation: ev-fade 0.3s both, ev-out 0.3s 2.65s forwards; }
+  .event-halo, .event-aura, .event-shine, .event-icon, .event-deco, .event.th-space .event-card { animation: none; }
+}
+
+@keyframes ev-in {
+  0% { transform: translateY(-115%) rotateX(-80deg) scale(0.62); opacity: 0; }
+  30% { opacity: 1; }
+  52% { transform: translateY(7px) rotateX(13deg) scale(1.035); }
+  70% { transform: translateY(-3px) rotateX(-5deg) scale(0.992); }
+  86% { transform: translateY(1px) rotateX(1.5deg) scale(1.002); }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes ev-out { to { transform: translateY(-34px) rotateX(58deg) scale(0.86); opacity: 0; } }
+@keyframes ev-pop {
+  0% { transform: scale(0) rotate(-35deg); }
+  60% { transform: scale(1.18) rotate(8deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+@keyframes ev-bob { 0%, 100% { translate: 0 0; rotate: 0deg; } 50% { translate: 0 -4px; rotate: -4deg; } }
+@keyframes ev-title { from { transform: translateX(-14px) scale(0.85); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes ev-fade { from { opacity: 0; } }
+@keyframes ev-spin { to { rotate: 360deg; } }
+@keyframes ev-shine { 0% { transform: translateX(-110%); } 55%, 100% { transform: translateX(110%); } }
+@keyframes ev-aura { 0% { opacity: 0; scale: 0.4; } 25% { opacity: 1; scale: 1.05; } 80% { opacity: 0.75; scale: 1; } 100% { opacity: 0; scale: 1.1; } }
+@keyframes ev-chase { to { background-position: 16px 2px, 24px calc(100% - 2px); } }
+@keyframes ev-flicker { 0% { opacity: 0; } 12% { opacity: 1; } 20% { opacity: 0.2; } 30% { opacity: 1; } 42% { opacity: 0.45; } 50%, 100% { opacity: 1; } }
+@keyframes ev-foil { to { background-position: 300% 0; } }
+@keyframes ev-drip { from { transform: scaleY(0.15); } to { transform: none; } }
+@keyframes ev-ooze { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.18); } }

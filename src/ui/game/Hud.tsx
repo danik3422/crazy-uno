@@ -3,6 +3,7 @@ import { CNAME, HEX, teamName } from '../../game/content';
 import { render, useT, type Msg } from '../../i18n';
 import type { GameView } from '../../game/view';
 import { AvatarImg } from '../components/AvatarImg';
+import { EventIcon } from '../components/EventIcon';
 import { cardImage } from '../../three/textures';
 import { TurnTimer } from './TurnTimer';
 import type { OnlineCtx } from './onlineCtx';
@@ -88,10 +89,10 @@ export function Hud({ game, toasts, bombLeft, online, locked, roundLeft }: Props
           {s.teams && game.viewer() !== null && (
             <span className={`team-pill t${s.teams[game.viewer()!]}`} title={t('hud.yourTeam')}>{teamName(s.teams[game.viewer()!])}</span>
           )}
-          {s.blindTurns > 0 && <span title={t('hud.blindTitle')}>🕶️</span>}
-          {s.blitzTurns > 0 && !bombLeft && <span title={t('hud.blitzTitle')}>⚡</span>}
+          {s.blindTurns > 0 && <span className="ev-chip" title={t('hud.blindTitle')}><EventIcon id="blind" size={18} /></span>}
+          {s.blitzTurns > 0 && !bombLeft && <span className="ev-chip" title={t('hud.blitzTitle')}><EventIcon id="blitz" size={18} /></span>}
           {bombLeft > 0 && (
-            <span className={`bombTimer ${bombLeft <= 3 ? 'hot' : ''}`}>{s.timerKind === 'blitz' ? '⚡' : '💣'} {bombLeft}</span>
+            <span className={`bombTimer ${bombLeft <= 3 ? 'hot' : ''}`}>{s.timerKind === 'blitz' ? <EventIcon id="blitz" size={16} /> : '💣'} {bombLeft}</span>
           )}
         </div>
       </div>

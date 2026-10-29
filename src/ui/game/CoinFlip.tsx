@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { EventIcon } from '../components/EventIcon';
 import { useT } from '../../i18n';
 import type React from 'react';
 import { CoinHeads, CoinTails } from './CoinFaces';
@@ -25,7 +26,7 @@ export function CoinFlip({ name, coin, onGuess, onDone }: Props) {
 
   return (
     <>
-      <p className="muted">{t('coin.title')}</p>
+      <p className="muted ev-line"><EventIcon id="coin" size={22} />{t('coin.title')}</p>
       <h2>{t('coin.ask', { who: name })}</h2>
       <div className="coin-stage">
         <div

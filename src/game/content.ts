@@ -70,29 +70,15 @@ export const DARE_COUNT = 30;
 export const PUNISH_COUNT = 10;
 export const GROUP_DARE_COUNT = 10;
 
-const EVENT_ICONS: Record<EventId, string> = {
-  meteor: '☄️',
-  recolor: '🎨',
-  mono: '🌈',
-  carousel: '🎠',
-  robin: '🏹',
-  upside: '🙃',
-  blind: '🕶️',
-  blitz: '⚡',
-  lightning: '🌩️',
-  jackpot: '🍀',
-  group: '🎤',
-  coin: '🪙',
-  bomber: '✈️',
-};
+const EVENT_IDS: EventId[] = ['meteor', 'recolor', 'mono', 'carousel', 'robin', 'upside', 'blind', 'blitz', 'lightning', 'jackpot', 'group', 'coin', 'bomber'];
 
+/** Every random event: its name and description in the current language (the icons are drawn: three/themes/eventIcons.ts). */
 export const EVENTS = Object.fromEntries(
-  (Object.keys(EVENT_ICONS) as EventId[]).map(id => [id, {
-    icon: EVENT_ICONS[id],
+  EVENT_IDS.map(id => [id, {
     get title() { return t(`ev.${id}`); },
     get desc() { return t(`evDesc.${id}`); },
   }]),
-) as Record<EventId, { readonly icon: string; readonly title: string; readonly desc: string }>;
+) as Record<EventId, { readonly title: string; readonly desc: string }>;
 
 const THEME_IDS: ThemeId[] = ['classic', 'neon', 'space', 'halloween'];
 export const THEMES_LIST: { readonly id: ThemeId; readonly name: string; readonly desc: string }[] = THEME_IDS.map(id => ({

@@ -55,14 +55,13 @@ export function fireEvent(t: EventTools, forced?: EventId): boolean {
   // a group dare needs people to do it
   const ids = (Object.keys(EVENTS) as EventId[]).filter(id => id !== 'group' || t.hasHumans());
   const id = forced ?? pick(ids, rng);
-  const ev = EVENTS[id];
   const randomPlayer = () => pick(active, rng);
   const randomColor = () => pick(COLORS, rng);
   const title = msg(`ev.${id}`);
   const banner = (k: StrKey, p?: Params, target?: number) => {
     const sub = msg(k, p);
-    t.fx('event', title, { sub, icon: ev.icon, target });
-    t.say('log.event', { icon: ev.icon, title, sub });
+    t.fx('event', title, { sub, event: id, target });
+    t.say('log.event', { title, sub });
   };
 
   switch (id) {

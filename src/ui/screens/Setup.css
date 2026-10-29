@@ -28,7 +28,7 @@
 }
 .btn.tog { min-width: 116px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .btn.x { padding: 10px 12px; color: var(--muted); }
-.legend .ev-icon { width: 44px; flex: none; font-size: 34px; text-align: center; line-height: 1; }
+
 .prow .ava-btn { background: none; border: 0; padding: 0; cursor: pointer; border-radius: 12px; }
 .prow .ava-btn .avatar { border: 2px solid #fff; }
 /* in a team box the person/bot switch is just its icon, leaving the name room */
