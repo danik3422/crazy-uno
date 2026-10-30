@@ -35,6 +35,8 @@
 .ava-page {
   flex: 0 0 100%; display: grid; grid-template-columns: repeat(var(--cols), var(--cell)); grid-auto-rows: var(--cell);
   gap: var(--gap); padding: 10px; box-sizing: border-box; align-content: start;
+  /* the chosen one's ring and glow stay on their own page: from an edge cell they used to show on the next page */
+  overflow: hidden;
   min-height: calc(var(--rows) * var(--cell) + (var(--rows) - 1) * var(--gap) + 20px);
 }
 .ava-cell {
@@ -45,8 +47,8 @@
 .ava-cell:hover { transform: translateY(-2px) scale(1.04); }
 .ava-cell.on { transform: scale(1.06); }
 .ava-cell.on::after {
-  content: ''; position: absolute; inset: -4px; border-radius: 17px; pointer-events: none;
-  box-shadow: 0 0 0 3px var(--gold), 0 0 16px rgba(255, 208, 74, 0.7);
+  content: ''; position: absolute; inset: -3px; border-radius: 17px; pointer-events: none;
+  box-shadow: 0 0 0 3px var(--gold), 0 0 8px 1px rgba(255, 208, 74, 0.75);
 }
 .ava-cell.on::before {
   content: '✓'; position: absolute; z-index: 1; right: -6px; top: -6px; width: 20px; height: 20px; border-radius: 50%;
