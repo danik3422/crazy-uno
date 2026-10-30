@@ -3,6 +3,8 @@ services:
     name: crazy-uno
     runtime: node
     plan: free
+    # deploy a new commit on main only after the GitHub checks (.github/workflows/ci.yml) pass
+    autoDeployTrigger: checksPass
     buildCommand: npm ci && npm run build
     startCommand: npm start
     healthCheckPath: /api/health

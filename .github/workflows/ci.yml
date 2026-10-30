@@ -1,0 +1,42 @@
+# Checks every push and pull request: the tests, a full build (TypeScript included), and that the built
+# server starts and answers. Render deploys main only after these checks pass (see render.yaml).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Tests
+        run: npm test
+
+      - name: Build (type check, client, server)
+        run: npm run build
+
+      - name: Built server starts and answers
+        run: |
+          PORT=3999 npm start > server.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3999/api/health > /dev/null; then echo "server is up"; exit 0; fi
+            sleep 1
+          done
+          echo "server did not answer"; cat server.log; exit 1
