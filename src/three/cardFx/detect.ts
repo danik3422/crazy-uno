@@ -17,6 +17,7 @@ export interface Snap {
   firstIds: (number | null)[];
   logLen: number;
   outs: boolean[];
+  pending: number;
 }
 
 export function snap(s: State): Snap {
@@ -32,6 +33,7 @@ export function snap(s: State): Snap {
     firstIds: s.players.map(p => (p.hand[0] && !p.hand[0].hidden ? p.hand[0].id : null)),
     logLen: s.log.length,
     outs: s.players.map(p => !!p.out),
+    pending: s.pending,
   };
 }
 
@@ -69,7 +71,14 @@ export interface KnockoutTrigger {
   target: number;
 }
 
-export type Trigger = PlayTrigger | ResolveTrigger | KnockoutTrigger;
+/** A penalty was taken: the real cards fly from the deck to `target`, the hit lands with the last of them. */
+export interface TakeTrigger {
+  kind: 'take';
+  target: number;
+  n: number;
+}
+
+export type Trigger = PlayTrigger | ResolveTrigger | KnockoutTrigger | TakeTrigger;
 
 type NextIdx = (from: number, steps?: number) => number;
 
@@ -113,6 +122,13 @@ export function detect(prev: Snap | null, s: State, next: NextIdx): Trigger[] {
   if (!prev) return [];
   const out: Trigger[] = [];
   s.players.forEach((p, i) => { if (p.out && !prev.outs[i]) out.push({ kind: 'knockout', target: i }); });
+  // the stacked penalty was drawn: whoever's hand grew by it takes the hit (a knock-out has its own effect)
+  if ((prev.pending ?? 0) > 0 && s.pending === 0) {
+    s.players.forEach((p, i) => {
+      const grew = p.hand.length - (prev.hands[i] ?? 0);
+      if (grew >= 2 && !p.out) out.push({ kind: 'take', target: i, n: grew });
+    });
+  }
   const top = s.discard[s.discard.length - 1];
   const played = !!top && top.id !== prev.topId && prev.topId !== null;
 

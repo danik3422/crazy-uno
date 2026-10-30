@@ -1,7 +1,6 @@
 import { CELL_ID } from '../atlas';
 import type { Active, Kit, Motif } from '../kit';
 import { FOUR, WHITE as WHITE_HOT, burst, easeOut, flash, once, ring, splash } from '../shapes';
-import { salvo } from './penalty';
 import { whirl } from './reverse';
 import { shake } from '../../fxState';
 
@@ -40,9 +39,9 @@ export const wild: Motif = {
   },
 };
 
-/** Wild +4 / +6 / +10: the same, then the penalty cards go at the victim, heavier each step. */
+/** Wild +4 / +6 / +10: the same, heavier each step (the penalty cards fly when they are taken). */
 export const wildDraw: Motif = {
-  life: 2.2,
+  life: 1.6,
   waits: true,
   frame(k, a, t, since) {
     if (since < 0) {
@@ -64,20 +63,18 @@ export const wildDraw: Motif = {
       ring(k, a.pile.x, a.pile.z, s, 1.0, 1, 10, a.color, 1, true);
       ring(k, a.pile.x, a.pile.z, s - 0.18, 1.0, 1, 8, WHITE_HOT, 0.8, true);
     }
-    salvo(k, a, s - 0.15);
   },
 };
 
-/** Wild reverse +4: the arrows whirl at once, then splash and four cards at the new victim. */
+/** Wild reverse +4: the arrows whirl at once, then the splash (the cards fly when they are taken). */
 export const wildRev4: Motif = {
-  life: 2.1,
+  life: 1.6,
   waits: true,
   frame(k, a, t, since) {
     whirl(k, a, t, 1.25);
     if (since < 0) return charge(k, a, t, 0);
     if (since < ORB_IN) charge(k, a, t, since / ORB_IN);
     paint(k, a, since - ORB_IN, 1);
-    salvo(k, a, since - ORB_IN - 0.15);
   },
 };
 

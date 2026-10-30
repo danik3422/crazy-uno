@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { sound } from '../../audio/sound';
 import type { Game } from '../../game/engine';
 import type { GameView } from '../../game/view';
-import { DEAL_STEP_MS, dealMs, SHUFFLE_MS, UPRIGHT_GRACE_MS } from '../../net/protocol';
+import { DEAL_STEP_MS, dealMs, dealTiming, SHUFFLE_MS, UPRIGHT_GRACE_MS } from '../../net/protocol';
 import { RemoteGame } from '../../net/remoteGame';
 import { fxState, nowSec, summonMascot } from '../../three/fxState';
 import { lastPlace } from '../../three/layout';
@@ -57,14 +57,16 @@ export function useRoundStart(game: GameView, local: Game | null, version: numbe
     later(shuffleAt - 0.55, () => setStage('dealing')); // the curtain is gone before the first cut
     later(shuffleAt + 0.35, () => sound.play('shuffle'));
     later(shuffleAt + 1.25, () => sound.play('shuffle'));
-    // a soft flick for every few cards as they leave the deck
-    const flicks = Math.floor(((end - at) * 1000 - 900) / (DEAL_STEP_MS * 3));
-    for (let i = 1; i <= flicks; i++) later(at + 0.8 + (i * DEAL_STEP_MS * 3) / 1000, () => sound.play('draw'));
+    // a soft flick with every third card, timed to the moment it leaves the deck (card k leaves at at + k × step),
+    // then the pile's first card slapping down
+    const { handsMs, pileMs } = dealTiming(game.s.players.length, game.s.table?.handSize ?? 7);
+    for (let ms = 0; ms < handsMs; ms += DEAL_STEP_MS * 3) later(at + ms / 1000, () => sound.play('draw'));
+    later(at + pileMs / 1000 + 0.4, () => sound.play('card')); // as it lands
     later(end, () => {
       setStage('play');
       summonMascot('fly', 1.2);
     });
-  }, []);
+  }, [game]);
 
   const { phone, portrait } = usePhone();
   const upright = phone && portrait;

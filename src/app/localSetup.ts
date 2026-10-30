@@ -1,4 +1,5 @@
-import { cleanTable, DEFAULT_RULES, isTheme } from '../game/content';
+import { cleanTable, DEFAULT_RULES, isTheme, PRESETS } from '../game/content';
+import type { Rules } from '../game/types';
 import { randomBot } from '../game/avatars';
 import { botNames, t } from '../i18n/core';
 import type { GameConfig, LocalSetup } from '../game/engine';
@@ -6,10 +7,22 @@ import { seatByTeams, teamsOf } from '../game/teams';
 import { readJson, STORAGE_KEYS, writeJson } from '../lib/storage';
 
 /** First visit: you and two bots (named in the current language), with the default rules. */
-const defaultSetup = (): LocalSetup => ({
-  players: [{ name: t('setup.me'), bot: false }, { name: botNames()[0], bot: true }, { name: botNames()[1], bot: true }],
-  rules: { ...DEFAULT_RULES },
-});
+const defaultSetup = (): LocalSetup => {
+  const players: LocalSetup['players'] = [{ name: t('setup.me'), bot: false }];
+  // each bot gets its own robot face up front, so bots added later never share one
+  for (const name of botNames().slice(0, 2)) players.push({ name, bot: true, avatar: randomBot(players).avatar });
+  return { players, rules: { ...DEFAULT_RULES } };
+};
+
+/**
+ * Saved rules plus any rule added since. A new rule takes the value of the mode the saved rules matched
+ * (Classic stays Classic), otherwise its default.
+ */
+function withNewRules(saved: Partial<Rules> | undefined): Rules {
+  const known = Object.keys(saved ?? {}) as (keyof Rules)[];
+  const mode = PRESETS.find(p => known.every(k => p.rules[k] === saved?.[k]));
+  return { ...DEFAULT_RULES, ...mode?.rules, ...saved };
+}
 
 /** The players, rules, table and theme of the last local game (anything added since then gets its default). */
 export function loadLocalSetup(): LocalSetup {
@@ -20,7 +33,7 @@ export function loadLocalSetup(): LocalSetup {
     for (const p of saved.players) players.push(p.bot ? { ...p, ...randomBot([...saved.players.filter(q => !q.bot), ...players]) } : p);
     return {
       players,
-      rules: { ...DEFAULT_RULES, ...saved.rules },
+      rules: withNewRules(saved.rules),
       table: saved.table ? cleanTable(saved.table) : undefined,
       theme: isTheme(saved.theme) ? saved.theme : undefined,
     };

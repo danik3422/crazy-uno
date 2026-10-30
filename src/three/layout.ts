@@ -1,6 +1,8 @@
 import type { GameView } from '../game/view';
 import { DEAL_STEP_MS, dealTiming } from '../net/protocol';
+import * as THREE from 'three';
 import { dropZone } from './drag';
+import { CARD_H, CARD_W } from './cardShape';
 
 export type Vec3 = [number, number, number];
 export type Zone = 'deck' | 'discard' | 'hand' | 'opp';
@@ -18,13 +20,14 @@ export interface Target {
   hidden?: boolean;
   /** smaller cards for big hands, so they still fit on screen */
   scale?: number;
-  /**
-   * on its way from the deck a card of yours is first shown big in front of you:
-   * 'always' for the card you drew to play, 'single' when it comes alone (not part of a +2 / +4 batch)
-   */
-  reveal?: 'always' | 'single';
   /** cards that bob together on a table that floats them (one hand or one opponent's wall) */
   bobGroup?: number;
+  /** place in its owner's hand: cards drawn together leave the deck in this order */
+  seq?: number;
+  /** the card you drew and can play: held up big in front of you until you play it or pass */
+  held?: boolean;
+  /** Jump-In: not your turn, but this card is exactly like the top one and may be thrown in */
+  jump?: boolean;
 }
 
 export interface View {
@@ -67,6 +70,12 @@ export function visibleHalfWidth(v: View, y: number, z: number) {
 }
 
 const PI = Math.PI;
+/** Where the card you drew (and can play) waits in front of you: centred over your hand, facing you. */
+export const HELD = {
+  landscape: { pos: [0, 1.82, 3.72] as Vec3, tilt: -0.62, scale: 1.3 },
+  portrait: { pos: [0, 4.6, 4.7] as Vec3, tilt: -1.08, scale: 1.2 },
+};
+
 /** height of the endless deck stack, and how many real cards lie on top of it */
 export const DECK_TOP = 0.42;
 export const DECK_SHOWN = 3;
@@ -103,7 +112,9 @@ export function seatAngle(g: GameView, i: number) {
   const k = n - 1;
   if (k === 1) return 1.5 * PI;
   if (k === 2) return PI + (PI * (rel - 0.5)) / 2;
-  return PI - 0.12 + ((PI + 0.24) * (rel - 1)) / (k - 1);
+  // a crowded table reaches a little further down the sides, so the end seats' plates clear their neighbours' fans
+  const over = k >= 6 ? 0.24 : 0.12;
+  return PI - over + ((PI + 2 * over) * (rel - 1)) / (k - 1);
 }
 
 /** Radius of the ring of direction arrows around the pile (x; z is squashed by RING_Z). */
@@ -121,11 +132,9 @@ export function deckSpot(g: GameView, v: View): Vec3 {
   const n = g.s.players.length;
   const seat = g.seat();
   // each opponent's fan and plate: the fan stands 0.8 above the table, so on screen it sits further back
-  const A0 = arena(v);
   const others = Array.from({ length: n }, (_, i) => i).filter(i => i !== seat).map(i => {
-    const a = seatAngle(g, i);
-    const side = Math.abs(Math.cos(a));
-    return [Math.cos(a) * A0.rx * (1 - side * 0.12), 0, Math.sin(a) * A0.rz - 0.8] as Vec3;
+    const w = oppWall(g, i, v);
+    return [w.pos[0], 0, w.pos[2] - 0.8] as Vec3;
   });
   // what the camera shows of the table, and where your hand starts (in table coordinates)
   const xMax = v.portrait ? 2.2 : 5.4;
@@ -166,10 +175,92 @@ export function deckCenter(_g: GameView, v: View): Vec3 {
   return [A.discard[0], 0, A.discard[2]];
 }
 
+/** Where player i sits: for an opponent, the foot of their fan of cards (see oppWall). */
 export function seatPos(g: GameView, i: number, v: View): Vec3 {
+  if (i !== g.seat()) return oppWall(g, i, v).pos;
   const a = seatAngle(g, i);
   const { rx, rz } = arena(v);
   return [Math.cos(a) * rx, 0, Math.sin(a) * rz];
+}
+
+/**
+ * An opponent's hand, as in the console UNO: an upright fan of card backs turned to the camera.
+ * Every seat gets exactly the same fan (lean, spread, overlap); only its place on the table differs.
+ * Units are card sizes (times the wall's scale).
+ */
+export const OPP_FAN = {
+  /** leaning back, so the camera (which looks down) sees the backs rather than an edge */
+  lean: 0.22,
+  /** the fan turns around a point this far below the middle card's centre */
+  radius: 2.4,
+  /** in-plane angle between neighbours, and the whole fan's spread at most (radians) */
+  step: 0.07,
+  spread: 0.56,
+  /** each card stands this much in front of the one before (a card is 0.012 thick: never closer) */
+  depth: 0.026,
+};
+/** the fan floats this much (card heights) over the table, so its outer cards' corners stay above it */
+const FAN_LIFT = (OPP_FAN.radius * (1 - Math.cos(OPP_FAN.spread / 2)) + (CARD_W / 2) * Math.sin(OPP_FAN.spread / 2)) / CARD_H + 0.02;
+/** half the width of a full fan (card widths, at scale 1) */
+const FAN_HALF = OPP_FAN.radius * Math.sin(OPP_FAN.spread / 2) + (CARD_W / 2) * Math.cos(OPP_FAN.spread / 2) + (CARD_H / 2) * Math.sin(OPP_FAN.spread / 2);
+
+const eulTmp = new THREE.Euler(0, 0, 0, 'YXZ');
+const qTmp = new THREE.Quaternion();
+const vTmp = new THREE.Vector3();
+
+export interface OppWall {
+  /** the foot of the fan, on the table */
+  pos: Vec3;
+  /** the point the fan turns around */
+  pivot: Vec3;
+  /** toward the viewer, out of the fan (each next card steps this way) */
+  back: Vec3;
+  /** straight up along the fan */
+  up: Vec3;
+  /** yaw that turns the backs to the camera */
+  face: number;
+  scale: number;
+  /** height of the fan's top above the table */
+  top: number;
+}
+
+/**
+ * Opponent i's fan. The same size on screen at every seat (a seat nearer the camera gets slightly smaller cards),
+ * smaller for a crowded table, and pulled in from the edges just enough to stay on screen.
+ */
+export function oppWall(g: GameView, i: number, v: View): OppWall {
+  const A = arena(v);
+  const a = seatAngle(g, i);
+  const cam = v.portrait ? CAMERA.portrait.pos : CAMERA.landscape.pos;
+  const n = g.s.players.length;
+  // the size of every fan on screen: a little smaller as the table fills up
+  const base = (v.portrait ? 0.62 : 0.86) * (n <= 4 ? 1 : n === 5 ? 0.94 : n === 6 ? 0.88 : n === 7 ? 0.82 : 0.78);
+  let x = Math.cos(a) * A.rx;
+  const z = Math.sin(a) * A.rz;
+  const midY = 0.75 * base;
+  // the far seat is the reference: a fan nearer the camera shrinks so it looks the same size
+  const dRef = Math.hypot(cam[0], cam[1] - midY, cam[2] + A.rz);
+  const scale = base * Math.min(1, Math.hypot(cam[0] - x, cam[1] - midY, cam[2] - z) / dRef);
+  // keep the whole fan (and the mouse parallax) on screen
+  const room = visibleHalfWidth(v, midY, z) - PARALLAX_X - FAN_HALF * scale - (v.portrait ? 0.15 : 0.3);
+  if (Math.abs(x) > room) x = Math.sign(x) * Math.max(0, room);
+  const face = Math.atan2(x - cam[0], z - cam[2]);
+  eulTmp.set(OPP_FAN.lean, face, 0);
+  qTmp.setFromEuler(eulTmp);
+  vTmp.set(0, 1, 0).applyQuaternion(qTmp);
+  const up: Vec3 = [vTmp.x, vTmp.y, vTmp.z];
+  vTmp.set(0, 0, -1).applyQuaternion(qTmp);
+  const back: Vec3 = [vTmp.x, vTmp.y, vTmp.z];
+  const k = (FAN_LIFT * CARD_H + CARD_H / 2 - OPP_FAN.radius) * scale;
+  return {
+    pos: [x, 0, z],
+    pivot: [x + up[0] * k, up[1] * k, z + up[2] * k],
+    back,
+    up,
+    face,
+    scale,
+    top: (FAN_LIFT + 1) * CARD_H * scale * up[1],
+  };
 }
 
 const hash = (n: number) => {
@@ -248,6 +339,16 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
       const h = { ...A.hand, maxW: Math.min(A.hand.maxW, fitW) };
       // blind event: you still play, but you cannot see what
       const faceUp = (viewer === seat && s.blindTurns === 0) || over;
+      // the card you just drew and can play stays up in front of you until you play it (or pass)
+      const held = myTurn && faceUp && s.phase === 'play' && s.drawn && s.pending === 0
+        ? p.hand.find(c => c.id === s.lastDrawn && g.playable(c))
+        : undefined;
+      if (held) {
+        const H = v.portrait ? HELD.portrait : HELD.landscape;
+        out.set(held.id, { pos: H.pos, rot: [H.tilt, 0, 0], zone: 'hand', interactive: true, dim: false, delay: 0, scale: H.scale, held: true, seq: p.hand.indexOf(held) });
+      }
+      const hand = held ? p.hand.filter(c => c !== held) : p.hand;
+      const m = hand.length;
       // a big hand goes into two rows (the back row a little higher), so every card stays readable
       const rows = m > (v.portrait ? 11 : 20) ? 2 : 1;
       const backN = rows === 2 ? Math.ceil(m / 2) : m;
@@ -257,7 +358,7 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
       const nz = Math.cos(tilt);
       const uy = Math.cos(tilt);
       const uz = Math.sin(tilt);
-      p.hand.forEach((c, k) => {
+      hand.forEach((c, k) => {
         const row = rows === 2 && k >= backN ? 1 : 0;
         const inRow = row ? k - backN : k;
         const rowN = row ? m - backN : backN;
@@ -268,12 +369,13 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
         const x = off * sp;
         let interactive = false;
         let dim = false;
+        let jump = false;
         if (myTurn && !over) {
           if (s.phase === 'play') {
             interactive = g.playable(c);
             dim = !interactive;
           } else if (s.phase === 'choose' && s.choice?.kind === 'card') interactive = true;
-        }
+        } else if (!over && faceUp && g.jumpable(c)) interactive = jump = true;
         const lift = interactive ? 0.3 : 0;
         // each card strictly in front of its left neighbour; the front row in front of the back row.
         // The step shrinks for big hands so the whole fan never comes too close to the camera.
@@ -283,60 +385,42 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
         out.set(c.id, {
           pos: [x, h.y + lift + ny * layer + uy * up - Math.abs(off) * sp * 0.02, h.z + nz * layer + uz * up],
           rot: [faceUp ? tilt : tilt + PI, 0, -off * Math.min(0.035, 0.4 / rowN)],
-          zone: 'hand', interactive, dim, delay: dealDelay(c.dealIdx), scale: cs,
-          reveal: !faceUp || over ? undefined : s.drawn && c.id === s.lastDrawn ? 'always' : 'single',
+          zone: 'hand', interactive, dim, jump, delay: dealDelay(c.dealIdx), scale: cs, seq: p.hand.indexOf(c),
         });
       });
       return;
     }
-    // opponents hold their cards standing, backs to the middle of the table
-    const a = seatAngle(g, pi);
-    // yaw that turns a card's face toward its owner, swung most of the way round so the backs face the camera
-    const radial = PI / 2 - a;
-    const toCam = PI - radial;
-    const face = radial + (Math.atan2(Math.sin(toCam), Math.cos(toCam))) * 0.6;
+    // opponents hold their cards in an upright fan, backs to the camera: every seat looks the same
+    const w = oppWall(g, pi, v);
+    const { scale: S, face } = w;
     const lx: Vec3 = [Math.cos(face), 0, -Math.sin(face)];
-    const nx = Math.cos(a);
-    const nz = Math.sin(a);
-    // side seats sit nearer the middle so their fans stay on screen
-    const side = Math.abs(nx);
-    const base: Vec3 = [nx * A.rx * (1 - side * 0.12), 0, nz * A.rz];
-    const sp = Math.min(v.portrait ? 0.22 : 0.28, (v.portrait ? 1.5 : 2.2) / Math.max(m - 1, 1));
-    // the back of the cards points this way (toward the camera, roughly)
-    const bx = -Math.sin(face);
-    const bz = -Math.cos(face);
     if (over) {
       // finale: leftover cards spread face up on the table in front of their owner
       const fsp = Math.min(0.5, 2.4 / Math.max(m - 1, 1));
       p.hand.forEach((c, k) => {
         const off = k - (m - 1) / 2;
         out.set(c.id, {
-          pos: [base[0] * 0.92 + lx[0] * off * fsp, 0.03 + k * 0.004, base[2] * 0.92 + lx[2] * off * fsp],
+          pos: [w.pos[0] * 0.92 + lx[0] * off * fsp, 0.03 + k * 0.004, w.pos[2] * 0.92 + lx[2] * off * fsp],
           rot: [-PI / 2, 0, -off * 0.05],
           zone: 'opp', interactive: false, dim: false, delay: 0,
         });
       });
       return;
     }
-    // a wall of cards standing upright on the table, backs to the camera, in one neat overlapping row:
-    // a fixed width, so more cards squeeze closer together instead of growing a huge arc.
-    // Side seats stand turned toward the middle, so they get a narrower row and slightly smaller cards
-    const half = Math.min(((m - 1) / 2) * sp * 1.15, v.portrait ? 0.85 : 1.3) * (1 - side * 0.4);
-    const oscale = (m > 10 ? 0.86 : 0.95) * (1 - side * (v.portrait ? 0.2 : 0.1));
-    // each card stands clearly in front of the one before (a card is 0.012 thick): never closer than this,
-    // or neighbours cut into each other and flicker; a big hand just makes a slightly deeper wall
-    const step = 0.026;
+    // the same fan whatever the seat: the same lean, the same spread, each card a fixed step in front of the last
+    const step = Math.min(OPP_FAN.step, OPP_FAN.spread / Math.max(m - 1, 1));
     p.hand.forEach((c, k) => {
-      const u = m > 1 ? (k - (m - 1) / 2) / ((m - 1) / 2) : 0; // -1 … 1 along the row
-      const bend = u * u * 0.05; // the ends curve in a little, like a hand of cards
-      const stack = k * step; // each next card a hair closer to the viewer, so the row overlaps cleanly
+      const phi = (k - (m - 1) / 2) * step;
+      eulTmp.set(OPP_FAN.lean, face, PI + phi);
+      qTmp.setFromEuler(eulTmp);
+      // the card's centre swings around the pivot below the fan (in the card's own frame the pivot is "above":
+      // the card is turned upside down so its back reads upright)
+      vTmp.set(0, -OPP_FAN.radius * S, 0).applyQuaternion(qTmp);
+      const d = k * OPP_FAN.depth;
       out.set(c.id, {
-        // the bottom edge rests on the table
-        pos: [base[0] + lx[0] * u * half + nx * bend + bx * stack, 0.75 * oscale + 0.02, base[2] + lx[2] * u * half + nz * bend + bz * stack],
-        // the back texture is drawn for cards lying on the table; standing ones turn it upright.
-        // A barely-there lean and tilt keep it from looking like a printed strip
-        rot: [0.06, face, u * 0.05 + PI],
-        zone: 'opp', interactive: false, dim: false, delay: dealDelay(c.dealIdx), scale: oscale, bobGroup: pi + 1,
+        pos: [w.pivot[0] + vTmp.x + w.back[0] * d, w.pivot[1] + vTmp.y + w.back[1] * d, w.pivot[2] + vTmp.z + w.back[2] * d],
+        rot: [OPP_FAN.lean, face, PI + phi],
+        zone: 'opp', interactive: false, dim: false, delay: dealDelay(c.dealIdx), scale: S, bobGroup: pi + 1, seq: k,
       });
     });
   });

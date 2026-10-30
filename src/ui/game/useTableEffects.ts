@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { haptics } from '../../audio/haptics';
 import { type Sfx, sound } from '../../audio/sound';
-import type { FxKind } from '../../game/types';
+import type { EventId, FxKind, State } from '../../game/types';
 import type { GameView } from '../../game/view';
 import { BOMB_FALL, BOMB_RELEASE, fxState, METEOR_FALL, nowSec, shake, SPIN_TIME, summonMascot } from '../../three/fxState';
 import { spawn } from '../../three/layout';
@@ -11,7 +12,7 @@ import type { Msg } from '../../i18n/msg';
 const TOAST_MS = 1900;
 const FLASH_MS = 500;
 /** effects whose text gets the big toast */
-const BIG_TOASTS: FxKind[] = ['uno', 'boom', 'chaos', 'caught', 'challenge', 'knockout'];
+const BIG_TOASTS: FxKind[] = ['uno', 'boom', 'chaos', 'caught', 'challenge', 'knockout', 'jump'];
 /** effects that only need a sound */
 const SOUND_OF: Partial<Record<FxKind, Sfx>> = {
   uno: 'uno',
@@ -19,7 +20,23 @@ const SOUND_OF: Partial<Record<FxKind, Sfx>> = {
   challenge: 'challenge',
   timeout: 'penalty',
   knockout: 'boom',
+  // Jump-In: a card thrown in out of turn
+  jump: 'whoosh',
 };
+
+/** A buzz on the phone for the loud moments of the table. */
+const HAPTIC_OF: Partial<Record<FxKind, 'medium' | 'heavy' | 'uno'>> = { uno: 'uno', caught: 'heavy', boom: 'heavy', knockout: 'heavy', meteor: 'medium', lightning: 'medium', jump: 'medium' };
+
+/** Events with a stinger of their own (the rest get the table's general one). */
+const EVENT_SOUND: Partial<Record<EventId, Sfx>> = { recolor: 'recolor', mono: 'recolor', jackpot: 'jackpot', carousel: 'carousel', robin: 'carousel' };
+
+/** Whether the person at this screen won (a teammate's win counts); with nobody watching, a human's win does. */
+function viewerWon(s: State, viewer: number | null): boolean {
+  const w = s.winner;
+  if (w === null) return false;
+  if (viewer === null) return !s.players[w]?.bot;
+  return w === viewer || (!!s.teams && s.teams[w] === s.teams[viewer]);
+}
 
 /**
  * Turns the game's effect queue (`s.fx`) into what you see and hear: toasts, the event banner,
@@ -66,6 +83,8 @@ export function useTableEffects(game: GameView, version: number, onOver?: (winne
       lastFx.current.id = f.id;
       const sfx = SOUND_OF[f.kind];
       if (sfx) sound.play(sfx);
+      const buzz = HAPTIC_OF[f.kind];
+      if (buzz) haptics.play(buzz);
       switch (f.kind) {
         case 'shake':
           shake(0.35, 0.45);
@@ -81,14 +100,15 @@ export function useTableEffects(game: GameView, version: number, onOver?: (winne
           sound.play('whoosh');
           break;
         case 'win':
-          sound.play('win');
+          sound.play(viewerWon(s, game.viewer()) ? 'win' : 'lose');
+          if (viewerWon(s, game.viewer())) haptics.play('win');
           fxState.winAt = nowSec();
           summonMascot('loop', 0.8);
           break;
         case 'event':
           fxState.eventAt = nowSec();
           fxState.event = { at: nowSec(), id: f.event ?? null, target: f.target ?? s.cur, seq: fxState.event.seq + 1 };
-          sound.play('event');
+          sound.play((f.event && EVENT_SOUND[f.event]) || 'event');
           // the mascot sometimes flies by, unless it is about to come as the bomber anyway
           if (Math.random() < 0.5 && !s.fx.some(x => x.kind === 'bomber' && x.id > f.id)) summonMascot('fly', 0.3);
           setBanner({ id: f.id, event: f.event ?? null, title: f.text ?? null, sub: f.sub ?? null, top: s.phase !== 'play' });
@@ -96,6 +116,7 @@ export function useTableEffects(game: GameView, version: number, onOver?: (winne
         case 'meteor':
           fxState.meteor = { at: nowSec() + 0.6, target: f.target ?? 0 };
           fxState.holdUntil = nowSec() + 0.6 + METEOR_FALL;
+          setTimeout(() => sound.play('meteor'), Math.max(0, (0.6 + METEOR_FALL - 0.9) * 1000));
           setTimeout(() => { shake(1.3, 0.9); setFlash(x => x + 1); sound.play('boom'); }, (0.6 + METEOR_FALL) * 1000);
           break;
         case 'lightning':

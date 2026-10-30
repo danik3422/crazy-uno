@@ -22,15 +22,21 @@ export function useKeyboardPlay(game: GameView, locked: boolean, onCard: (id: nu
       const v = game.viewer();
       const mine = !locked && v !== null && v === s.cur && s.phase !== 'over';
       const hand = v !== null ? s.players[v].hand : [];
+      // Jump-In: an identical card may go out of turn
+      const jumpable = (id: number) => {
+        const c = hand.find(x => x.id === id);
+        return !!c && !locked && v !== s.cur && game.jumpable(c);
+      };
       const pickable = (id: number) => {
         const c = hand.find(x => x.id === id);
+        if (jumpable(id)) return true;
         if (!c || !mine) return false;
         return s.phase === 'play' ? game.playable(c) : s.phase === 'choose' && s.choice?.kind === 'card';
       };
       const describe = (id: number) => {
         const c = hand.find(x => x.id === id);
         if (!c) return '';
-        return tr('kb.card', { card: render(cardMsg(c)), ok: pickable(id) ? tr('kb.ok') : '', i: hand.indexOf(c) + 1, n: hand.length });
+        return tr('kb.card', { card: render(cardMsg(c)), ok: jumpable(id) ? tr('kb.jump') : pickable(id) ? tr('kb.ok') : '', i: hand.indexOf(c) + 1, n: hand.length });
       };
 
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {

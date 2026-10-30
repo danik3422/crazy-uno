@@ -18,6 +18,17 @@ export function useLocalBots(local: Game | null, version: number, locked: boolea
     return () => clearTimeout(t);
   }, [local, version, locked]);
 
+  // Jump-In: a bot holding the same card as the top one throws it in out of turn (the server does this online).
+  // The plan is rolled once per top card, so re-running this on every change only re-aims the same timer.
+  const jump = !locked && local ? local.botJumpPlan() : null;
+  const jumpKey = jump ? `${jump.top}:${jump.seat}:${jump.cardId}` : '';
+  useEffect(() => {
+    if (!local || !jump) return;
+    const t = setTimeout(() => local.jumpIn(jump.seat, jump.cardId, jump.top, jump.uno), Math.max(0, jump.at - Date.now()));
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [local, jumpKey]);
+
   // a bot that noticed a missing UNO speaks up after a pause (the server does this online)
   const catchWindow = local?.s.unoCatch ?? null;
   useEffect(() => {

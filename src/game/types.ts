@@ -59,6 +59,11 @@ export interface Rules {
    * A +4 goes back into the deck. Off: the pile always starts with a number.
    */
   startAction: boolean;
+  /**
+   * Jump-In (official house rule): holding a card exactly like the one just played (same colour and number/symbol),
+   * you may lay it out of turn; play then carries on from you as if it were your turn.
+   */
+  jumpIn: boolean;
 }
 
 export type EventId =
@@ -87,7 +92,7 @@ export interface Table {
 export type BotLevel = 'easy' | 'normal' | 'hard';
 
 /** Table look picked by the host. Card faces stay the same in every theme, so they are always easy to read. */
-export type ThemeId = 'classic' | 'neon' | 'space' | 'halloween';
+export type ThemeId = 'classic' | 'neon' | 'space' | 'halloween' | 'winter';
 
 export type Choice =
   | { kind: 'color'; title: Msg; mode?: 'dump' | 'roulette' }
@@ -108,7 +113,7 @@ export type Phase = 'handover' | 'dare' | 'group' | 'coin' | 'play' | 'choose' |
 export type FxKind =
   | 'toast' | 'shake' | 'chaos' | 'boom' | 'win' | 'uno' | 'flip'
   | 'event' | 'meteor' | 'spin' | 'lightning' | 'jackpot' | 'upside' | 'carousel' | 'bomber'
-  | 'caught' | 'challenge' | 'timeout' | 'knockout';
+  | 'caught' | 'challenge' | 'timeout' | 'knockout' | 'jump';
 export interface Fx {
   id: number;
   kind: FxKind;

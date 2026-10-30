@@ -56,9 +56,9 @@ export function ThemePicker({ value, onChange, disabled, compact }: Props) {
           >
             <span className="theme-floor" aria-hidden>
               <span className="theme-fan">
-                <img src={cardImage(PREVIEW[0], t.id)} alt="" />
-                <img src={cardImage(null, t.id)} alt="" />
-                <img src={cardImage(PREVIEW[1], t.id)} alt="" />
+                <img src={cardImage(PREVIEW[0], t.id, 50)} alt="" />
+                <img src={cardImage(null, t.id, 50)} alt="" />
+                <img src={cardImage(PREVIEW[1], t.id, 50)} alt="" />
               </span>
               <span className="theme-tick">✓</span>
             </span>

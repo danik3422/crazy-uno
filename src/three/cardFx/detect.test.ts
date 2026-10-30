@@ -103,3 +103,22 @@ describe('card effect detection', () => {
     expect(out).toEqual([]);
   });
 });
+
+describe('penalty hit', () => {
+  it('lands on whoever finally draws the stacked penalty', () => {
+    const g = game(rulesOf('classic'));
+    playAndDetect(g, card('draw2', g.s.color));
+    const victim = g.s.cur;
+    const before = snap(g.s);
+    g.draw();
+    const out = detect(before, g.s, (f, s) => g.nextIdx(f, s));
+    expect(out).toContainEqual({ kind: 'take', target: victim, n: 2 });
+  });
+
+  it('is not set off by an ordinary draw', () => {
+    const g = game(rulesOf('classic'));
+    const before = snap(g.s);
+    g.draw();
+    expect(detect(before, g.s, (f, s) => g.nextIdx(f, s)).filter(t => t.kind === 'take')).toEqual([]);
+  });
+});

@@ -5,20 +5,24 @@ import type { Card, ThemeId } from '../game/types';
 import { DRAG_HEIGHT, drag, dropZone, keySel } from './drag';
 import { SPIN_TIME, fxState, nowSec } from './fxState';
 import { lastPlace, spawn, type Target } from './layout';
-import { isPhone } from '../ui/hooks/phone';
 import { cardBodyGeometry, cardFaceGeometry, CARD_H, CARD_W } from './cardShape';
 import { cardTexture } from './textures';
 import { THEMES } from './themes';
 
 /** the printed faces, cut to the card's rounded outline */
 const plane = cardFaceGeometry();
-const X_AXIS = new THREE.Vector3(1, 0, 0);
 const Y_AXIS = new THREE.Vector3(0, 1, 0);
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
 const THICK = 0.012;
 /** seconds between cards when several are drawn in one go */
 const DRAW_GAP = 0.16;
 const deckQueue = { at: 0 };
+/**
+ * The cards that left the deck in one frame (a +4, a draw until playable, a rain…). They are visited in no
+ * particular order, so each newcomer re-sorts the batch (by owner, then place in the hand) and every flight
+ * of the batch gets its slot again; none of them has started yet, so nothing jumps.
+ */
+const deckBatch = { frame: -1, base: 0, list: [] as { key: number; f: Flight }[] };
 
 /** The card's body: a thin rounded slab, so a tilted card shows a real edge instead of a paper plane. */
 const body = cardBodyGeometry(THICK);
@@ -27,31 +31,6 @@ const edgeMat = new THREE.MeshStandardMaterial({ color: '#e4ddcf', roughness: 0.
 const edgeMatTop = Object.assign(edgeMat.clone(), { depthTest: false, transparent: true });
 /** draw order of a held card's parts (edge, then faces) when it is drawn over the hand */
 const TOP_ORDER = 1000;
-
-/** Opponents' cards stand on a glossy floor and show a faint reflection (computers only: it doubles their draws). */
-const REFLECTIONS = !isPhone();
-/** mirrors anything through the table plane (y = 0) */
-const MIRROR_Y = new THREE.Matrix4().makeScale(1, -1, 1);
-/** where the back face sits inside a card (see the back mesh below) */
-const BACK_LOCAL = new THREE.Matrix4().compose(
-  new THREE.Vector3(0, 0, -THICK / 2 - 0.0015),
-  new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, Math.PI)),
-  new THREE.Vector3(1, 1, 1),
-);
-/** the reflection fades out away from the line where the card touches the floor */
-const reflectFade = (() => {
-  const cv = document.createElement('canvas');
-  cv.width = 4;
-  cv.height = 128;
-  const ctx = cv.getContext('2d')!;
-  const g = ctx.createLinearGradient(0, 0, 0, 128);
-  g.addColorStop(0, '#000');
-  g.addColorStop(0.55, '#333');
-  g.addColorStop(1, '#fff');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, 4, 128);
-  return new THREE.CanvasTexture(cv);
-})();
 
 /** A soft glow the shape of a card, behind cards you can play right now. Shared: they all pulse together. */
 const glowPlane = new THREE.PlaneGeometry(CARD_W * 1.42, CARD_H * 1.3);
@@ -71,15 +50,17 @@ const glowMat = (() => {
   tex.colorSpace = THREE.SRGBColorSpace;
   return new THREE.MeshBasicMaterial({ map: tex, color: '#fff2b0', transparent: true, opacity: 0.55, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending });
 })();
+/**
+ * Jump-In: a card you may throw in out of turn glows bright white and pulses fast, so it reads as "now or never".
+ * Not additive: the table is always tinted the card's own colour then, and an additive glow would wash out on it.
+ */
+const jumpGlowMat = glowMat.clone();
+jumpGlowMat.color.set('#ffffff');
+jumpGlowMat.blending = THREE.NormalBlending;
 /** Each table glows its playable cards in its own colour. */
 export function setPlayableGlow(color: string) {
   glowMat.color.set(color);
 }
-
-/** The card you just drew shows up big in front of you for a moment before it goes into your hand. */
-const REVEAL = { up: 0.42, hold: 0.6, down: 0.4, size: 1.4 };
-/** how many of your cards left the deck in the same frame (a +4 sends four at once: no big reveal then) */
-const revealBatch = { frame: -1, count: 0 };
 
 const easeInOut = (p: number) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
 /** a toss: leaves the hand with speed and glides in */
@@ -106,8 +87,8 @@ interface Flight {
   toss: boolean;
   /** the card turns over on the way (face down -> face up or back): it rolls around its long side */
   flip: boolean;
-  /** first stop in front of the camera, then the rest of the way (the card you just drew) */
-  via?: { pos: THREE.Vector3; q: THREE.Quaternion; frame: number; always: boolean };
+  /** a short, plain hop back into your hand (the held card after a pass): no table flourishes */
+  tuck?: boolean;
 }
 const NORMAL = new THREE.Vector3();
 const TO_CAM = new THREE.Vector3();
@@ -156,7 +137,6 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
   /** held, dragged or lifted under the pointer: drawn on top of the rest of the hand */
   const onTop = useRef(false);
   const glowRef = useRef<THREE.Mesh>(null!);
-  const reflRef = useRef<THREE.Mesh>(null);
   const hovered = useRef(false);
   const startAt = useRef<number | null>(null);
   const placed = useRef(false);
@@ -176,6 +156,11 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
   const hopFromPrev = useRef(false);
   /** moved to another seat without changing zone (hands swapped or passed on): fly there properly */
   const farMove = useRef(false);
+  /** was held up in front of you (the drawn card): going back into the hand is a proper flight too */
+  const wasHeld = useRef(false);
+  /** whose fan this card stands in (Target.bobGroup) */
+  const lastOwner = useRef(t.bobGroup ?? 0);
+  const tucking = useRef(false);
   const fq = useMemo(() => new THREE.Quaternion(), []);
   const tRef = useRef(t);
   tRef.current = t;
@@ -295,12 +280,20 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     // a new destination during a hold (e.g. a meteor still falling) waits for the impact
     const lp = lastPos.current;
     if (!lp || lp[0] !== tt.pos[0] || lp[1] !== tt.pos[1] || lp[2] !== tt.pos[2]) {
-      if (lp && launched.current && inHandZone && tt.zone === lastZone.current && Math.hypot(tt.pos[0] - lp[0], tt.pos[2] - lp[2]) > 2.5) farMove.current = true;
+      // passed on to another opponent (swap, gift, 7-0): a proper flight even between neighbours
+      const owner = tt.bobGroup ?? 0;
+      if (lp && launched.current && inHandZone && tt.zone === lastZone.current && (Math.hypot(tt.pos[0] - lp[0], tt.pos[2] - lp[2]) > 2.5 || owner !== lastOwner.current)) farMove.current = true;
+      lastOwner.current = owner;
       if (lp && bombing && lastZone.current === 'deck') {
         dropping.current = true;
         startAt.current = fxState.drop.at + (Math.abs(card.id) % 4) * 0.14;
       } else if (lp && fxState.holdUntil > now) startAt.current = Math.max(startAt.current!, fxState.holdUntil + (card.id % 10) * 0.045);
       lastPos.current = tt.pos;
+    }
+    if (!!tt.held !== wasHeld.current) {
+      // tucked into the hand after a pass (or a timeout): a short hop, not a slow drift
+      if (wasHeld.current && launched.current && tt.zone === lastZone.current) farMove.current = tucking.current = true;
+      wasHeld.current = !!tt.held;
     }
     if (dropping.current) {
       if (now < startAt.current!) {
@@ -345,7 +338,12 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
         // after a reconnect the hands are laid out all at once; real draws leave the deck one after another
         const relayout = now < fxState.revealFrom;
         if (leavesDeck && !relayout) {
-          t0 = Math.max(now, deckQueue.at);
+          if (deckBatch.frame !== frameKey) {
+            deckBatch.frame = frameKey;
+            deckBatch.base = Math.max(now, deckQueue.at);
+            deckBatch.list = [];
+          }
+          t0 = deckBatch.base + deckBatch.list.length * DRAW_GAP;
           deckQueue.at = t0 + DRAW_GAP;
         }
         eul.set(...tt.rot);
@@ -353,21 +351,18 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
         const flip = faceSide(g.quaternion) * faceSide(tq) < 0;
         const fromQ = g.quaternion.clone();
         if (flip) fromQ.multiply(FLIP);
-        flight.current = { t0, dur, from: g.position.clone(), fromQ, apex: (toss ? 0.5 : 0.45) + dist * 0.1, fromS: g.scale.x, toss, flip };
-        if (tt.reveal && tt.zone === 'hand' && !dealing && !relayout && (leavesDeck || hopFromPrev.current)) {
-          if (revealBatch.frame !== frameKey) {
-            revealBatch.frame = frameKey;
-            revealBatch.count = 0;
-          }
-          revealBatch.count++;
-          // in front of the camera, over the near half of the table, facing you
-          const pos = new THREE.Vector3(dropZone.x, 0.9, dropZone.z + 0.9).lerp(camera.position, 0.3);
-          // leaning back a little, like the cards in your hand: facing the camera head-on it caught a glare
-          const q = camera.quaternion.clone().multiply(new THREE.Quaternion().setFromAxisAngle(X_AXIS, -0.38));
-          flight.current.via = { pos, q, frame: frameKey, always: tt.reveal === 'always' };
-          flight.current.dur = REVEAL.down;
-          flight.current.flip = false;
+        const tuck = tucking.current && tt.zone === 'hand';
+        tucking.current = false;
+        flight.current = tuck
+          ? { t0, dur: 0.42, from: g.position.clone(), fromQ, apex: 0.12, fromS: g.scale.x, toss: false, flip, tuck }
+          : { t0, dur, from: g.position.clone(), fromQ, apex: (toss ? 0.5 : 0.45) + dist * 0.1, fromS: g.scale.x, toss, flip };
+        if (leavesDeck && !relayout && deckBatch.frame === frameKey) {
+          deckBatch.list.push({ key: (tt.bobGroup ?? 0) * 1000 + (tt.seq ?? 0), f: flight.current });
+          deckBatch.list.sort((p, q) => p.key - q.key);
+          deckBatch.list.forEach((b, i) => (b.f.t0 = deckBatch.base + i * DRAW_GAP));
+          t0 = flight.current.t0;
         }
+        if (leavesDeck && tt.zone !== 'discard') fxState.drawLandAt = Math.max(fxState.drawLandAt, ...deckBatch.list.map(b => b.f.t0 + b.f.dur), t0 + flight.current.dur);
         if (tt.zone === 'discard') {
           // the slam when it lands; the pile's flash and ring wait for the same moment
           slamAt.current = t0 + dur;
@@ -392,7 +387,7 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     // a card you hold, drag or lift is drawn over the others: lifted out of an overlapping fan it would cut through its neighbours
     // while another card is being dragged, the ones under the pointer stay down
     const otherDragged = drag.id !== null && drag.id !== card.id && drag.moved;
-    const top = tt.zone === 'hand' && (drag.id === card.id || (!otherDragged && (hovered.current || keySel.id === card.id) && tt.interactive));
+    const top = tt.zone === 'hand' && (drag.id === card.id || (!otherDragged && ((hovered.current || keySel.id === card.id) && tt.interactive || !!tt.held)));
     if (top !== onTop.current) {
       onTop.current = top;
       bodyRef.current.material = top ? edgeMatTop : edgeMat;
@@ -434,8 +429,12 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
       rz = 0;
     } else if (!otherDragged && (hovered.current || keySel.id === card.id) && tt.interactive) {
       // lift toward the viewer along the card's own normal, never sideways into its neighbours
-      y += 0.3 * motion.hoverLift;
-      z += 0.16 * motion.hoverLift;
+      y += (tt.held ? 0.12 : 0.3) * motion.hoverLift;
+      z += (tt.held ? 0.08 : 0.16) * motion.hoverLift;
+    } else if (tt.held && !otherDragged) {
+      // held up in front of you: it floats gently, waiting to be played
+      y += Math.sin(now * 2.4) * 0.05;
+      rz += Math.sin(now * 1.3) * 0.035;
     }
 
     // the swirl wins over a spin: both at once would whip the card around
@@ -444,30 +443,6 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     // a scripted hop in progress finishes even through a spin (the spin would snap the card over);
     // a card picked up by the finger or caught by the swirl leaves it and springs on from where it is
     let f = flight.current;
-    // several cards left the deck together (a penalty): they fly straight into the hand
-    if (f?.via && !f.via.always && revealBatch.frame === f.via.frame && revealBatch.count > 1) {
-      f = flight.current = { ...f, via: undefined, dur: THREE.MathUtils.clamp(0.42 + Math.hypot(tt.pos[0] - f.from.x, tt.pos[2] - f.from.z) * 0.05, 0.5, 0.75) };
-    }
-    if (f?.via && !dragging && !chaos) {
-      const v = f.via;
-      const el = now - f.t0;
-      if (el < REVEAL.up + REVEAL.hold) {
-        // up from the deck, turning over to face you, growing big; then a short hold with a gentle bob
-        const p = THREE.MathUtils.clamp(el / REVEAL.up, 0, 1);
-        const e = easeInOut(p);
-        const bob = el > REVEAL.up ? Math.sin((el - REVEAL.up) * 7) * 0.025 : 0;
-        g.position.set(f.from.x + (v.pos.x - f.from.x) * e, f.from.y + (v.pos.y - f.from.y) * e + Math.sin(Math.PI * e) * 0.4 + bob, f.from.z + (v.pos.z - f.from.z) * e);
-        fq.copy(f.fromQ).slerp(v.q, e);
-        g.quaternion.copy(fq);
-        g.scale.setScalar(f.fromS + (REVEAL.size - f.fromS) * e);
-        vel.x.v = vel.y.v = vel.z.v = vel.s.v = 0;
-        frontMat.current.color.setScalar(1);
-        if (glowRef.current) glowRef.current.visible = false;
-        return;
-      }
-      // then into the hand like any other card
-      f = flight.current = { ...f, via: undefined, t0: f.t0 + REVEAL.up + REVEAL.hold, from: v.pos.clone(), fromQ: v.q.clone(), fromS: REVEAL.size, apex: 0.15 };
-    }
     if (f && !dragging && !chaos) {
       // waiting its turn in a multi-card draw: stays on top of the deck until then
       const p = THREE.MathUtils.clamp((now - f.t0) / f.dur, 0, 1);
@@ -476,13 +451,13 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
       const e = f.toss ? easeOut(p) : easeInOut(p);
       const arc = f.toss ? 4 * e * (1 - e) : Math.sin(Math.PI * e);
       // the table's own way of flying: higher or lower arcs, and an S-swing sideways
-      const sw = motion.sway ? Math.sin(Math.PI * 2 * e) * motion.sway : 0;
+      const sw = motion.sway && !f.tuck ? Math.sin(Math.PI * 2 * e) * motion.sway : 0;
       const ddx = x - f.from.x;
       const ddz = z - f.from.z;
       const dl = Math.hypot(ddx, ddz) || 1;
       g.position.set(
         f.from.x + ddx * e - (ddz / dl) * sw,
-        f.from.y + (y - f.from.y) * e + arc * f.apex * motion.arc,
+        f.from.y + (y - f.from.y) * e + arc * f.apex * (f.tuck ? 1 : motion.arc),
         f.from.z + ddz * e + (ddx / dl) * sw,
       );
       eul.set(rx, ry, rz);
@@ -491,7 +466,7 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
       // instead of tumbling around whatever axis happens to be shortest
       fq.copy(f.fromQ).slerp(tq, e);
       if (f.flip) fq.multiply(spinQ.setFromAxisAngle(Y_AXIS, Math.PI * (1 - e)));
-      if (motion.spin) fq.multiply(spinQ.setFromAxisAngle(Z_AXIS, motion.spin * Math.PI * 2 * (1 - e)));
+      if (motion.spin && !f.tuck) fq.multiply(spinQ.setFromAxisAngle(Z_AXIS, motion.spin * Math.PI * 2 * (1 - e)));
       g.quaternion.copy(fq);
       vel.x.v = vel.y.v = vel.z.v = 0;
       if (p >= 1) flight.current = null;
@@ -558,21 +533,24 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     c.setScalar(c.r + (shade - c.r) * k);
   });
 
-  // after the card has moved: the glow behind a playable card, and the reflection of an opponent's card
+  // after the card has moved: the glow behind a playable card
   useFrame(st => {
     const g = ref.current;
     const tt = tRef.current;
     const glow = glowRef.current;
     const settled = !flight.current;
     glow.visible = tt.interactive && tt.zone === 'hand' && settled && g.visible && !(drag.id === card.id && drag.moved);
-    if (glow.visible) glowMat.opacity = 0.42 + Math.sin(st.clock.elapsedTime * 3) * 0.12;
-    const refl = reflRef.current;
-    if (!refl) return;
-    // only a card standing on the table in an opponent's row (not one flying past or lying flat)
-    refl.visible = tt.zone === 'opp' && g.visible && g.position.y < 1.6 && !flight.current;
-    if (refl.visible) {
-      g.updateMatrix();
-      refl.matrix.multiplyMatrices(MIRROR_Y, g.matrix).multiply(BACK_LOCAL);
+    if (!glow.visible) return;
+    if (tt.jump) {
+      // Jump-In: its own hot glow, pulsing fast and swelling
+      const k = Math.sin(st.clock.elapsedTime * 9);
+      glow.material = jumpGlowMat;
+      jumpGlowMat.opacity = 0.7 + k * 0.3;
+      glow.scale.setScalar(1.08 + k * 0.07);
+    } else {
+      glow.material = glowMat;
+      glow.scale.setScalar(1);
+      glowMat.opacity = 0.42 + Math.sin(st.clock.elapsedTime * 3) * 0.12;
     }
   });
 
@@ -581,11 +559,6 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
 
   return (
     <>
-    {REFLECTIONS && (
-      <mesh ref={reflRef} geometry={plane} matrixAutoUpdate={false} visible={false} renderOrder={-10}>
-        <meshBasicMaterial map={back} alphaMap={reflectFade} transparent opacity={0.3} depthWrite={false} side={THREE.DoubleSide} toneMapped={false} />
-      </mesh>
-    )}
     <group
       ref={ref}
       userData={{ fit: 'card', id: card.id }}

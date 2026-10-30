@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
-import { COLORS } from '../src/game/content';
-import { playableCard } from '../src/game/rules';
+import { COLORS, PRESETS } from '../src/game/content';
+import { canJumpIn, playableCard } from '../src/game/rules';
 import type { Action, ClientMsg, PlayerView, RoomInfo, ServerMsg } from '../src/net/protocol';
 import { createUnoServer } from './server';
 
@@ -256,6 +256,59 @@ describe('online rooms', () => {
     clients.forEach(c => c.close());
   });
 
+  it('lets anyone jump in with an identical card and refuses every other jump', async () => {
+    const clients = await openRoom(['Ая', 'Бэ', 'Вэ']);
+    const [host] = clients;
+    host.send({ t: 'rules', rules: { ...PRESETS.find(p => p.id === 'party')!.rules, jumpIn: true, events: false } });
+    await host.until(() => host.room!.rules.jumpIn === true);
+    let jumpsSent = 0;
+    let badSent = 0;
+    let jumpsSeen = 0;
+    let wrongJumps = 0;
+    for (const c of clients) {
+      const orig = (c as unknown as { checkSecrecy: (v: PlayerView) => void }).checkSecrecy.bind(c);
+      (c as unknown as { checkSecrecy: (v: PlayerView) => void }).checkSecrecy = (v: PlayerView) => {
+        orig(v);
+        const s = v.state;
+        // every jump the server let through went on an identical card: the last card named in the log before it
+        s.log.forEach((l, i) => {
+          if (l.k !== 'log.jumpIn' || c !== host) return;
+          jumpsSeen++;
+          const before = s.log.slice(0, i).reverse().find(x => x.p && 'card' in x.p);
+          if (before && JSON.stringify(before.p!.card) !== JSON.stringify(l.p!.card)) wrongJumps++;
+        });
+        if (v.you === null || v.you === s.cur || s.phase !== 'play') return;
+        const me = s.players[v.you];
+        const top = s.discard[s.discard.length - 1];
+        const good = me.hand.find(x => canJumpIn(s, v.you!, x));
+        if (good) {
+          jumpsSent++;
+          c.act({ a: 'jump', id: good.id, top: top.id });
+          // the same card again, as if a second tap raced the first: the top has changed by then
+          c.act({ a: 'jump', id: good.id, top: top.id });
+        } else if (me.hand.length && Math.random() < 0.3) {
+          // not identical, a stale top, or nonsense: all refused
+          badSent++;
+          const any = me.hand[Math.floor(Math.random() * me.hand.length)];
+          c.act({ a: 'jump', id: any.id, top: top.id });
+          c.act({ a: 'jump', id: any.id, top: -5 });
+          c.act({ a: 'jump', id: 'x' as unknown as number, top: top.id });
+        }
+      };
+    }
+    for (let round = 1; round <= 4; round++) {
+      if (round === 1) host.send({ t: 'start' });
+      else clients.forEach(c => c.send({ t: 'again' }));
+      for (const c of clients) await c.until(() => c.view?.state.round === round && over(c), 30_000);
+    }
+    for (const c of clients) expect(c.leaks).toBe(0);
+    expect(jumpsSent).toBeGreaterThan(0);
+    expect(badSent).toBeGreaterThan(0);
+    expect(jumpsSeen).toBeGreaterThan(0);
+    expect(wrongJumps).toBe(0);
+    clients.forEach(c => c.close());
+  });
+
   it('holds the round until every screen is ready, then deals to everyone at once', async () => {
     const [host, guest] = await openRoom(['Хост', 'Гость']);
     host.auto = guest.auto = false;
@@ -450,10 +503,12 @@ describe('online rooms', () => {
     await guest.until(() => guest.view?.state.theme === 'space');
     host.send({ t: 'theme', theme: 'halloween' });
     await guest.until(() => guest.view?.state.theme === 'halloween');
+    host.send({ t: 'theme', theme: 'winter' });
+    await guest.until(() => guest.view?.state.theme === 'winter');
     host.send({ t: 'theme', theme: 'nonsense' as never });
     host.send({ t: 'ping' });
     await new Promise(r => setTimeout(r, 100));
-    expect(host.room!.theme).toBe('halloween');
+    expect(host.room!.theme).toBe('winter');
     host.close();
     guest.close();
   });

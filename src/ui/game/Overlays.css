@@ -33,6 +33,8 @@
 .colors button:hover { transform: scale(1.04) rotate(-1deg); }
 .colors small { font-family: var(--body); font-weight: 500; font-size: 12px; opacity: 0.9; }
 .plist { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.plist-bot { margin: -3px 6px -2px 0; }
+.win-cup { margin: -6px 0 -4px; }
 .plist button {
   display: flex; justify-content: space-between; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--line);
   background: rgba(0, 0, 0, 0.25); cursor: pointer; font-weight: 700;

@@ -21,8 +21,12 @@ export interface GameView {
   /** who sits at the near edge of the table */
   seat(): number;
   playable(c: Card): boolean;
+  /** Jump-In: this card of the viewer's may be laid out of turn right now */
+  jumpable(c: Card): boolean;
 
   play(cardId: number): unknown;
+  /** Jump-In: the viewer lays this card out of turn */
+  jump(cardId: number): unknown;
   draw(): void;
   pass(): void;
   callUno(): void;

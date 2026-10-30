@@ -1,4 +1,5 @@
 import { standIn } from '../../game/avatars';
+import { haptics } from '../../audio/haptics';
 import { CNAME, HEX, teamName } from '../../game/content';
 import { render, useT, type Msg } from '../../i18n';
 import type { GameView } from '../../game/view';
@@ -6,6 +7,7 @@ import { AvatarImg } from '../components/AvatarImg';
 import { EventIcon } from '../components/EventIcon';
 import { cardImage } from '../../three/textures';
 import { TurnTimer } from './TurnTimer';
+import { useLogRoom } from './useLogRoom';
 import type { OnlineCtx } from './onlineCtx';
 import './Hud.css';
 import './Plates.css';
@@ -32,12 +34,15 @@ interface Props {
 export function Hud({ game, toasts, bombLeft, online, locked, roundLeft }: Props) {
   const t = useT();
   const s = game.s;
+  const log = useLogRoom(3);
   const viewer = game.viewer();
   const seatP = s.players[game.seat()];
   const cur = game.cp();
   const myTurn = viewer !== null && viewer === s.cur;
   const playing = !locked && myTurn && s.phase === 'play';
   const anyPlay = playing && cur.hand.some(c => game.playable(c));
+  // Jump-In: someone else is moving and the viewer holds a card exactly like the top one
+  const jumpCard = !locked && viewer !== null && viewer !== s.cur ? s.players[viewer].hand.find(c => game.jumpable(c)) : undefined;
 
   let hint = '';
   if (locked) hint = t('hud.dealing');
@@ -49,6 +54,7 @@ export function Hud({ game, toasts, bombLeft, online, locked, roundLeft }: Props
   else if (playing && s.pending > 0) hint = anyPlay ? t('hud.stack', { n: s.pending }) : t('hud.noStack', { n: s.pending });
   else if (playing && s.drawn) hint = s.rules.noMercy ? t('hud.drawnNm') : t('hud.drawn');
   else if (playing) hint = anyPlay ? t('hud.yourTurn') : t('hud.nothing');
+  else if (jumpCard) hint = t('hud.jumpIn');
   else if (online?.spectator) hint = t('hud.spectator', { who: cur.name });
   else if (s.phase === 'dare') hint = t('hud.dare', { who: cur.name, dare: render(s.dare) });
   else if (s.phase === 'coin') hint = t('hud.coin', { who: cur.name });
@@ -97,9 +103,10 @@ export function Hud({ game, toasts, bombLeft, online, locked, roundLeft }: Props
         </div>
       </div>
 
-      <div className="log" aria-live="polite">
+      {/* when plates sit under it, only the newest lines that fit show, newest on top (see useLogRoom) */}
+      <div ref={log.ref} className={`log ${log.room < 3 ? 'cramped' : ''}`} aria-live="polite">
         {s.log.slice(-3).map((l, i, arr) => (
-          <div key={s.log.length - 3 + i} className={i === arr.length - 1 ? 'new' : ''}>{render(l)}</div>
+          <div key={s.log.length - 3 + i} className={i === arr.length - 1 ? 'new' : ''} style={log.room < 3 && arr.length - 1 - i >= log.room ? { visibility: 'hidden' } : undefined}>{render(l)}</div>
         ))}
       </div>
 
@@ -118,7 +125,8 @@ export function Hud({ game, toasts, bombLeft, online, locked, roundLeft }: Props
             </div>
           </div>
           {hint && (
-            <span className="hint">
+            <span className={`hint ${jumpCard ? 'jump' : ''}`}>
+              {jumpCard && <img className="jump-card" src={cardImage(jumpCard, s.theme ?? 'classic', 30)} alt="" aria-hidden />}
               <b>{hintTitle}</b>
               {hintSub && <small>{hintSub}</small>}
             </span>
@@ -135,8 +143,8 @@ export function Hud({ game, toasts, bombLeft, online, locked, roundLeft }: Props
             <button className={`btn act draw ${s.pending ? 'danger' : !anyPlay ? 'primary' : ''}`} onClick={() => game.draw()}>
               {/* a little deck in this table's own card back */}
               <span className="act-deck" aria-hidden>
-                <img src={cardImage(null, s.theme ?? 'classic')} alt="" />
-                <img src={cardImage(null, s.theme ?? 'classic')} alt="" />
+                <img src={cardImage(null, s.theme ?? 'classic', 20)} alt="" />
+                <img src={cardImage(null, s.theme ?? 'classic', 20)} alt="" />
                 {s.pending > 0 && <b>+{s.pending}</b>}
               </span>
               <span className="act-label">{s.pending ? t('hud.take', { n: s.pending }) : t('hud.draw')}</span>
@@ -145,7 +153,7 @@ export function Hud({ game, toasts, bombLeft, online, locked, roundLeft }: Props
         </div>
       </div>
 
-      {playing && s.rules.uno && cur.hand.length === 2 && anyPlay && !s.unoCalled && <UnoCall onCall={() => game.callUno()} />}
+      {playing && s.rules.uno && cur.hand.length === 2 && anyPlay && !s.unoCalled && <UnoCall onCall={() => { haptics.play('uno'); game.callUno(); }} />}
 
       <UnoCatch game={game} online={!!online} />
 

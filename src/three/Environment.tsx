@@ -199,7 +199,7 @@ export function Arena({ color, theme, view, center }: Props) {
 
   return (
     <>
-      {/* drawn first and without depth: the faint reflections of the opponents' cards show on it */}
+      {/* drawn first and without depth */}
       <mesh rotation-x={-Math.PI / 2} position-y={-0.02} renderOrder={-100}>
         <planeGeometry args={[90, 90]} />
         <shaderMaterial key={theme} vertexShader={vert} fragmentShader={fragment} uniforms={uniforms} depthWrite={false} />

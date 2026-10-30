@@ -3,6 +3,7 @@ import { CODE_LEN, normalizeCode } from '../../net/protocol';
 import { AvatarImg, AvatarPicker } from '../components/AvatarImg';
 import { FitLetter } from '../components/FitLetter';
 import { LangSwitch } from '../components/LangSwitch';
+import { UiIcon } from '../components/UiIcon';
 import { useT } from '../../i18n';
 import './Home.css';
 
@@ -24,10 +25,10 @@ interface Props {
 }
 
 const FEATURES = [
-  { icon: '🌪', key: 'home.feat.events' },
-  { icon: '🎨', key: 'home.feat.themes' },
-  { icon: '👥', key: 'home.feat.players' },
-  { icon: '🤖', key: 'home.feat.bots' },
+  { icon: 'events', key: 'home.feat.events' },
+  { icon: 'themes', key: 'home.feat.themes' },
+  { icon: 'players', key: 'home.feat.players' },
+  { icon: 'robot', key: 'home.feat.bots' },
 ] as const;
 
 export function Home({ online, name, setName, avatar, setAvatar, invite, busy, error, onCreate, onJoin, onLocal }: Props) {
@@ -69,7 +70,7 @@ export function Home({ online, name, setName, avatar, setAvatar, invite, busy, e
         </p>
         <ul className="home-chips">
           {FEATURES.map(f => (
-            <li key={f.key}><span aria-hidden>{f.icon}</span>{t(f.key)}</li>
+            <li key={f.key}><UiIcon name={f.icon} size={20} />{t(f.key)}</li>
           ))}
         </ul>
       </section>
@@ -111,9 +112,7 @@ export function Home({ online, name, setName, avatar, setAvatar, invite, busy, e
         </div>
 
         {picking && (
-          <div className="pc-picker">
-            <AvatarPicker value={avatar} onChange={id => { setAvatar(id); setPicking(false); }} />
-          </div>
+          <AvatarPicker value={avatar} onChange={id => { setAvatar(id); setPicking(false); }} onClose={() => setPicking(false)} />
         )}
 
         {offline ? (
@@ -157,7 +156,7 @@ export function Home({ online, name, setName, avatar, setAvatar, invite, busy, e
 
         <div className="pc-divider"><span>{t('home.noNet')}</span></div>
         <button className={`btn ${offline ? 'big pc-main' : 'pc-local'}`} onClick={onLocal}>
-          <span aria-hidden>📱</span> {t('home.local')}
+          <span aria-hidden className="pc-local-ic"><UiIcon name="phone" size={26} /></span> {t('home.local')}
           {!offline && <small>{t('home.localSub')}</small>}
         </button>
       </section>

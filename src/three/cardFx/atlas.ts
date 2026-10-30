@@ -45,6 +45,8 @@ export const CELL_ID = {
   coin: 30,
   dart: 31,
   bolt: 32,
+  snowball: 33,
+  flake: 34,
 } as const;
 export type Cell = (typeof CELL_ID)[keyof typeof CELL_ID];
 
@@ -328,6 +330,55 @@ export function fxAtlas(): THREE.CanvasTexture {
     c.lineTo(22, -58);
     c.closePath();
     c.fill();
+  });
+
+  // winter: a lumpy snowball (keeps its colours) and a white snowflake
+  at(CELL_ID.snowball, c => {
+    const g = c.createRadialGradient(-16, -18, 4, 0, 0, 50);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(0.6, '#e2eefc');
+    g.addColorStop(1, '#8fb0dc');
+    c.fillStyle = g;
+    c.beginPath();
+    for (let i = 0; i <= 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      const r = 44 + Math.sin(i * 2.7) * 3;
+      c.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    c.closePath();
+    c.fill();
+    c.fillStyle = 'rgba(140,175,225,.45)';
+    for (const [x, y, r] of [[14, 10, 8], [-8, 22, 6], [22, -12, 5], [-20, 4, 5]]) {
+      c.beginPath();
+      c.arc(x, y, r, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.fillStyle = 'rgba(255,255,255,.95)';
+    c.beginPath();
+    c.ellipse(-16, -18, 11, 7, -0.6, 0, Math.PI * 2);
+    c.fill();
+  });
+  at(CELL_ID.flake, c => {
+    radial(c, [[0, 'rgba(255,255,255,.55)'], [0.4, 'rgba(255,255,255,.1)'], [1, 'rgba(255,255,255,0)']], 62);
+    c.strokeStyle = W;
+    c.lineCap = 'round';
+    c.lineWidth = 7;
+    c.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = (i * Math.PI) / 3;
+      const x = Math.cos(a);
+      const y = Math.sin(a);
+      c.moveTo(0, 0);
+      c.lineTo(x * 46, y * 46);
+      for (const [k, l] of [[0.45, 15], [0.72, 10]]) {
+        for (const sg of [1, -1]) {
+          const b = a + sg * 0.75;
+          c.moveTo(x * 46 * k, y * 46 * k);
+          c.lineTo(x * 46 * k + Math.cos(b) * l, y * 46 * k + Math.sin(b) * l);
+        }
+      }
+    }
+    c.stroke();
   });
 
   tex = new THREE.CanvasTexture(cv);

@@ -51,7 +51,12 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
   const playCard = useCallback(
     (id: number) => {
       if (locked) return;
-      if (game.s.phase === 'choose') game.resolveChoice(id);
+      const s = game.s;
+      const v = game.viewer();
+      const card = v !== null ? s.players[v].hand.find(c => c.id === id) : undefined;
+      if (s.phase === 'choose') game.resolveChoice(id);
+      // Jump-In: an identical card laid out of turn (on your own turn it is just a normal play)
+      else if (card && v !== s.cur && game.jumpable(card)) game.jump(id);
       else game.play(id);
     },
     [game, locked],

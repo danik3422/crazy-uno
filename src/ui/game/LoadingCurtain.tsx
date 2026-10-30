@@ -3,6 +3,7 @@ import { useT } from '../../i18n';
 import type { Warmup } from '../../net/protocol';
 import { AvatarImg } from '../components/AvatarImg';
 import { CardLoader, loaderStage } from '../components/CardLoader';
+import { UiIcon } from '../components/UiIcon';
 import './LoadingCurtain.css';
 
 interface Props {
@@ -38,7 +39,7 @@ export function LoadingCurtain({ s, leaving, warmup, turning, onDealNow }: Props
                   <AvatarImg id={p.avatar} name={p.name} bot={p.bot} size={28} />
                   {p.name}
                   <span className="st">
-                    {loading ? <span className="dot-pulse" /> : upright ? <span className="turn-ic" title={t('load.turning')}>📱</span> : '✓'}
+                    {loading ? <span className="dot-pulse" /> : upright ? <span className="turn-ic" title={t('load.turning')}><UiIcon name="phone" size={18} /></span> : '✓'}
                   </span>
                 </li>
               );

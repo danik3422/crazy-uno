@@ -1,9 +1,11 @@
-import { avatarOf, BOT_AVATARS, HUMAN_AVATARS, randomBot } from '../../game/avatars';
+import { avatarOf, randomBot } from '../../game/avatars';
 import { DEFAULT_TABLE, teamName } from '../../game/content';
 import { render, useT } from '../../i18n';
 import { teamsOf, teamsProblem } from '../../game/teams';
 import type { LocalSetup } from '../../game/engine';
-import { AvatarImg } from '../components/AvatarImg';
+import { useState } from 'react';
+import { AvatarImg, AvatarPicker } from '../components/AvatarImg';
+import { UiIcon } from '../components/UiIcon';
 import { Hero } from '../components/Hero';
 import { EventLegend, Legend } from '../components/Legend';
 import { SwapTeamIcon, TeamBox } from '../components/TeamBox';
@@ -26,6 +28,7 @@ interface Props {
 export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
   const t = useT();
   const players = cfg.players;
+  const [pickFor, setPickFor] = useState<number | null>(null);
   const update = (i: number, patch: Partial<LocalSetup['players'][number]>) =>
     setCfg(c => ({ ...c, players: c.players.map((p, k) => (k === i ? { ...p, ...patch } : p)) }));
   // a random name and robot face, preferably ones nobody at the table has yet
@@ -46,12 +49,7 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
         <button
           className="ava-btn"
           title={t('home.changeAvatar')}
-          onClick={() => {
-            const pool = p.bot ? BOT_AVATARS : HUMAN_AVATARS;
-            const curA = avatarOf(p.avatar, p.name, p.bot);
-            const at = pool.findIndex(a => a.id === curA.id);
-            update(i, { avatar: pool[(at + 1) % pool.length].id });
-          }}
+          onClick={() => setPickFor(i)}
         >
           <AvatarImg id={p.avatar} name={p.name} bot={p.bot} size={42} />
         </button>
@@ -77,7 +75,7 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
           title={p.bot ? t('setup.botTip') : t('setup.humanTip')}
           onClick={() => update(i, p.bot ? { bot: false, avatar: undefined } : newBot(players.filter((_, k) => k !== i)))}
         >
-          <span aria-hidden>{p.bot ? '🤖' : '🙂'}</span>
+          <UiIcon name={p.bot ? 'robot' : 'person'} size={22} />
           <span className="tog-label">{p.bot ? t('setup.bot') : t('setup.human')}</span>
         </button>
         <button
@@ -158,6 +156,15 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
         <small className="muted">{t('setup.eventsHint')}</small>
         <EventLegend />
       </details>
+      {pickFor !== null && players[pickFor] && (
+        <AvatarPicker
+          pool={players[pickFor].bot ? 'bot' : 'human'}
+          value={avatarOf(players[pickFor].avatar, players[pickFor].name, players[pickFor].bot).id}
+          title={players[pickFor].name || t('home.changeAvatar')}
+          onChange={id => { update(pickFor, { avatar: id }); setPickFor(null); }}
+          onClose={() => setPickFor(null)}
+        />
+      )}
     </div>
   );
 }

@@ -14,6 +14,7 @@ import { cardTexture } from '../textures';
 import { detect, snap, type PlayTrigger, type ResolveTrigger, type Snap } from './detect';
 import { CardPool, Kit, QuadPool, type Active, type Badge, type Spot } from './kit';
 import { knockout } from './motifs/knockout';
+import { penaltyHit } from './motifs/penalty';
 import { HAS_BADGE, motifFor } from './registry';
 import { raw } from './shapes';
 
@@ -83,6 +84,7 @@ export function CardFx({ game, version, view, theme, pile }: Props) {
     for (const tr of triggers) {
       if (tr.kind === 'play') startPlay(tr);
       else if (tr.kind === 'resolve') resolve(tr);
+      else if (tr.kind === 'take') take(tr.target, tr.n);
       else knockOut(tr.target);
     }
 
@@ -134,6 +136,17 @@ export function CardFx({ game, version, view, theme, pile }: Props) {
         color: raw('#9a94a8'), colorName: null, n: 0, dir: s.dir, seed: i + 7, tex: null, fired: 0, flag: false,
       });
     }
+    /** a penalty was drawn: the hit waits for its cards to land (armed: see the frame loop) */
+    function take(i: number, n: number) {
+      if (actives.current.length >= MAX_ACTIVE) actives.current.shift();
+      const at = anchor(game, i, view);
+      const color = s.color;
+      actives.current.push({
+        motif: penaltyHit, type: 'draw2', start: null, armed: nowSec(), resolved: null,
+        pile: spot([pile[0], 0.1, pile[2]]), deck: spot(spawn.pos), from: at, to: [at],
+        color: raw(colorOf(color)), colorName: color, n, dir: s.dir, seed: i + 11, tex: null, fired: 0, flag: false,
+      });
+    }
     function resolve(tr: ResolveTrigger) {
       let a = actives.current.find(x => x.motif.waits && x.resolved === null);
       if (!a) {
@@ -166,6 +179,12 @@ export function CardFx({ game, version, view, theme, pile }: Props) {
     kit.begin();
     for (let i = list.length - 1; i >= 0; i--) {
       const a = list[i];
+      if (a.start === null && a.motif === penaltyHit) {
+        // the cards leave the deck on the next frame: then their landing time is known
+        if (now - (a.armed ?? now) < 0.05) continue;
+        a.start = Math.max(now, fxState.drawLandAt);
+        a.armed = null;
+      }
       if (a.start === null) {
         const at = landingTime(a.armed ?? now, now);
         if (at === null) continue;

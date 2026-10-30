@@ -17,7 +17,7 @@ import { Arena, PALETTES } from './Environment';
 import { EventFx } from './eventFx/EventFx';
 import { DEBUG, fxState, nowSec } from './fxState';
 import { FitProbe } from './FitProbe';
-import { CAMERA, PARALLAX_X, RING_R, RING_Z, arena, cameraFov, computeTargets, deckCenter, deckSpot, seatAngle, type View } from './layout';
+import { CAMERA, PARALLAX_X, RING_R, RING_Z, arena, cameraFov, computeTargets, deckCenter, deckSpot, oppWall, visibleHalfWidth, type View } from './layout';
 import { Mascot } from './Mascot';
 import { PlayFx, StackFx } from './PlayFx';
 import { CardFx } from './cardFx/CardFx';
@@ -282,8 +282,8 @@ function TurnMarker({ game, view, version }: { game: GameView; view: View; versi
   const target = useMemo(() => {
     const A = arena(view);
     if (s.cur === seat) return new THREE.Vector3(0, 0.012, A.hand.z - 0.9);
-    const a = seatAngle(game, s.cur);
-    return new THREE.Vector3(Math.cos(a) * A.rx * 0.95, 0.012, Math.sin(a) * A.rz);
+    const w = oppWall(game, s.cur, view);
+    return new THREE.Vector3(w.pos[0], 0.012, w.pos[2]);
   }, [version, view]);
   const mine = s.cur === seat;
   useFrame((st, dt) => {
@@ -341,26 +341,50 @@ function PlayerPlates({ game, view, dealing }: { game: GameView; view: View; dea
   const t = useT();
   const s = game.s;
   const seat = game.seat();
-  const A = arena(view);
+  // the plate has a fixed size in pixels: on a short screen it needs more room above the fan
+  const { width, height } = useThree(st => st.size);
+  const lift = view.portrait ? 0.45 : Math.min(1, Math.max(0.6, (0.6 * 800) / height)) + (view.compact ? 0.1 : 0);
+  // a crowded table on a not-so-tall screen: smaller plates, so they stay off the neighbours' fans
+  const small = view.portrait || view.compact || (s.players.length >= 7 && height < 900);
+  const tiny = (view.portrait && s.players.length > 3) || (view.compact && s.players.length > 5);
   return (
     <>
       {s.players.map((p, i) => {
         if (i === seat) return null;
-        const a = seatAngle(game, i);
-        // side seats: pull the plate in toward the middle, so it stays on screen with its fan
-        const side = Math.abs(Math.cos(a));
-        const pos: [number, number, number] = [Math.cos(a) * A.rx * (1.02 - side * 0.3), view.portrait ? 2.1 : 2.25, Math.sin(a) * A.rz * 1.02 - 0.2];
+        // right above the top of their fan
+        const w = oppWall(game, i, view);
+        const h = w.top / w.up[1];
+        const pos: [number, number, number] = [w.pos[0] + w.up[0] * h, w.top + lift, w.pos[2] + w.up[2] * h];
+        const halfPx = tiny ? 48 : small ? 78 : 100;
+        // a crowded table: the two end seats sit just under the next fan in, so their plate goes below their own fan
+        const rel = (i - seat + s.players.length) % s.players.length;
+        const end = s.players.length >= 7 && (rel === 1 || rel === s.players.length - 1);
+        if (end) {
+          const px = (2 * visibleHalfWidth(view, 0, w.pos[2])) / width;
+          // the camera looks down at about 40°: moving toward it lowers the plate on screen
+          const down = ((tiny ? 20 : small ? 24 : 32) + 10) * px / 0.63;
+          pos[0] = w.pos[0];
+          pos[1] = 0;
+          pos[2] = w.pos[2] + down;
+        }
+        // seats at the sides: the plate leans outward, over its own fan rather than the next one in,
+        // but never past the edge of the screen (about half a plate's width in, plus the mouse parallax)
+        const vhw = visibleHalfWidth(view, pos[1], pos[2]);
+        const perPx = (2 * vhw) / width;
+        const out = Math.max(0, Math.min(1, (Math.abs(w.pos[0]) / (arena(view).rx * 0.8) - 0.55) / 0.45));
+        const maxX = Math.max(0, vhw - PARALLAX_X - (halfPx + 6) * perPx);
+        pos[0] = Math.max(-maxX, Math.min(maxX, pos[0] + Math.sign(pos[0]) * out * halfPx * 0.6 * perPx));
         const cur = i === s.cur && s.phase !== 'over';
         const sub = standIn(p.name);
         return (
           <Html key={i} position={pos} center zIndexRange={[20, 0]} pointerEvents="none">
-            <div className={`oplate ${cur ? 'cur' : ''} ${i === s.winner ? 'win' : ''} ${p.offline ? 'off' : ''} ${p.out ? 'out' : ''} ${s.teams ? `team t${s.teams[i]}` : ''} ${view.portrait || view.compact ? 'small' : ''} ${(view.portrait && s.players.length > 3) || (view.compact && s.players.length > 5) ? 'tiny' : ''}`} title={p.name}>
+            <div className={`oplate ${cur ? 'cur' : ''} ${i === s.winner ? 'win' : ''} ${p.offline ? 'off' : ''} ${p.out ? 'out' : ''} ${s.teams ? `team t${s.teams[i]}` : ''} ${small ? 'small' : ''} ${tiny ? 'tiny' : ''}`} title={p.name}>
               {s.teams && (
                 <span className="oplate-team">{s.teams[i] === s.teams[game.seat()] ? t('plate.partner') : teamName(s.teams[i])}</span>
               )}
               <span className="ava-wrap swap-in" key={p.offline ? 'bot' : 'me'}>
                 {/* someone dropped out: a bot sits in under its own name and face until they are back */}
-                <AvatarImg id={p.offline ? sub.avatar : p.avatar} name={p.offline ? sub.name : p.name} bot={p.bot} size={view.portrait ? 40 : view.compact ? 34 : 54} className="oplate-ava" />
+                <AvatarImg id={p.offline ? sub.avatar : p.avatar} name={p.offline ? sub.name : p.name} bot={p.bot} size={view.compact ? 34 : small ? 40 : 54} className="oplate-ava" />
                 {cur && !dealing && s.turnDeadline !== null && (
                   <TurnTimer key={s.turn} deadline={s.turnDeadline} total={s.turnTotal} offset={game.clockOffset} />
                 )}

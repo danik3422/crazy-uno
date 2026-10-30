@@ -93,17 +93,43 @@ export function cardTexture(card: Card | null, theme: ThemeId = 'classic'): THRE
 
 const urlCache = new Map<string, string>();
 /** PNG data URL of a card face, for the DOM (legend, setup screen). */
-export function cardImage(card: Card | null, theme: ThemeId = 'classic'): string {
-  const key = faceKey(card, theme);
+export function cardImage(card: Card | null, theme: ThemeId = 'classic', cssWidth = 64): string {
+  // painted at the size it is shown (sharp on a 2× screen), not at the full 256 px: painting and encoding a
+  // full-size face took tens of milliseconds each, and a menu change could ask for a dozen at once
+  const dpr = typeof devicePixelRatio === 'number' ? Math.min(2, devicePixelRatio) : 2;
+  const w = Math.min(W, Math.max(48, Math.round((cssWidth * Math.max(dpr, 1.5)) / 16) * 16));
+  const key = `${faceKey(card, theme)}@${w}`;
   let u = urlCache.get(key);
   if (!u) {
     const cv = document.createElement('canvas');
-    cv.width = W;
-    cv.height = H;
-    drawCard(cv.getContext('2d')!, card, theme);
+    cv.width = w;
+    cv.height = Math.round((w * H) / W);
+    const ctx = cv.getContext('2d')!;
+    ctx.scale(w / W, w / W);
+    drawCard(ctx, card, theme);
     u = cv.toDataURL('image/png');
     urlCache.set(key, u);
   }
   return u;
+}
+
+/**
+ * Paints menu card images ahead of time, one per idle moment, so they are ready before anyone asks
+ * (e.g. the card reference for another mode). Returns a cancel function.
+ */
+export function warmCardImages(jobs: { card: Card | null; theme: ThemeId; cssWidth?: number }[]) {
+  let i = 0;
+  let handle = 0;
+  const idle: (f: () => void) => number =
+    typeof requestIdleCallback === 'function' ? f => requestIdleCallback(f, { timeout: 1500 }) : f => window.setTimeout(f, 50);
+  const cancel = typeof cancelIdleCallback === 'function' ? cancelIdleCallback : window.clearTimeout;
+  const step = () => {
+    const j = jobs[i++];
+    if (!j) return;
+    cardImage(j.card, j.theme, j.cssWidth);
+    handle = idle(step);
+  };
+  handle = idle(step);
+  return () => cancel(handle);
 }
 

@@ -120,6 +120,8 @@ export class Room {
   private bombTimer: Timer | null = null;
   private limitTimer: Timer | null = null;
   private catchTimer: Timer | null = null;
+  /** a bot jumping in out of turn (Jump-In) */
+  private jumpTimer: Timer | null = null;
   private catchFor: unknown = null;
 
   constructor(public code: string, opts: RoomOptions = {}) {
@@ -535,6 +537,16 @@ export class Room {
     if (a.a === 'group') return g.doneGroup();
     if (a.a === 'catch') return g.catchUno(seat);
     if (a.a === 'lateUno') return g.lateUno(seat);
+    // Jump-In comes from anyone holding the same card; if two arrive together only the first counts (the top changed)
+    if (a.a === 'jump') {
+      if (!Number.isInteger(a.id) || !Number.isInteger(a.top)) return;
+      if (seat === s.cur) {
+        // it is their turn anyway: a normal play, as long as the pile is still what they saw
+        if (g.top()?.id === a.top) g.play(a.id);
+        return;
+      }
+      return void g.jumpIn(seat, a.id, a.top);
+    }
     if (seat !== s.cur) return;
     if (s.turn === this.autoTurn) this.autoTurn = -1;
     switch (a.a) {
@@ -713,8 +725,8 @@ export class Room {
   }
 
   private clearTimers() {
-    for (const t of [this.timer, this.bombTimer, this.limitTimer]) if (t) clearTimeout(t);
-    this.timer = this.bombTimer = this.limitTimer = null;
+    for (const t of [this.timer, this.bombTimer, this.limitTimer, this.jumpTimer]) if (t) clearTimeout(t);
+    this.timer = this.bombTimer = this.limitTimer = this.jumpTimer = null;
   }
 
   /** After every change: set up the one timer that moves the game on next (bot, autopilot, clocks). */
@@ -736,6 +748,12 @@ export class Room {
     }
     // quick round / round limit: when time is up, the fewest cards win
     this.limitTimer = s.endsAt !== null ? setTimeout(() => g.checkTimeLimit(), Math.max(0, s.endsAt - Date.now()) + 30) : null;
+    // Jump-In: a bot holding the same card as the top one throws it in after a human-like pause (decided once per card)
+    const jump = g.botJumpPlan();
+    if (jump) {
+      const wait = Math.max(0, jump.at - Date.now()) * this.opts.botSpeed;
+      this.jumpTimer = setTimeout(() => g.jumpIn(jump.seat, jump.cardId, jump.top, jump.uno), wait);
+    }
     const p = g.cp();
     const mem = this.member(this.seats[s.cur]);
     const eventWait = Math.max(0, this.eventAt + EVENT_PAUSE_MS - Date.now()) * this.opts.botSpeed;

@@ -25,11 +25,39 @@ export const BOT_SKILL: Record<BotLevel, {
   catchMs: [number, number];
   /** chance to challenge a +4 */
   challenge: number;
+  /** Jump-In: chance to spot an identical card and lay it out of turn */
+  jumpIn: number;
+  /** how long before they jump in: base + random spread, ms */
+  jumpMs: [number, number];
 }> = {
-  easy: { forgetUno: 0.45, noticeUno: 0.3, catchMs: [2600, 2600], challenge: 0.1 },
-  normal: { forgetUno: 0.2, noticeUno: 0.55, catchMs: [1400, 2200], challenge: 0.35 },
-  hard: { forgetUno: 0.03, noticeUno: 0.9, catchMs: [900, 1100], challenge: 0.35 },
+  easy: { forgetUno: 0.45, noticeUno: 0.3, catchMs: [2600, 2600], challenge: 0.1, jumpIn: 0.2, jumpMs: [1100, 300] },
+  normal: { forgetUno: 0.2, noticeUno: 0.55, catchMs: [1400, 2200], challenge: 0.35, jumpIn: 0.6, jumpMs: [800, 500] },
+  hard: { forgetUno: 0.03, noticeUno: 0.9, catchMs: [900, 1100], challenge: 0.35, jumpIn: 0.92, jumpMs: [500, 350] },
 };
+
+/** A bot laying a card out of turn (Jump-In): who, which card, after how long, and whether it calls UNO with it. */
+export interface BotJump {
+  seat: number;
+  cardId: number;
+  delay: number;
+  uno: boolean;
+}
+
+/**
+ * Jump-In: of the bots holding a card exactly like the top one, which (if any) notices and jumps in, and after how long.
+ * Each one notices by their level's chance; the quickest of those wins.
+ */
+export function pickBotJump(s: State, candidates: { seat: number; card: Card }[], rng: Rng): BotJump | null {
+  const skill = BOT_SKILL[s.table.botLevel];
+  let best: BotJump | null = null;
+  for (const { seat, card } of candidates) {
+    if (!s.players[seat]?.bot || rng() >= skill.jumpIn) continue;
+    const delay = skill.jumpMs[0] + Math.floor(rng() * skill.jumpMs[1]);
+    const uno = rng() > skill.forgetUno;
+    if (!best || delay < best.delay) best = { seat, cardId: card.id, delay, uno };
+  }
+  return best;
+}
 
 /** Cards that hurt the next player: played eagerly once that player is close to winning. */
 const ATTACK_CARDS: readonly Card['type'][] = ['draw2', 'wild4', 'skip', 'bomb', 'rain', 'draw4', 'wild6', 'wild10', 'wildRev4', 'skipAll', 'roulette'];

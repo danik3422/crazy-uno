@@ -8,6 +8,7 @@ import { EventIcon } from '../components/EventIcon';
 import { EventLegend, Legend } from '../components/Legend';
 import { FullscreenButton } from '../components/RotateGate';
 import { SoundMenu } from '../components/SoundMenu';
+import { UiIcon } from '../components/UiIcon';
 import { CoinFlip } from './CoinFlip';
 import { RematchVote } from './RematchVote';
 import type { OnlineCtx } from './onlineCtx';
@@ -126,7 +127,7 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
           {s.players.map((o, i) =>
             i === s.cur || o.out ? null : (
               <button key={i} onClick={() => game.resolveChoice(i)}>
-                <span>{o.bot ? '🤖 ' : ''}{o.name}</span>
+                <span>{o.bot && <UiIcon name="robot" size={18} className="plist-bot" />}{o.name}</span>
                 <span>{t('ov.cards', { n: o.hand.length })}</span>
               </button>
             ),
@@ -144,7 +145,7 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
     modal = (
       <Modal sheet>
         <h2>
-          🏆{' '}
+          <UiIcon name="trophy" size={30} className="win-cup" />{' '}
           {s.winTeam !== null && s.teams
             ? t('ov.teamWins', { team: teamName(s.winTeam) })
             : t('ov.wins', { who: s.players[s.winner].name })}

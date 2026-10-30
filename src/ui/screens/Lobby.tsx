@@ -15,6 +15,7 @@ import { TablePanel } from '../settings/TablePanel';
 import { SwapTeamIcon, TeamBox } from '../components/TeamBox';
 import { ThemePicker } from '../settings/ThemePicker';
 import { usePageTheme } from '../hooks/pageTheme';
+import { UiIcon } from '../components/UiIcon';
 import './Lobby.css';
 
 interface Props {
@@ -34,8 +35,36 @@ export function inviteLink(code: string) {
  * Individual rules, the QR code and the avatar picker open on demand.
  * The host changes everything; guests get a short read-only summary and a "waiting" line.
  */
-export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
+export function Lobby({ conn, room: serverRoom, onLeave, avatar, setAvatar }: Props) {
   const t = useT();
+  // The server is a round trip away (about half a second on the hosted server), so the host's own changes show
+  // at once and the server's next room update confirms them. Each local change is dropped once the server shows it.
+  type Mine = Partial<Pick<RoomInfo, 'rules' | 'table' | 'theme'>>;
+  const [mine, setMine] = useState<Mine>({});
+  useEffect(() => {
+    setMine(m => {
+      const left = { ...m };
+      for (const k of Object.keys(left) as (keyof Mine)[]) if (JSON.stringify(left[k]) === JSON.stringify(serverRoom[k])) delete left[k];
+      return Object.keys(left).length === Object.keys(m).length ? m : left;
+    });
+  }, [serverRoom]);
+  // never hold a local change for long (the server may have refused it)
+  useEffect(() => {
+    if (!Object.keys(mine).length) return;
+    const tm = setTimeout(() => setMine({}), 2500);
+    return () => clearTimeout(tm);
+  }, [mine]);
+  const room: RoomInfo = useMemo(() => ({ ...serverRoom, ...mine }), [serverRoom, mine]);
+  const change = <K extends keyof Mine>(k: K, v: NonNullable<Mine[K]>) => setMine(m => ({ ...m, [k]: v }));
+  // bots asked for but not seated yet: their seats show at once, waiting for the server
+  const botsNow = serverRoom.members.filter(m => m.bot).length;
+  const [botsWanted, setBotsWanted] = useState(0);
+  const pendingBots = Math.max(0, botsWanted - botsNow);
+  useEffect(() => {
+    if (!pendingBots) return;
+    const tm = setTimeout(() => setBotsWanted(0), 2500);
+    return () => clearTimeout(tm);
+  }, [pendingBots, botsWanted]);
   const me = room.members.find(m => m.id === room.you);
   const isHost = !!me?.host;
   const host = room.members.find(m => m.host);
@@ -50,7 +79,7 @@ export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
   const teams = players.map(m => m.team ?? 0);
   const teamsWrong = room.table.teams ? teamsProblem(teams) : null;
   const canStart = isHost && players.length >= 2 && !teamsWrong;
-  const canAddBot = isHost && players.length < MAX_PLAYERS;
+  const canAddBot = isHost && players.length + pendingBots < MAX_PLAYERS;
   // the side a new player without a pick would join
   const nextTeam = teamsOf([...players, {}])[players.length];
   const tile = (i: number) => {
@@ -70,9 +99,22 @@ export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
       />
     );
   };
+  const seating = Array.from({ length: pendingBots }, (_, i) => (
+    <li className="pl seating" key={`seating-${i}`} aria-hidden>
+      <span className="pl-ghost" />
+      <span className="pl-name muted">{t('lobby.bot')}</span>
+    </li>
+  ));
   const addBot = (
     <li className="pl" key="add">
-      <button className="pl-add" onClick={() => conn.send({ t: 'addBot', lang: lang() })} aria-label={t('lobby.addBot')}>
+      <button
+        className="pl-add"
+        onClick={() => {
+          setBotsWanted(w => Math.max(w, botsNow) + 1);
+          conn.send({ t: 'addBot', lang: lang() });
+        }}
+        aria-label={t('lobby.addBot')}
+      >
         <span aria-hidden>+</span>
       </button>
       <span className="pl-name muted">{t('lobby.bot')}</span>
@@ -104,6 +146,7 @@ export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
                     <ul className="players">
                       {mine.map(tile)}
                       {/* a new bot joins the side that is short, so its tile waits there */}
+                      {nextTeam === side && seating}
                       {canAddBot && nextTeam === side && addBot}
                     </ul>
                   </TeamBox>
@@ -113,14 +156,17 @@ export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
           ) : (
             <ul className="players">
               {players.map((_, i) => tile(i))}
+              {seating}
               {canAddBot && addBot}
             </ul>
           )}
           {picking && (
-            <div className="lb-picker">
-              <span className="lb-label">{t('lobby.yourAvatar')}</span>
-              <AvatarPicker value={avatar} onChange={id => { setAvatar(id); setPicking(false); }} />
-            </div>
+            <AvatarPicker
+              value={avatar}
+              title={t('lobby.yourAvatar')}
+              onChange={id => { setAvatar(id); setPicking(false); }}
+              onClose={() => setPicking(false)}
+            />
           )}
           {watchers.length > 0 && (
             <p className="lb-note">
@@ -131,19 +177,19 @@ export function Lobby({ conn, room, onLeave, avatar, setAvatar }: Props) {
 
         <section className="lb-section" aria-labelledby="lb-mode">
           <h2 className="lb-h" id="lb-mode">{t('lobby.mode')}</h2>
-          <RulesPanel rules={room.rules} onChange={isHost ? rules => conn.send({ t: 'rules', rules }) : undefined} />
+          <RulesPanel rules={room.rules} onChange={isHost ? rules => { change('rules', rules); conn.send({ t: 'rules', rules }); } : undefined} />
         </section>
 
         <section className="lb-section" aria-labelledby="lb-format">
           <h2 className="lb-h" id="lb-format">{t('lobby.format')}</h2>
-          <TablePanel table={room.table} teams={teams} onChange={isHost ? table => conn.send({ t: 'table', table }) : undefined} />
+          <TablePanel table={room.table} teams={teams} onChange={isHost ? table => { change('table', table); conn.send({ t: 'table', table }); } : undefined} />
         </section>
 
         <section className="lb-section lb-theme" aria-labelledby="lb-theme">
           <h2 className="lb-h" id="lb-theme">
             {t('lobby.table')} {!isHost && <span className="lb-count">{theme?.name}</span>}
           </h2>
-          {isHost && <ThemePicker compact value={room.theme} onChange={th => conn.send({ t: 'theme', theme: th })} />}
+          {isHost && <ThemePicker compact value={room.theme} onChange={th => { change('theme', th); conn.send({ t: 'theme', theme: th }); }} />}
         </section>
 
         <PhoneTip />
@@ -202,7 +248,7 @@ function Player({ m, me, picking, canKick, onKick, onAvatar, team, onTeam }: {
         ) : (
           <span className="pl-ava">{ava}</span>
         )}
-        {m.host && <span className="pl-crown" title={t('lobby.hostTitle')} aria-label={t('lobby.hostSub')}>👑</span>}
+        {m.host && <span className="pl-crown" title={t('lobby.hostTitle')} aria-label={t('lobby.hostSub')}><UiIcon name="crown" size={24} /></span>}
         {team !== null && onTeam && (
           <button
             className={`pl-swap to${1 - team}`}

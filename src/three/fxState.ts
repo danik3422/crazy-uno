@@ -25,6 +25,8 @@ export const fxState = {
   paint: { seq: 0 },
   /** when the card just played touches the pile (the flash and the ring start then) */
   landAt: -100,
+  /** when the last card that has left the deck so far lands in a hand (a penalty's hit waits for it) */
+  drawLandAt: -100,
   meteor: { at: -100, target: 0 },
   lightning: { at: -100, target: 0 },
   burst: { at: -100, target: 0 },

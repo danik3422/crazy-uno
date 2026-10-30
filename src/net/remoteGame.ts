@@ -1,4 +1,4 @@
-import { isCatchable, nextSeat, playableCard } from '../game/rules';
+import { canJumpIn, isCatchable, nextSeat, playableCard } from '../game/rules';
 import type { Card, State } from '../game/types';
 import type { GameView } from '../game/view';
 import { Observable } from '../lib/observable';
@@ -46,6 +46,7 @@ export class RemoteGame extends Observable implements GameView {
   viewer() { return this.you; }
   seat() { return this.you ?? 0; }
   playable(c: Card) { return !c.hidden && this.you === this.s.cur && playableCard(this.s, c); }
+  jumpable(c: Card) { return this.you !== null && canJumpIn(this.s, this.you, c); }
 
   /** Tell the server this screen has drawn the table for the round. */
   ready(upright = false) {
@@ -68,6 +69,10 @@ export class RemoteGame extends Observable implements GameView {
   }
 
   play(id: number) { this.conn.act({ a: 'play', id }); }
+  jump(id: number) {
+    const top = this.s.discard[this.s.discard.length - 1];
+    if (top) this.conn.act({ a: 'jump', id, top: top.id });
+  }
   draw() { this.conn.act({ a: 'draw' }); }
   pass() { this.conn.act({ a: 'pass' }); }
   callUno() { this.conn.act({ a: 'uno' }); }

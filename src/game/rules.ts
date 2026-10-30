@@ -65,3 +65,19 @@ export function isCatchable(s: State): boolean {
   const c = s.unoCatch;
   return !!c && s.phase !== 'over' && s.turn <= c.until && s.players[c.victim]?.hand.length === 1;
 }
+
+/** Jump-In: may the player in `seat` lay `c` out of turn right now? (The current player just plays normally.) */
+export function canJumpIn(s: State, seat: number, c: Card): boolean {
+  if (!s.rules.jumpIn || s.phase !== 'play' || seat === s.cur) return false;
+  const p = s.players[seat];
+  if (!p || p.out || c.hidden || !p.hand.some(x => x.id === c.id)) return false;
+  // nothing may be waiting on a decision: a +4 challenge, the opening Wild, a roulette
+  if (s.choice || s.challenge || s.wildStart || s.rouletteNext) return false;
+  const top = s.discard[s.discard.length - 1];
+  // coloured cards only, exactly like the one on the pile (and that card's colour still in force)
+  if (!top || c.color === 'wild' || c.color !== top.color || c.type !== top.type || c.value !== top.value) return false;
+  if (s.color !== top.color) return false;
+  // a penalty is waiting: only an identical draw card, and only when penalties stack (it passes on from the jumper)
+  if (s.pending > 0) return s.rules.stack && drawValue(c) > 0;
+  return true;
+}

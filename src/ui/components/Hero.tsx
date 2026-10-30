@@ -19,7 +19,7 @@ function FlatFan() {
   return (
     <div className="fan" aria-hidden>
       {HERO.map((c, i) => (
-        <img key={c.id} src={cardImage(c)} alt="" style={{ '--i': i - 2 } as CSSProperties} />
+        <img key={c.id} src={cardImage(c, 'classic', 96)} alt="" style={{ '--i': i - 2 } as CSSProperties} />
       ))}
     </div>
   );

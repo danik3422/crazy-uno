@@ -1,11 +1,11 @@
 import { Observable } from '../lib/observable';
-import { BOT_SKILL, botCatchers, botDecision, pickBotCard } from './bot';
+import { BOT_SKILL, botCatchers, botDecision, pickBotCard, pickBotJump, type BotJump } from './bot';
 import { cardMsg, msg, type Msg } from '../i18n/msg';
 import { COLORS, DARE_COUNT, DEFAULT_TABLE, effectiveTable, MERCY_LIMIT, PUNISH_COUNT, TABLE_CHOICES } from './content';
 import { eventDue, fireEvent, flipCoin, type EventTools } from './events';
 import { buildDeck } from './deck';
 import { pick, randomIndex, seededRng, shuffle, type Rng } from './random';
-import { activeSeats, canPlayCard, drawValue, isCatchable, nextSeat, playableCard, sameTeam } from './rules';
+import { activeSeats, canJumpIn, canPlayCard, drawValue, isCatchable, nextSeat, playableCard, sameTeam } from './rules';
 import { teamsOf, teamsProblem } from './teams';
 import type { Card, Choice, Color, EventId, Fx, FxKind, Player, Rules, State, Table, ThemeId } from './types';
 import type { Params, StrKey } from '../i18n/types';
@@ -65,6 +65,8 @@ export class Game extends Observable {
   /** No Mercy: the hands of knocked-out players, out of play until the deck runs out and is reshuffled */
   private aside: Card[] = [];
   private online: boolean;
+  /** Jump-In: the bot decision made for the pile's current top card */
+  private jumpRoll: { top: number; plan: (BotJump & { at: number }) | null } | null = null;
   private rng: Rng;
   private now: () => number;
 
@@ -243,8 +245,95 @@ export class Game extends Observable {
   /* ================= turn actions ================= */
 
   play(cardId: number): boolean {
+    if (this.s.phase !== 'play') return false;
+    return this.lay(cardId, false);
+  }
+
+  /* ================= Jump-In ================= */
+
+  /** Jump-In: who may lay which card out of turn right now (everyone holding a card exactly like the top one). */
+  jumpInCandidates(): { seat: number; card: Card }[] {
     const s = this.s;
-    if (s.phase !== 'play') return false;
+    if (!s.rules.jumpIn || s.phase !== 'play') return [];
+    return s.players.flatMap((p, seat) => p.hand.filter(c => canJumpIn(s, seat, c)).map(card => ({ seat, card })));
+  }
+
+  /**
+   * Jump-In: the player in `seat` lays `cardId` out of turn. It counts exactly as if it were their turn: the card works
+   * from them, and play carries on from them (whoever was moving just loses the turn).
+   * `topId`: the pile's top card the jumper saw; if someone else got in first it has changed and the jump is refused.
+   * `uno`: the jumper called UNO with it (they lay their second-to-last card).
+   */
+  jumpIn(seat: number, cardId: number, topId?: number, uno = false): boolean {
+    const s = this.s;
+    if (topId !== undefined && this.top()?.id !== topId) return false;
+    const p = s.players[seat];
+    const card = p?.hand.find(c => c.id === cardId);
+    if (!card || !canJumpIn(s, seat, card) || !canPlayCard(s, card)) return false;
+    // the turn is theirs now
+    s.cur = seat;
+    s.turn++;
+    s.drawn = false;
+    s.lastDrawn = null;
+    s.unoCalled = uno;
+    s.challenge = null;
+    s.bombDeadline = null;
+    s.timerKind = null;
+    s.turnDeadline = null;
+    if (!p.bot) {
+      s.lastHuman = seat;
+      // a decision the card may need (a 7 to swap…) runs on their clock
+      if (s.rules.timer) {
+        s.turnTotal = s.table.turnSec * 1000;
+        s.turnDeadline = this.now() + s.turnTotal;
+      }
+    }
+    this.fx('jump', msg('fx.jumpIn', { who: p.name }), { target: seat });
+    return this.lay(cardId, true);
+  }
+
+  /** The viewer's Jump-In on this screen (hot seat with several people: off, their hands are hidden between turns). */
+  jumpable(c: Card): boolean {
+    const v = this.jumpSeat();
+    return v !== null && canJumpIn(this.s, v, c);
+  }
+
+  /** Jump-In from this screen: whoever's hand faces up here. */
+  jump(cardId: number): boolean {
+    const v = this.jumpSeat();
+    return v !== null && this.jumpIn(v, cardId, this.top()?.id);
+  }
+
+  /** The person who may jump in from this screen: the only person at a local table. */
+  private jumpSeat(): number | null {
+    const hs = this.humans();
+    return hs.length === 1 ? hs[0] : null;
+  }
+
+  /**
+   * A bot that will jump in on the current top card, and when (decided once per top card, so asking again does not
+   * roll the dice again). Null: no bot will. Whoever drives the timing calls `jumpIn` once `at` has come.
+   */
+  botJumpPlan(): (BotJump & { at: number; top: number }) | null {
+    const top = this.top();
+    if (!top) return null;
+    if (this.jumpRoll?.top !== top.id) {
+      const cands = this.jumpInCandidates().filter(c => this.s.players[c.seat].bot);
+      // nobody can yet (a decision is open): ask again on the next change
+      if (!cands.length) return null;
+      const plan = pickBotJump(this.s, cands, this.rng);
+      this.jumpRoll = { top: top.id, plan: plan && { ...plan, at: this.now() + plan.delay } };
+    }
+    const plan = this.jumpRoll.plan;
+    if (!plan) return null;
+    // still allowed? (the bot may have lost the card in a swap, a penalty may be waiting…)
+    const card = this.s.players[plan.seat]?.hand.find(c => c.id === plan.cardId);
+    return card && canJumpIn(this.s, plan.seat, card) ? { ...plan, top: top.id } : null;
+  }
+
+  /** Lays a card of the current player's (`jumped`: they just jumped in out of turn). */
+  private lay(cardId: number, jumped: boolean): boolean {
+    const s = this.s;
     const p = this.cp();
     const idx = p.hand.findIndex(c => c.id === cardId);
     if (idx < 0 || !this.playable(p.hand[idx])) return false;
@@ -257,7 +346,7 @@ export class Game extends Observable {
     s.timerKind = null;
     s.challenge = null;
     if (card.color !== 'wild') s.color = card.color;
-    this.say('log.played', { who: p.name, card: cardMsg(card) });
+    this.say(jumped ? 'log.jumpIn' : 'log.played', { who: p.name, card: cardMsg(card) });
 
     if (p.hand.length === 1 && s.rules.uno) {
       if (s.unoCalled) this.fx('uno', msg('fx.uno', { who: p.name }));

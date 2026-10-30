@@ -90,6 +90,8 @@ export const UPRIGHT_GRACE_MS = 15_000;
 
 export type Action =
   | { a: 'play'; id: number }
+  /** Jump-In: lay an identical card out of turn; `top` is the pile's top card id the player saw (the first jump wins) */
+  | { a: 'jump'; id: number; top: number }
   | { a: 'draw' }
   | { a: 'pass' }
   | { a: 'uno' }

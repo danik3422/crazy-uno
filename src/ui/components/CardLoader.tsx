@@ -18,12 +18,12 @@ export function loaderStage(theme: ThemeId = 'classic', color: Color = 'red') {
 
 /** A deck being shuffled: cards split left and right, then riffle back into one stack (faces and backs of the table's theme). */
 export function CardLoader({ title, sub, theme = 'classic', children }: { title: string; sub?: string; theme?: ThemeId; children?: ReactNode }) {
-  const back = cardImage(null, theme);
+  const back = cardImage(null, theme, 64);
   return (
     <div className="card-loader" role="status" aria-live="polite">
       <div className="shuffle" aria-hidden>
         {[0, 1, 2, 3, 4, 5].map(i => (
-          <img key={i} src={i % 2 === 1 ? cardImage(FACES[(i >> 1) % FACES.length], theme) : back} alt="" style={{ '--i': i } as CSSProperties} />
+          <img key={i} src={i % 2 === 1 ? cardImage(FACES[(i >> 1) % FACES.length], theme, 64) : back} alt="" style={{ '--i': i } as CSSProperties} />
         ))}
       </div>
       <h2>{title}</h2>
