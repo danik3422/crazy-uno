@@ -2,66 +2,122 @@ import { botNames, t } from '../i18n/core';
 import type { StrKey } from '../i18n/types';
 
 /**
- * Preset avatars. Players cannot upload pictures, so they pick one of these:
- * animal emoji tiles for people and hand-drawn SVG robots for bots.
+ * Preset avatars. Players cannot upload pictures, so they pick one of these drawn portraits
+ * (people, animals, creatures, food and card characters); bots get robot portraits.
+ * This file is only the list (shared with the server, which checks ids); the pictures are painted
+ * by src/art/avatarArt.ts.
+ *
+ * Ids are stable: they are saved in players' browsers and sent to the server. The first avatars were
+ * emoji tiles with the same ids (fox, frog, … and bot-red … bot-steel); every one of those ids is still
+ * here, now drawn, so a saved choice keeps its character. Should an id ever be retired, add it to
+ * LEGACY with the closest new one.
  */
+export type AvatarKind = 'animal' | 'person' | 'fantasy' | 'food' | 'card' | 'robot';
+
 export interface Avatar {
   id: string;
   /** what the picture shows, in the current language (for screen readers and tooltips) */
   readonly label: string;
-  /** tile gradient */
+  /** tile gradient (top-left → bottom-right), also the placeholder while the picture paints */
   bg: [string, string];
-  emoji?: string;
-  robot?: RobotLook;
+  kind: AvatarKind;
 }
 
-interface RobotLook {
-  body: string;
-  face: string;
-  eye: string;
-  head: 'round' | 'square' | 'dome';
-  antenna: 'ball' | 'bolt' | 'twin';
-}
+type Row = [id: string, kind: AvatarKind, from: string, to: string];
 
-const HUMAN_LIST: Omit<Avatar, 'label'>[] = [
-  { id: 'fox', emoji: '🦊', bg: ['#ffb36b', '#ff6a3d'] },
-  { id: 'frog', emoji: '🐸', bg: ['#b8f28a', '#3fbf5b'] },
-  { id: 'panda', emoji: '🐼', bg: ['#e9edf5', '#9aa6c0'] },
-  { id: 'unicorn', emoji: '🦄', bg: ['#ffc6f1', '#b07cff'] },
-  { id: 'octopus', emoji: '🐙', bg: ['#ffb0c8', '#ff5a8a'] },
-  { id: 'monkey', emoji: '🐵', bg: ['#ffd9a0', '#d9893b'] },
-  { id: 'tiger', emoji: '🐯', bg: ['#ffe36b', '#ff9a1f'] },
-  { id: 'penguin', emoji: '🐧', bg: ['#a8e6ff', '#3b8fe0'] },
-  { id: 'alien', emoji: '👽', bg: ['#c8ff9a', '#5ac83a'] },
-  { id: 'ghost', emoji: '👻', bg: ['#d8d0ff', '#7c6cf0'] },
-  { id: 'dino', emoji: '🦖', bg: ['#9af0c8', '#1fae7a'] },
-  { id: 'dragon', emoji: '🐲', bg: ['#a0ffd0', '#1f9e6a'] },
-  { id: 'cat', emoji: '😼', bg: ['#ffe0a8', '#ff9f43'] },
-  { id: 'pizza', emoji: '🍕', bg: ['#ffe9a8', '#ff7b3a'] },
-  { id: 'cactus', emoji: '🌵', bg: ['#d6f5a0', '#6cbf3a'] },
-  { id: 'pumpkin', emoji: '🎃', bg: ['#ffcb7a', '#f06a1a'] },
-  { id: 'clown', emoji: '🤡', bg: ['#fff0f0', '#ff6b6b'] },
-  { id: 'cowboy', emoji: '🤠', bg: ['#ffe2a8', '#c98a3b'] },
-  { id: 'cool', emoji: '😎', bg: ['#a8f0ff', '#2fa8e0'] },
-  { id: 'capybara', emoji: '🦫', bg: ['#e8c9a0', '#a0703b'] },
+/** two pages of 24 in the picker, in this order (mixed so every page has a bit of everything) */
+const HUMAN_LIST: Row[] = [
+  // page 1
+  ['fox', 'animal', '#8fe6ff', '#3a8ff0'],
+  ['cool', 'person', '#ffd36b', '#ff8a3a'],
+  ['frog', 'animal', '#ffd6f0', '#ff79c0'],
+  ['puffs', 'person', '#b8f5c8', '#2fbf8a'],
+  ['panda', 'animal', '#d6f58a', '#5cbf4c'],
+  ['wizard', 'fantasy', '#ffe28a', '#ffa82e'],
+  ['cat', 'animal', '#a8d8ff', '#6a7cff'],
+  ['cardy', 'card', '#fff2a0', '#ffc62e'],
+  ['beard', 'person', '#ffc2c2', '#ff6b6b'],
+  ['unicorn', 'fantasy', '#c8b8ff', '#7c5cff'],
+  ['pizza', 'food', '#a8f0ff', '#2fb0d8'],
+  ['tiger', 'animal', '#9af0c8', '#1fae7a'],
+  ['granny', 'person', '#b8e2ff', '#5aa8f0'],
+  ['ghost', 'fantasy', '#8a7cf8', '#3a2a9a'],
+  ['penguin', 'animal', '#ffe9a8', '#ffb43a'],
+  ['cowboy', 'person', '#a8f0ff', '#3ab0e0'],
+  ['axolotl', 'animal', '#b0f0e8', '#2fbfb0'],
+  ['dragon', 'fantasy', '#ffd0a0', '#ff7a3a'],
+  ['kid', 'person', '#c6f5a0', '#5cc94a'],
+  ['taco', 'food', '#ffb0c8', '#ff5a8a'],
+  ['owl', 'animal', '#a0f0d8', '#20b890'],
+  ['hijabi', 'person', '#ffd9a8', '#ff9a5a'],
+  ['alien', 'fantasy', '#d6b8ff', '#8a4dff'],
+  ['capybara', 'animal', '#9fe8ff', '#4ab0f0'],
+  // page 2
+  ['bear', 'animal', '#c8f5d8', '#4cc98a'],
+  ['punk', 'person', '#fff2a0', '#ffcf2e'],
+  ['octopus', 'fantasy', '#9fe0ff', '#2f8fe0'],
+  ['monkey', 'animal', '#ffe36b', '#ff9a1f'],
+  ['chef', 'person', '#ffb8b0', '#ff5a5a'],
+  ['plus4', 'card', '#ffe14a', '#ff8a1f'],
+  ['bunny', 'animal', '#ffd0e0', '#ff7aa8'],
+  ['mermaid', 'fantasy', '#ffd6b8', '#ff8a6a'],
+  ['cactus', 'food', '#ffe0a8', '#ffaa4a'],
+  ['lion', 'animal', '#9ad8ff', '#4a7cf0'],
+  ['rocker', 'person', '#c0ffb0', '#4cd06a'],
+  ['dino', 'fantasy', '#ffb8e0', '#c85af0'],
+  ['raccoon', 'animal', '#ffe9a8', '#ffb43a'],
+  ['knight', 'fantasy', '#b8c8ff', '#5a6cf0'],
+  ['donut', 'food', '#a8f0ff', '#2fb0d8'],
+  ['curly', 'person', '#ffd36b', '#ff8a3a'],
+  ['pig', 'animal', '#c8f58a', '#4cbf4c'],
+  ['vampire', 'fantasy', '#ff8a9a', '#c8203a'],
+  ['pumpkin', 'food', '#6a4ab8', '#2a1a5a'],
+  ['astronaut', 'person', '#4a5ac8', '#1a1a5a'],
+  ['clown', 'person', '#a8f0ff', '#3ab0e0'],
+  ['mushroom', 'food', '#b8f5c8', '#2fbf8a'],
+  ['pirate', 'person', '#9fe8ff', '#2f8fe0'],
+  ['wildstar', 'card', '#4a3a6a', '#140a24'],
 ];
 
-const BOT_LIST: Omit<Avatar, 'label'>[] = [
-  { id: 'bot-red', bg: ['#e4c6ff', '#a77bf0'], robot: { body: '#e8402f', face: '#3a1a14', eye: '#ffcf4a', head: 'round', antenna: 'ball' } },
-  { id: 'bot-blue', bg: ['#ffd7a8', '#ff9d5c'], robot: { body: '#6f7fe0', face: '#24264a', eye: '#ffe066', head: 'dome', antenna: 'ball' } },
-  { id: 'bot-mint', bg: ['#fff2a0', '#ffd23f'], robot: { body: '#55d6b0', face: '#163a33', eye: '#ff6b5e', head: 'square', antenna: 'twin' } },
-  { id: 'bot-gold', bg: ['#b8e2ff', '#5aa8f0'], robot: { body: '#f2b822', face: '#3b2a05', eye: '#5ae0ff', head: 'square', antenna: 'bolt' } },
-  { id: 'bot-pink', bg: ['#c8f5d8', '#5cc98a'], robot: { body: '#ff7fb6', face: '#40142a', eye: '#ffffff', head: 'round', antenna: 'twin' } },
-  { id: 'bot-steel', bg: ['#ffc2c2', '#ff6b6b'], robot: { body: '#9aa8bd', face: '#1d2330', eye: '#7dff8a', head: 'dome', antenna: 'bolt' } },
+const BOT_LIST: Row[] = [
+  ['bot-red', 'robot', '#e4c6ff', '#a77bf0'],
+  ['bot-blue', 'robot', '#ffd7a8', '#ff9d5c'],
+  ['bot-mint', 'robot', '#fff2a0', '#ffd23f'],
+  ['bot-gold', 'robot', '#b8e2ff', '#5aa8f0'],
+  ['bot-pink', 'robot', '#c8f5d8', '#5cc98a'],
+  ['bot-steel', 'robot', '#ffc2c2', '#ff6b6b'],
+  ['bot-lime', 'robot', '#d6c8ff', '#7c5cff'],
+  ['bot-violet', 'robot', '#fff0a0', '#ffc83a'],
+  ['bot-orange', 'robot', '#a8f0ff', '#2fb0d8'],
+  ['bot-cyan', 'robot', '#ffc8e8', '#ff6fb6'],
+  ['bot-navy', 'robot', '#ffe0a8', '#ffa84a'],
+  ['bot-cream', 'robot', '#9af0c8', '#1fae7a'],
+  ['bot-coral', 'robot', '#b0e8ff', '#4a90f0'],
+  ['bot-teal', 'robot', '#ffd0c0', '#ff7a5a'],
+  ['bot-ink', 'robot', '#ff9ab8', '#e8306a'],
+  ['bot-sun', 'robot', '#c8b8ff', '#6a4cff'],
 ];
 
-const labelled = (list: Omit<Avatar, 'label'>[]): Avatar[] =>
-  list.map(a => ({ ...a, get label() { return t(`avatar.${a.id}` as StrKey); } }));
+const labelled = (list: Row[]): Avatar[] =>
+  list.map(([id, kind, from, to]) => ({ id, kind, bg: [from, to], get label() { return t(`avatar.${id}` as StrKey); } }));
 export const HUMAN_AVATARS = labelled(HUMAN_LIST);
 export const BOT_AVATARS = labelled(BOT_LIST);
 
+/** avatars shown per picker page */
+export const AVATAR_PAGE = 24;
+
 export const ALL_AVATARS = [...HUMAN_AVATARS, ...BOT_AVATARS];
 const byId = new Map(ALL_AVATARS.map(a => [a.id, a]));
+
+/** retired ids → the closest current avatar (empty so far: every id ever shipped is still drawn) */
+export const LEGACY: Readonly<Record<string, string>> = {};
+
+/** the current id for a saved or received one (follows LEGACY), or undefined if unknown */
+export function canonicalAvatar(id: unknown): string | undefined {
+  if (typeof id !== 'string') return undefined;
+  const to = LEGACY[id] ?? id;
+  return byId.has(to) ? to : undefined;
+}
 
 function hash(s: string) {
   let h = 0;
@@ -71,14 +127,16 @@ function hash(s: string) {
 
 /** The chosen avatar, or a stable pick based on the name when none was chosen. */
 export function avatarOf(id: string | undefined, name: string, bot: boolean): Avatar {
-  const a = id ? byId.get(id) : undefined;
+  const c = canonicalAvatar(id);
+  const a = c ? byId.get(c) : undefined;
   if (a) return a;
   const pool = bot ? BOT_AVATARS : HUMAN_AVATARS;
   return pool[hash(name) % pool.length];
 }
 
+/** accepts every current id and every retired one (older clients may still send those) */
 export function isAvatarId(id: unknown): id is string {
-  return typeof id === 'string' && byId.has(id);
+  return canonicalAvatar(id) !== undefined;
 }
 
 /**
@@ -92,7 +150,7 @@ export function randomBot(
 ): { name: string; avatar: string } {
   const pick = <T,>(all: readonly T[], free: readonly T[]) => (free.length ? free : all)[Math.floor(rng() * (free.length || all.length))];
   const names = new Set(taken.map(p => p.name));
-  const faces = new Set(taken.map(p => p.avatar));
+  const faces = new Set(taken.map(p => canonicalAvatar(p.avatar)));
   let name = pick(pool, pool.filter(n => !names.has(n)));
   // every name in use: number it
   for (let i = 2; names.has(name); i++) name = `${name.replace(/ \d+$/, '')} ${i}`;
@@ -102,37 +160,6 @@ export function randomBot(
 
 export function randomHumanAvatar() {
   return HUMAN_AVATARS[Math.floor(Math.random() * HUMAN_AVATARS.length)].id;
-}
-
-/** Cute robot portrait as an SVG string (head + shoulders, big glowing eyes). */
-export function robotSvg(r: RobotLook): string {
-  const head =
-    r.head === 'round'
-      ? `<circle cx="50" cy="44" r="26" fill="${r.body}"/>`
-      : r.head === 'dome'
-        ? `<path d="M22 52 Q22 16 50 16 Q78 16 78 52 Z" fill="${r.body}"/>`
-        : `<rect x="23" y="20" width="54" height="46" rx="10" fill="${r.body}"/>`;
-  const antenna =
-    r.antenna === 'ball'
-      ? `<line x1="50" y1="18" x2="50" y2="6" stroke="${r.face}" stroke-width="3"/><circle cx="50" cy="6" r="5" fill="${r.eye}"/>`
-      : r.antenna === 'twin'
-        ? `<line x1="38" y1="20" x2="32" y2="7" stroke="${r.face}" stroke-width="3"/><line x1="62" y1="20" x2="68" y2="7" stroke="${r.face}" stroke-width="3"/><circle cx="32" cy="7" r="4" fill="${r.eye}"/><circle cx="68" cy="7" r="4" fill="${r.eye}"/>`
-        : `<path d="M50 18 L45 9 L52 10 L48 1" fill="none" stroke="${r.eye}" stroke-width="3" stroke-linejoin="round"/>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <path d="M18 100 Q18 72 50 72 Q82 72 82 100 Z" fill="${r.body}"/>
-  <circle cx="40" cy="86" r="4" fill="${r.eye}"/><circle cx="56" cy="88" r="3" fill="${r.face}"/>
-  <rect x="44" y="64" width="12" height="10" fill="${r.face}" opacity=".5"/>
-  ${antenna}${head}
-  <rect x="30" y="32" width="40" height="24" rx="12" fill="${r.face}"/>
-  <circle cx="41" cy="44" r="5.5" fill="${r.eye}"/><circle cx="59" cy="44" r="5.5" fill="${r.eye}"/>
-  <circle cx="42.5" cy="42.5" r="1.8" fill="#fff"/><circle cx="60.5" cy="42.5" r="1.8" fill="#fff"/>
-  <path d="M44 51 Q50 55 56 51" stroke="${r.eye}" stroke-width="2" fill="none" stroke-linecap="round"/>
-  <circle cx="21" cy="44" r="5" fill="${r.face}"/><circle cx="79" cy="44" r="5" fill="${r.face}"/>
-</svg>`;
-}
-
-export function robotDataUrl(r: RobotLook) {
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(robotSvg(r))}`;
 }
 
 /**

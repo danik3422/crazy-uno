@@ -2,13 +2,14 @@ import { Billboard } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef, type MutableRefObject } from 'react';
 import * as THREE from 'three';
-import { avatarOf, robotDataUrl, type Avatar } from '../game/avatars';
+import { drawAvatar } from '../art/avatarArt';
+import { drawUiIcon } from '../art/uiIcons';
+import { avatarOf, type Avatar } from '../game/avatars';
 import type { Player } from '../game/types';
 import { lang, t as tr, useLang } from '../i18n';
 import { fxState, nowSec } from './fxState';
 import { glowTexture } from './glowTexture';
 import type { Vec3 } from './layout';
-import { drawEmoji } from './textures';
 
 /*
  * Performance notes. The podium is mounted for the whole round and only shown at the end:
@@ -43,29 +44,12 @@ function canvasTexture(w: number, h: number, draw: (ctx: CanvasRenderingContext2
 
 const avatarCache = new Map<string, THREE.CanvasTexture>();
 
-/** An avatar painted onto a canvas: gradient tile with the emoji, or the robot portrait once its SVG loads. */
+/** An avatar's drawn portrait painted onto a canvas. */
 function avatarTexture(a: Avatar): THREE.CanvasTexture {
   const hit = avatarCache.get(a.id);
   if (hit) return hit;
   const S = 256;
-  let ctxRef: CanvasRenderingContext2D;
-  const tex = canvasTexture(S, S, ctx => {
-    ctxRef = ctx;
-    const bg = ctx.createLinearGradient(0, 0, S, S);
-    bg.addColorStop(0, a.bg[0]);
-    bg.addColorStop(1, a.bg[1]);
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, S, S);
-    if (!a.robot) drawEmoji(ctx, a.emoji ?? '?', S / 2, S / 2 + 6, 170);
-  }, redraw => {
-    if (!a.robot) return;
-    const img = new Image();
-    img.onload = () => {
-      ctxRef.drawImage(img, 0, 0, S, S);
-      redraw();
-    };
-    img.src = robotDataUrl(a.robot);
-  });
+  const tex = canvasTexture(S, S, ctx => drawAvatar(ctx, a, S));
   avatarCache.set(a.id, tex);
   return tex;
 }
@@ -112,7 +96,7 @@ function pillPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number
 
 const labelCache = new Map<string, THREE.CanvasTexture>();
 
-/** "🏆 Winner" / "2nd place" in a pill (in the current language), the name underneath. */
+/** "(trophy) Winner" / "2nd place" in a pill (in the current language), the name underneath. */
 function labelTexture(place: number, name: string) {
   const key = `${lang()}|${place}|${name}`;
   let t = labelCache.get(key);
@@ -141,7 +125,10 @@ function labelTexture(place: number, name: string) {
     ctx.shadowColor = 'transparent';
     ctx.fillStyle = ink;
     if (place === 1) {
-      drawEmoji(ctx, '🏆', px + 40, 43, 36);
+      ctx.save();
+      ctx.translate(px + 40 - 21, 43 - 21);
+      drawUiIcon(ctx, 'trophy', 42);
+      ctx.restore();
       ctx.fillText(text, LABEL_W / 2 + 18, 44);
     } else ctx.fillText(text, LABEL_W / 2, 44);
     // the name, shrunk to fit

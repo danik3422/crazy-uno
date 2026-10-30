@@ -1,10 +1,98 @@
 .avatar { display: inline-grid; place-items: center; border-radius: 10px; overflow: hidden; flex: none; position: relative; }
 .avatar img { width: 100%; height: 100%; display: block; }
-.avatar-emoji { line-height: 1; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.25)); }
-.avatar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 8px; }
-.avatar-pick {
-  background: none; border: 3px solid transparent; border-radius: 14px; padding: 2px; cursor: pointer; display: grid; place-items: center;
-  transition: transform 0.15s, border-color 0.15s;
+.avatar img.fresh { animation: ava-in 0.22s ease-out; }
+@keyframes ava-in { from { opacity: 0; transform: scale(0.94); } }
+
+/* ---------- the picker dialog ---------- */
+.ava-dlg-back {
+  position: fixed; inset: 0; z-index: 150; display: grid; place-items: center; padding: max(12px, env(safe-area-inset-top, 0px)) 16px;
+  background: rgba(12, 2, 22, 0.62); backdrop-filter: blur(5px); animation: ava-fade 0.18s ease-out;
 }
-.avatar-pick:hover { transform: translateY(-2px); }
-.avatar-pick.on { border-color: var(--gold); transform: scale(1.08); box-shadow: 0 0 18px rgba(255, 208, 74, 0.6); }
+.ava-dlg {
+  --cols: 6; --rows: 4; --cell: 68px; --gap: 10px;
+  position: relative; display: flex; flex-direction: column; gap: 12px; max-width: 100%;
+  padding: 16px 16px 14px; border-radius: 24px; border: 5px solid var(--edge, #fffdf6);
+  background: linear-gradient(170deg, #2b1036 0%, #1a0a22 55%, #12061a 100%);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5), 0 0 60px rgba(255, 196, 60, 0.16);
+  animation: ava-pop 0.24s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.ava-head { display: flex; align-items: center; gap: 10px; padding-left: 4px; }
+.ava-head h2 { margin: 0; font-family: var(--display); font-size: 18px; font-weight: 800; flex: 1; min-width: 0; }
+.ava-count { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 0.04em; white-space: nowrap; }
+.ava-close {
+  flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; padding: 0; cursor: pointer;
+  border: 2px solid rgba(255, 255, 255, 0.5); background: rgba(255, 255, 255, 0.08); color: #fff; font-size: 15px; font-weight: 900;
+}
+.ava-close:hover { background: rgba(255, 255, 255, 0.18); }
+.ava-body { display: flex; align-items: center; gap: 8px; }
+.ava-view {
+  overflow: hidden; touch-action: pan-y; border-radius: 16px;
+  /* exactly one page wide: the cells, the gaps and room for the chosen one's ring */
+  width: calc(var(--cols) * var(--cell) + (var(--cols) - 1) * var(--gap) + 20px);
+}
+.ava-track { display: flex; transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1); will-change: transform; }
+.ava-track.dragging { transition: none; }
+.ava-page {
+  flex: 0 0 100%; display: grid; grid-template-columns: repeat(var(--cols), var(--cell)); grid-auto-rows: var(--cell);
+  gap: var(--gap); padding: 10px; box-sizing: border-box; align-content: start;
+  min-height: calc(var(--rows) * var(--cell) + (var(--rows) - 1) * var(--gap) + 20px);
+}
+.ava-cell {
+  position: relative; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 14px; display: block;
+  transition: transform 0.15s;
+}
+.ava-cell .avatar { width: 100% !important; height: 100% !important; border-radius: 14px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35); }
+.ava-cell:hover { transform: translateY(-2px) scale(1.04); }
+.ava-cell.on { transform: scale(1.06); }
+.ava-cell.on::after {
+  content: ''; position: absolute; inset: -4px; border-radius: 17px; pointer-events: none;
+  box-shadow: 0 0 0 3px var(--gold), 0 0 16px rgba(255, 208, 74, 0.7);
+}
+.ava-cell.on::before {
+  content: '✓'; position: absolute; z-index: 1; right: -6px; top: -6px; width: 20px; height: 20px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 12px; font-weight: 900; color: #3a1d00; background: var(--gold); border: 2px solid #fff;
+}
+.ava-cell:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.ava-arrow {
+  flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; padding: 0; cursor: pointer; color: #3a1d00;
+  border: 3px solid #fff; background: linear-gradient(180deg, #ffe680, #ffb21f); box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
+  transition: transform 0.12s, opacity 0.15s;
+}
+.ava-arrow.prev svg { transform: scaleX(-1); }
+.ava-arrow:hover:not(:disabled) { transform: translateY(-1px) scale(1.06); }
+.ava-arrow:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); }
+.ava-arrow:disabled { opacity: 0.25; cursor: default; }
+.ava-dots { display: flex; justify-content: center; gap: 10px; }
+.ava-dots button {
+  width: 10px; height: 10px; border-radius: 5px; padding: 0; border: 0; cursor: pointer; background: rgba(255, 255, 255, 0.3);
+  transition: width 0.25s, background 0.25s;
+}
+.ava-dots button.on { width: 26px; background: var(--gold); }
+/* a bigger hit area than the dot itself */
+.ava-dots button { position: relative; }
+.ava-dots button::after { content: ''; position: absolute; inset: -10px -4px; }
+
+/* narrow (phone upright): 4 per row, 6 rows */
+@media (max-width: 560px) {
+  .ava-dlg { --cols: 4; --rows: 6; --cell: min(64px, calc((100vw - 32px - 32px - 2 * 36px - 2 * 6px - 20px - 3 * 8px) / 4)); --gap: 8px; padding: 14px 10px 12px; }
+  .ava-body { gap: 6px; }
+  .ava-arrow { width: 36px; height: 36px; }
+}
+/* phone lying on its side: 8 per row, 3 rows, everything on one screen */
+@media (orientation: landscape) and (max-height: 520px) {
+  .ava-dlg-back { padding: max(6px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(6px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); }
+  .ava-dlg {
+    --cols: 8; --rows: 3; --gap: 8px;
+    --cell: min(60px, calc((100dvh - 156px) / 3), calc((100vw - 48px - 24px - 2 * 36px - 2 * 8px - 20px - 7 * 8px) / 8));
+    padding: 10px 12px 10px; gap: 8px; border-width: 4px; border-radius: 20px;
+  }
+  .ava-head h2 { font-size: 15px; }
+  .ava-close { width: 30px; height: 30px; }
+  .ava-arrow { width: 36px; height: 36px; }
+}
+@keyframes ava-fade { from { opacity: 0; } }
+@keyframes ava-pop { from { transform: scale(0.92); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .ava-track { transition: none; }
+  .ava-dlg, .ava-dlg-back, .avatar img.fresh { animation: none; }
+}
