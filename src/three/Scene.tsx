@@ -18,7 +18,7 @@ import { Arena, PALETTES } from './Environment';
 import { EventFx } from './eventFx/EventFx';
 import { DEBUG, fxState, nowSec } from './fxState';
 import { FitProbe } from './FitProbe';
-import { CAMERA, PARALLAX_X, RING_R, RING_Z, arena, cameraFov, computeTargets, deckCenter, deckSpot, oppWall, visibleHalfWidth, type View } from './layout';
+import { CAMERA, FAN_HALF, PARALLAX_X, RING_R, RING_Z, arena, cameraFov, computeTargets, deckCenter, deckSpot, oppWall, visibleHalfWidth, type View } from './layout';
 import { Mascot } from './Mascot';
 import { PlayFx, StackFx } from './PlayFx';
 import { CardFx } from './cardFx/CardFx';
@@ -337,6 +337,8 @@ function DeckHit({ active, onClick, pending, at }: { active: boolean; onClick: (
   );
 }
 
+const tmpV = new THREE.Vector3();
+
 /** Avatar plates above each opponent's fan: name ribbon, portrait, card counter. */
 function PlayerPlates({ game, view, dealing }: { game: GameView; view: View; dealing: boolean }) {
   const t = useT();
@@ -344,6 +346,7 @@ function PlayerPlates({ game, view, dealing }: { game: GameView; view: View; dea
   const seat = game.seat();
   // the plate has a fixed size in pixels: on a short screen it needs more room above the fan
   const { width, height } = useThree(st => st.size);
+  const camera = useThree(st => st.camera);
   const lift = view.portrait ? 0.45 : Math.min(1, Math.max(0.6, (0.6 * 800) / height)) + (view.compact ? 0.1 : 0);
   // a crowded table on a not-so-tall screen: smaller plates, so they stay off the neighbours' fans
   const small = view.portrait || view.compact || (s.players.length >= 7 && height < 900);
@@ -375,6 +378,20 @@ function PlayerPlates({ game, view, dealing }: { game: GameView; view: View; dea
         const out = Math.max(0, Math.min(1, (Math.abs(w.pos[0]) / (arena(view).rx * 0.8) - 0.55) / 0.45));
         const maxX = Math.max(0, vhw - PARALLAX_X - (halfPx + 6) * perPx);
         pos[0] = Math.max(-maxX, Math.min(maxX, pos[0] + Math.sign(pos[0]) * out * halfPx * 0.6 * perPx));
+        // and never at the top edge of the screen (a far seat on a short phone screen: rounded corners and
+        // the browser's bar would cut it). A seat near the middle then gets its plate beside its fan, as in
+        // the mobile game; any other one is just pulled down.
+        const halfH = tiny ? 20 : small ? 24 : 32;
+        const margin = view.compact ? 14 : 6;
+        const ndc = tmpV.set(...pos).project(camera);
+        const topPx = ((1 - ndc.y) / 2) * height - halfH - margin;
+        if (topPx < 0 && !end && out < 0.5) {
+          const side = w.pos[0] > 0.3 ? 1 : -1;
+          const fanPx = FAN_HALF * w.scale;
+          pos[0] = w.pos[0] + side * (fanPx + (halfPx + 8) * perPx);
+          pos[1] = w.top * 0.55;
+          pos[2] = w.pos[2];
+        } else if (topPx < 0) pos[1] = Math.max(0, pos[1] + (topPx * (2 * visibleHalfWidth(view, pos[1], pos[2]))) / width);
         const cur = i === s.cur && s.phase !== 'over';
         const sub = standIn(p.name);
         return (

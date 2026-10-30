@@ -26,3 +26,8 @@ export const IconStack = () => (
     <rect x="2.5" y="3.5" width="8.5" height="11" rx="1.6" fill="currentColor" />
   </svg>
 );
+export const IconGear = () => (
+  <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden>
+    <path d="M12.00 4.40 L13.99 2.00 L15.90 2.58 L16.22 5.68 L17.37 6.63 L20.48 6.33 L21.42 8.10 L19.45 10.52 L19.60 12.00 L22.00 13.99 L21.42 15.90 L18.32 16.22 L17.37 17.37 L17.67 20.48 L15.90 21.42 L13.48 19.45 L12.00 19.60 L10.01 22.00 L8.10 21.42 L7.78 18.32 L6.63 17.37 L3.52 17.67 L2.58 15.90 L4.55 13.48 L4.40 12.00 L2.00 10.01 L2.58 8.10 L5.68 7.78 L6.63 6.63 L6.33 3.52 L8.10 2.58 L10.52 4.55Z M12 8.6a3.4 3.4 0 1 0 0 6.8a3.4 3.4 0 1 0 0-6.8Z" fill="currentColor" fillRule="evenodd" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+  </svg>
+);

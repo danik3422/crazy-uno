@@ -202,7 +202,7 @@ export const OPP_FAN = {
 /** the fan floats this much (card heights) over the table, so its outer cards' corners stay above it */
 const FAN_LIFT = (OPP_FAN.radius * (1 - Math.cos(OPP_FAN.spread / 2)) + (CARD_W / 2) * Math.sin(OPP_FAN.spread / 2)) / CARD_H + 0.02;
 /** half the width of a full fan (card widths, at scale 1) */
-const FAN_HALF = OPP_FAN.radius * Math.sin(OPP_FAN.spread / 2) + (CARD_W / 2) * Math.cos(OPP_FAN.spread / 2) + (CARD_H / 2) * Math.sin(OPP_FAN.spread / 2);
+export const FAN_HALF = OPP_FAN.radius * Math.sin(OPP_FAN.spread / 2) + (CARD_W / 2) * Math.cos(OPP_FAN.spread / 2) + (CARD_H / 2) * Math.sin(OPP_FAN.spread / 2);
 
 const eulTmp = new THREE.Euler(0, 0, 0, 'YXZ');
 const qTmp = new THREE.Quaternion();
@@ -267,6 +267,11 @@ const hash = (n: number) => {
   const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
   return x - Math.floor(x);
 };
+
+/** how far (table units, a card is 1.5 tall) the hand sinks while it is someone else's turn */
+const HAND_REST = 0.75;
+/** hand cards on a phone lying on its side are this much bigger */
+const PHONE_CARD = 1.18;
 
 export function computeTargets(g: GameView, v: View): Map<number, Target> {
   const s = g.s;
@@ -335,7 +340,9 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
     }
     if (pi === seat) {
       // never wider than the screen at the hand's depth (minus the mouse parallax and a card's width)
-      const fitW = 2 * (visibleHalfWidth(v, A.hand.y, A.hand.z) * 0.95 - PARALLAX_X) - 1.0;
+      const vis = visibleHalfWidth(v, A.hand.y, A.hand.z);
+      // a phone lying on its side: the hand stays between the corner panels (your plate, the draw button)
+      const fitW = v.compact ? 2 * vis * 0.6 - PHONE_CARD : 2 * (vis * 0.95 - PARALLAX_X) - 1.0;
       const h = { ...A.hand, maxW: Math.min(A.hand.maxW, fitW) };
       // blind event: you still play, but you cannot see what
       const faceUp = (viewer === seat && s.blindTurns === 0) || over;
@@ -353,6 +360,7 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
       const rows = m > (v.portrait ? 11 : 20) ? 2 : 1;
       const backN = rows === 2 ? Math.ceil(m / 2) : m;
       const tilt = h.tilt;
+      const rest = !myTurn && !over && s.phase !== 'handover' ? HAND_REST : 0;
       // the card face normal and its "up" direction: rows and layers move along them
       const ny = -Math.sin(tilt);
       const nz = Math.cos(tilt);
@@ -363,7 +371,8 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
         const inRow = row ? k - backN : k;
         const rowN = row ? m - backN : backN;
         // two rows: smaller cards and a narrower spread, so both rows fit on screen
-        const cs = rows === 2 ? (v.portrait ? 0.86 : 0.8) : 1;
+        // a phone lying on its side: bigger cards, easier to read and to hit with a finger
+        const cs = (rows === 2 ? (v.portrait ? 0.86 : 0.8) : 1) * (v.compact ? PHONE_CARD : 1);
         const sp = Math.min(h.sp * cs, (h.maxW - (rows === 2 ? (v.portrait ? 0.9 : 1.2) : 0)) / Math.max(rowN - 1, 1));
         const off = inRow - (rowN - 1) / 2;
         const x = off * sp;
@@ -381,7 +390,8 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
         // The step shrinks for big hands so the whole fan never comes too close to the camera.
         const layer = inRow * Math.min(0.02, 0.3 / rowN) + row * 0.32 + lift * 0.5;
         // two rows sit a bit higher, so the front row clears the bottom panel
-        const up = rows === 2 ? (row ? -0.38 : 0.42) * cs + (v.portrait ? 0.1 : 0.32) : 0;
+        // waiting for someone else: the hand sinks a little (corners still readable); on your turn it rises
+        const up = (rows === 2 ? (row ? -0.38 : 0.42) * cs + (v.portrait ? 0.1 : 0.32) : 0) - rest + (v.compact ? (PHONE_CARD - 1) * 0.3 : 0);
         out.set(c.id, {
           pos: [x, h.y + lift + ny * layer + uy * up - Math.abs(off) * sp * 0.02, h.z + nz * layer + uz * up],
           rot: [faceUp ? tilt : tilt + PI, 0, -off * Math.min(0.035, 0.4 / rowN)],

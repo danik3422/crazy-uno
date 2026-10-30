@@ -610,6 +610,7 @@ export const enStrings: Record<keyof typeof ruStrings, Entry> = {
   'ov.cardsBtn': 'Cards',
   'ov.cardsTitle': 'What the cards do',
   'ov.menu': 'Menu',
+  'ov.settings': 'Settings',
   'ov.gotIt': 'Got it',
   'ov.leaveRoom': 'Leave the room?',
   'ov.leaveGame': 'Back to the menu?',

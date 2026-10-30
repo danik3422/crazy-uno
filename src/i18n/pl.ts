@@ -617,6 +617,7 @@ export const plStrings: Record<keyof typeof ruStrings, Entry> = {
   'ov.cardsBtn': 'Karty',
   'ov.cardsTitle': 'Co robią karty',
   'ov.menu': 'Menu',
+  'ov.settings': 'Ustawienia',
   'ov.gotIt': 'Jasne',
   'ov.leaveRoom': 'Wyjść z pokoju?',
   'ov.leaveGame': 'Wrócić do menu?',

@@ -1,16 +1,13 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { type ReactNode, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { haptics } from '../../audio/haptics';
 import { sound } from '../../audio/sound';
 import { useT } from '../../i18n';
-import { IconMusic, IconMute, IconSound } from './Icons';
+import { IconGear, IconMusic, IconMute, IconSound } from './Icons';
 import './SoundMenu.css';
 
-/** Speaker button with two switches (music and sound effects). A tap anywhere else, or Escape, closes it. */
-export function SoundMenu() {
-  const t = useT();
-  useSyncExternalStore(sound.subscribe, sound.getVersion);
+/** A button with a small panel under it. A tap anywhere else, or Escape, closes it. */
+function Popover({ icon, label, className = '', children }: { icon: ReactNode; label: string; className?: string; children: (close: () => void) => ReactNode }) {
   const [open, setOpen] = useState(false);
-  const [buzz, setBuzz] = useState(haptics.on);
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -26,35 +23,81 @@ export function SoundMenu() {
       document.removeEventListener('keydown', esc);
     };
   }, [open]);
-  const { sfx, music } = sound.prefs;
-  const icon = !sfx && !music ? <IconMute /> : music ? <IconMusic /> : <IconSound />;
   return (
-    <div className="sound-menu" ref={root}>
-      <button className={`btn glass icon-btn ${open ? 'on' : ''}`} aria-expanded={open} aria-label={t('sound.aria')} title={t('sound.aria')} onClick={() => setOpen(o => !o)}>
+    <div className={`sound-menu ${className}`} ref={root}>
+      <button className={`btn glass icon-btn ${open ? 'on' : ''}`} aria-expanded={open} aria-label={label} title={label} onClick={() => setOpen(o => !o)}>
         {icon}
       </button>
       {open && (
-        <div className="sound-pop" role="group" aria-label={t('sound.aria')}>
-          <label className="switch">
-            <input id="snd-music" type="checkbox" checked={music} onChange={e => sound.setMusic(e.target.checked)} />
-            <span className="sw" aria-hidden />
-            {t('sound.music')}
-          </label>
-          <label className="switch">
-            <input id="snd-sfx" type="checkbox" checked={sfx} onChange={e => sound.setSfx(e.target.checked)} />
-            <span className="sw" aria-hidden />
-            {t('sound.sfx')}
-          </label>
-          {/* phones only: a light tap on your turn, harder for a penalty and for "UNO!" */}
-          {haptics.supported && (
-            <label className="switch">
-              <input id="snd-haptics" type="checkbox" checked={buzz} onChange={e => { haptics.set(e.target.checked); setBuzz(e.target.checked); }} />
-              <span className="sw" aria-hidden />
-              {t('sound.haptics')}
-            </label>
-          )}
+        <div className="sound-pop" role="group" aria-label={label}>
+          {children(() => setOpen(false))}
         </div>
       )}
     </div>
+  );
+}
+
+/** Music, sound effects and (phones) vibration switches. */
+function SoundSwitches() {
+  const t = useT();
+  useSyncExternalStore(sound.subscribe, sound.getVersion);
+  const [buzz, setBuzz] = useState(haptics.on);
+  const { sfx, music } = sound.prefs;
+  return (
+    <>
+      <label className="switch">
+        <input id="snd-music" type="checkbox" checked={music} onChange={e => sound.setMusic(e.target.checked)} />
+        <span className="sw" aria-hidden />
+        {t('sound.music')}
+      </label>
+      <label className="switch">
+        <input id="snd-sfx" type="checkbox" checked={sfx} onChange={e => sound.setSfx(e.target.checked)} />
+        <span className="sw" aria-hidden />
+        {t('sound.sfx')}
+      </label>
+      {/* phones only: a light tap on your turn, harder for a penalty and for "UNO!" */}
+      {haptics.supported && (
+        <label className="switch">
+          <input id="snd-haptics" type="checkbox" checked={buzz} onChange={e => { haptics.set(e.target.checked); setBuzz(e.target.checked); }} />
+          <span className="sw" aria-hidden />
+          {t('sound.haptics')}
+        </label>
+      )}
+    </>
+  );
+}
+
+/** Speaker button with the sound switches. */
+export function SoundMenu() {
+  const t = useT();
+  useSyncExternalStore(sound.subscribe, sound.getVersion);
+  const { sfx, music } = sound.prefs;
+  const icon = !sfx && !music ? <IconMute /> : music ? <IconMusic /> : <IconSound />;
+  return <Popover icon={icon} label={t('sound.aria')}>{() => <SoundSwitches />}</Popover>;
+}
+
+export interface GearItem {
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
+}
+
+/** Phones: one gear button holding the sound switches and the table's other buttons, so the screen stays clear. */
+export function GearMenu({ items }: { items: GearItem[] }) {
+  const t = useT();
+  return (
+    <Popover icon={<IconGear />} label={t('ov.settings')} className="gear-menu">
+      {close => (
+        <>
+          <SoundSwitches />
+          <div className="gear-sep" aria-hidden />
+          {items.map(it => (
+            <button key={it.label} type="button" className="gear-item" onClick={() => { close(); it.onClick(); }}>
+              {it.icon}<span>{it.label}</span>
+            </button>
+          ))}
+        </>
+      )}
+    </Popover>
   );
 }

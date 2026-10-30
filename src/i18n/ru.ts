@@ -612,6 +612,7 @@ export const ruStrings = {
   'ov.cardsBtn': 'Карты',
   'ov.cardsTitle': 'Что за карты',
   'ov.menu': 'Меню',
+  'ov.settings': 'Настройки',
   'ov.gotIt': 'Понятно',
   'ov.leaveRoom': 'Выйти из комнаты?',
   'ov.leaveGame': 'Выйти в меню?',

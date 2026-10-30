@@ -6,8 +6,9 @@ import type { GameView } from '../../game/view';
 import { IconCards, IconMenu } from '../components/Icons';
 import { EventIcon } from '../components/EventIcon';
 import { EventLegend, Legend } from '../components/Legend';
-import { FullscreenButton } from '../components/RotateGate';
-import { SoundMenu } from '../components/SoundMenu';
+import { FullscreenButton, FullscreenIcon } from '../components/RotateGate';
+import { GearMenu, SoundMenu } from '../components/SoundMenu';
+import { canFullscreen, enterFullscreen, SMALL_SCREEN, useMedia, usePhone } from '../hooks/phone';
 import { UiIcon } from '../components/UiIcon';
 import { CoinFlip } from './CoinFlip';
 import { RematchVote } from './RematchVote';
@@ -33,6 +34,9 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
   const mine = game.viewer() !== null && game.viewer() === s.cur;
   const [menu, setMenu] = useState(false);
   const [help, setHelp] = useState(false);
+  // phones: all the corner buttons fold into one gear
+  const small = useMedia(SMALL_SCREEN);
+  const phone = usePhone();
   const [showEnd, setShowEnd] = useState(false);
 
   // let the confetti and revealed hands play for a moment before the results card
@@ -190,6 +194,15 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
 
   return (
     <>
+      {small ? (
+        <div className="corner-btns">
+          <GearMenu items={[
+            ...(phone.phone && !phone.portrait && !phone.fullscreen && canFullscreen() ? [{ icon: <FullscreenIcon />, label: t('fs.btn'), onClick: () => void enterFullscreen() }] : []),
+            { icon: <IconCards />, label: t('ov.cardsTitle'), onClick: () => setHelp(true) },
+            { icon: <IconMenu />, label: online ? t('ov.leave') : t('ov.toMenu'), onClick: () => setMenu(true) },
+          ]} />
+        </div>
+      ) : (
       <div className="corner-btns">
         <FullscreenButton />
         <SoundMenu />
@@ -200,6 +213,7 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
           <IconMenu /><span>{t('ov.menu')}</span>
         </button>
       </div>
+      )}
       {modal}
       {help && (
         <Modal onClose={() => setHelp(false)}>
