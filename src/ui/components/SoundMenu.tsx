@@ -88,21 +88,28 @@ export function GearMenu({ items, labeled }: { items: GearItem[]; labeled?: bool
       {close => (
         <>
           <div className="menu-head">{t('ov.settings')}</div>
-          <div className="menu-sec">{t('sound.aria')}</div>
-          <div className="menu-card">
-            <SoundSwitches />
-          </div>
-          <div className="menu-sec">{t('lang.label')}</div>
-          <div className="menu-card menu-lang-card">
-            <LangSwitch className="menu-langs" />
-          </div>
-          <div className="menu-card menu-actions">
-            {items.map(it => (
-              <button key={it.label} type="button" className={`gear-item ${it.danger ? 'danger' : ''}`} onClick={() => { close(); it.onClick(); }}>
-                <span className="menu-ico">{it.icon}</span><span className="menu-label">{it.label}</span>
-                <svg className="menu-chev" viewBox="0 0 24 24" width="16" height="16" aria-hidden><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              </button>
-            ))}
+          {/* two columns on a short phone screen, one under the other elsewhere */}
+          <div className="menu-cols">
+            <div className="menu-col">
+              <div className="menu-sec">{t('sound.aria')}</div>
+              <div className="menu-card">
+                <SoundSwitches />
+              </div>
+            </div>
+            <div className="menu-col">
+              <div className="menu-sec">{t('lang.label')}</div>
+              <div className="menu-card menu-lang-card">
+                <LangSwitch className="menu-langs" />
+              </div>
+              <div className="menu-card menu-actions">
+                {items.map(it => (
+                  <button key={it.label} type="button" className={`gear-item ${it.danger ? 'danger' : ''}`} onClick={() => { close(); it.onClick(); }}>
+                    <span className="menu-ico">{it.icon}</span><span className="menu-label">{it.label}</span>
+                    <svg className="menu-chev" viewBox="0 0 24 24" width="16" height="16" aria-hidden><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </>
       )}

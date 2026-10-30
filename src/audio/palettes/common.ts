@@ -1,6 +1,6 @@
 import type { Kit } from '../kit';
 import { midi } from '../kit';
-import { shoutUno } from '../voice';
+import { shoutState, shoutUno } from '../voice';
 
 /**
  * Recipes shared by several tables, with knobs for each table's colour.
@@ -57,6 +57,7 @@ export function thunderRoll(k: Kit, t: number, o: { crack?: number; level?: numb
 
 /** The shouted "UNO!"; returns when the shout ends. The table adds its own sparkle on top. */
 export function shout(k: Kit, t: number): number {
+  if (shoutState.muted) return t + 0.3;
   const end = shoutUno(k.ctx, k.out, t, k.noiseBuf);
   k.hold(t, end + 0.12);
   return end;

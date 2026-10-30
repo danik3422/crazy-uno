@@ -349,7 +349,7 @@ export class Game extends Observable {
     this.say(jumped ? 'log.jumpIn' : 'log.played', { who: p.name, card: cardMsg(card) });
 
     if (p.hand.length === 1 && s.rules.uno) {
-      if (s.unoCalled) this.fx('uno', msg('fx.uno', { who: p.name }));
+      if (s.unoCalled) this.fx('uno', msg('fx.uno', { who: p.name }), { target: s.players.indexOf(p) });
       else this.openUnoCatch();
     }
     if (p.hand.length === 0) {
@@ -422,7 +422,7 @@ export class Game extends Observable {
     // only when it means something: down to two cards with one of them about to be laid
     if (s.phase !== 'play' || s.unoCalled || !this.canCallUno()) return;
     s.unoCalled = true;
-    this.fx('uno', msg('fx.uno', { who: this.cp().name }));
+    this.fx('uno', msg('fx.uno', { who: this.cp().name }), { target: s.cur });
     this.emitChange();
   }
 
@@ -543,7 +543,7 @@ export class Game extends Observable {
     const s = this.s;
     if (!this.catchable() || s.unoCatch?.victim !== who) return;
     s.unoCatch = null;
-    this.fx('uno', msg('fx.lateUno', { who: s.players[who].name }));
+    this.fx('uno', msg('fx.lateUno', { who: s.players[who].name }), { target: who });
     this.emitChange();
   }
 

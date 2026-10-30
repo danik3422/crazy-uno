@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { haptics } from '../../audio/haptics';
+import { speech } from '../../audio/speech';
+import { shoutState } from '../../audio/voice';
 import { type Sfx, sound } from '../../audio/sound';
 import type { EventId, FxKind, State } from '../../game/types';
 import type { GameView } from '../../game/view';
@@ -82,7 +84,16 @@ export function useTableEffects(game: GameView, version: number, onOver?: (winne
       if (f.id <= lastFx.current.id) continue;
       lastFx.current.id = f.id;
       const sfx = SOUND_OF[f.kind];
-      if (sfx) sound.play(sfx);
+      if (f.kind === 'uno') {
+        // a human voice shouts it (each player in their own pitch); the table's sound adds only its sparkle.
+        // Calling UNO and then laying the card is one shout, not two.
+        const said = speech.uno(f.target ?? s.cur);
+        if (said !== 'repeat') {
+          shoutState.muted = said === 'spoken';
+          sound.play('uno');
+          shoutState.muted = false;
+        }
+      } else if (sfx) sound.play(sfx);
       const buzz = HAPTIC_OF[f.kind];
       if (buzz) haptics.play(buzz);
       switch (f.kind) {

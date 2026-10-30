@@ -22,6 +22,9 @@ const O: Phoneme = { f: [590, 980, 2500, 3450], g: [1, 1.1, 0.28, 0.1], amp: 1 }
 /** Bandwidths of the four formants (Hz): narrower bands sound more like a voice, wider ones softer. */
 const BW = [90, 110, 160, 220];
 
+/** while set, the table's "UNO!" sound keeps its sparkle but leaves out this shout (a real voice is speaking it) */
+export const shoutState = { muted: false };
+
 let cords: PeriodicWave | null = null;
 let cordsCtx: BaseAudioContext | null = null;
 
