@@ -104,6 +104,7 @@ export function shoutUno(ctx: BaseAudioContext, out: AudioNode, t: number, noise
   /* ---- the mouth: four resonances gliding between the sounds ---- */
   const mouth = ctx.createGain();
   mouth.gain.value = vol * 2.4;
+  const formants: AudioNode[] = [];
   for (let i = 0; i < 4; i++) {
     const bp = ctx.createBiquadFilter();
     bp.type = 'bandpass';
@@ -125,6 +126,7 @@ export function shoutUno(ctx: BaseAudioContext, out: AudioNode, t: number, noise
     at(N, nEnd, false);
     at(O, oAt, true);
     voiced.connect(bp).connect(g).connect(mouth);
+    formants.push(bp, g);
   }
   // a little of the plain buzz underneath keeps the voice full rather than whistly
   const body = ctx.createBiquadFilter();
@@ -170,5 +172,9 @@ export function shoutUno(ctx: BaseAudioContext, out: AudioNode, t: number, noise
   }
   air.start(t, Math.random() * 0.5);
   air.stop(stopAt);
+  // free the whole voice once it has finished
+  air.onended = () => {
+    for (const n of [src, vib, vibDepth, wob, wobDepth, voiced, mouth, body, bodyGain, air, airBand, airGain, presence, ...formants]) n.disconnect();
+  };
   return end;
 }

@@ -12,6 +12,7 @@ export const STORAGE_KEYS = {
   /** players, rules, table and theme of the last local (one device) game */
   localSetup: 'crazy-uno-cfg-v2',
   sound: 'crazy-uno-sound',
+  haptics: 'crazy-uno-haptics',
 } as const;
 
 export function readJson<T>(key: string): T | null {

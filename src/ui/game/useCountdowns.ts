@@ -30,7 +30,7 @@ export function useCountdowns(game: GameView, local: Game | null) {
         const left = Math.ceil((dl - Date.now() - game.clockOffset) / 1000);
         if (left <= TICK_FROM_SEC && left > 0 && left !== lastTick) {
           lastTick = left;
-          sound.play('tick');
+          sound.play(game.s.bombDeadline !== null ? 'bombTick' : left <= 2 ? 'hurry' : 'tick');
         }
       }
     }, CLOCK_TICK_MS);

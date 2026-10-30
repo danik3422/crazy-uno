@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { haptics } from '../../audio/haptics';
 import { sound } from '../../audio/sound';
 import { useT } from '../../i18n';
 import { IconMusic, IconMute, IconSound } from './Icons';
@@ -9,6 +10,7 @@ export function SoundMenu() {
   const t = useT();
   useSyncExternalStore(sound.subscribe, sound.getVersion);
   const [open, setOpen] = useState(false);
+  const [buzz, setBuzz] = useState(haptics.on);
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -43,6 +45,14 @@ export function SoundMenu() {
             <span className="sw" aria-hidden />
             {t('sound.sfx')}
           </label>
+          {/* phones only: a light tap on your turn, harder for a penalty and for "UNO!" */}
+          {haptics.supported && (
+            <label className="switch">
+              <input id="snd-haptics" type="checkbox" checked={buzz} onChange={e => { haptics.set(e.target.checked); setBuzz(e.target.checked); }} />
+              <span className="sw" aria-hidden />
+              {t('sound.haptics')}
+            </label>
+          )}
         </div>
       )}
     </div>
