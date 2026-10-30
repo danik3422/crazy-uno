@@ -8,6 +8,7 @@ import { teamName } from '../game/content';
 import { useT } from '../i18n';
 import { AvatarImg } from '../ui/components/AvatarImg';
 import { IconStack } from '../ui/components/Icons';
+import { UiIcon } from '../ui/components/UiIcon';
 import { TurnTimer } from '../ui/game/TurnTimer';
 import { Card3D, setPlayableGlow } from './Card3D';
 import { DeckStack } from './DeckStack';
@@ -380,7 +381,10 @@ function PlayerPlates({ game, view, dealing }: { game: GameView; view: View; dea
           <Html key={i} position={pos} center zIndexRange={[20, 0]} pointerEvents="none">
             <div className={`oplate ${cur ? 'cur' : ''} ${i === s.winner ? 'win' : ''} ${p.offline ? 'off' : ''} ${p.out ? 'out' : ''} ${s.teams ? `team t${s.teams[i]}` : ''} ${small ? 'small' : ''} ${tiny ? 'tiny' : ''}`} title={p.name}>
               {s.teams && (
-                <span className="oplate-team">{s.teams[i] === s.teams[game.seat()] ? t('plate.partner') : teamName(s.teams[i])}</span>
+                <span className={`oplate-team ${s.teams[i] === s.teams[game.seat()] ? 'partner' : ''}`}>
+                  {s.teams[i] === s.teams[game.seat()] && <UiIcon name="players" size={12} />}
+                  {s.teams[i] === s.teams[game.seat()] ? t('plate.partner') : teamName(s.teams[i])}
+                </span>
               )}
               <span className="ava-wrap swap-in" key={p.offline ? 'bot' : 'me'}>
                 {/* someone dropped out: a bot sits in under its own name and face until they are back */}

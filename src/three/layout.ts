@@ -409,17 +409,22 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
     }
     // the same fan whatever the seat: the same lean, the same spread, each card a fixed step in front of the last
     const step = Math.min(OPP_FAN.step, OPP_FAN.spread / Math.max(m - 1, 1));
+    // your partner (2 vs 2 and up) shows you their cards: the same fan, turned to face you
+    const me = g.seat();
+    const open = !!s.teams && me !== null && me >= 0 && pi !== me && s.teams[pi] === s.teams[me] && p.hand.every(c => !c.hidden);
     p.hand.forEach((c, k) => {
       const phi = (k - (m - 1) / 2) * step;
-      eulTmp.set(OPP_FAN.lean, face, PI + phi);
+      // backs to you: turned upside down so the back reads upright; faces to you: turned round, upright as is
+      const yaw = open ? face + PI : face;
+      const roll = open ? -phi : PI + phi;
+      eulTmp.set(OPP_FAN.lean, yaw, roll);
       qTmp.setFromEuler(eulTmp);
-      // the card's centre swings around the pivot below the fan (in the card's own frame the pivot is "above":
-      // the card is turned upside down so its back reads upright)
-      vTmp.set(0, -OPP_FAN.radius * S, 0).applyQuaternion(qTmp);
+      // the card's centre swings around the pivot below the fan
+      vTmp.set(0, (open ? 1 : -1) * OPP_FAN.radius * S, 0).applyQuaternion(qTmp);
       const d = k * OPP_FAN.depth;
       out.set(c.id, {
         pos: [w.pivot[0] + vTmp.x + w.back[0] * d, w.pivot[1] + vTmp.y + w.back[1] * d, w.pivot[2] + vTmp.z + w.back[2] * d],
-        rot: [OPP_FAN.lean, face, PI + phi],
+        rot: [OPP_FAN.lean, yaw, roll],
         zone: 'opp', interactive: false, dim: false, delay: dealDelay(c.dealIdx), scale: S, bobGroup: pi + 1, seq: k,
       });
     });
