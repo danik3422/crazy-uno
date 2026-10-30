@@ -27,7 +27,7 @@ export interface EventLook {
     /** a laser beam marks the target before the hit */
     beam: boolean;
     /** what else bursts out on impact */
-    extra: 'confetti' | 'ripples' | 'stars' | 'bats';
+    extra: 'confetti' | 'ripples' | 'stars' | 'bats' | 'snow';
   };
   bolt: {
     core: string;
@@ -36,6 +36,8 @@ export interface EventLook {
     beam: boolean;
     /** the clouds that gather above the target */
     cloud: string;
+    /** the little crackles on the floor after the strike (default: small bolts) */
+    crackle?: Cell;
   };
   coin: { color: string; emissive: string; sparkle: string };
   /** the colour wave of the recolour events */
@@ -49,6 +51,8 @@ export interface EventLook {
   };
   /** what races around the table on a carousel */
   orbit: { cell: Cell; colors: string[]; size: number; flap: boolean; additive: boolean };
+  /** the twinkles of the jackpot, the coin flip and the start pulse (default: stars) */
+  twinkle?: Cell;
   /** the dark fog of the blind round */
   fog: string;
   confetti: string[];

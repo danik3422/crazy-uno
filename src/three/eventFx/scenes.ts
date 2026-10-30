@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CELL_ID } from '../cardFx/atlas';
+import { CELL_ID, type Cell } from '../cardFx/atlas';
 import type { Kit, Spot } from '../cardFx/kit';
 import { FOUR, WHITE, arc, clamp01, easeIn, easeInOut, easeOut, easeOutBack, fade, flash, hump, raw, ring, rnd } from '../cardFx/shapes';
 import type { EventLook } from './look';
@@ -24,6 +24,10 @@ export interface Pal {
   fog: THREE.Color;
   confetti: THREE.Color[];
   dark: THREE.Color;
+  /** the little crackles of the lightning and the blitz */
+  crackle: Cell;
+  /** the twinkles of the jackpot, the coin and the start pulse */
+  twinkle: Cell;
 }
 
 export function palOf(l: EventLook): Pal {
@@ -41,6 +45,8 @@ export function palOf(l: EventLook): Pal {
     fog: raw(l.fog),
     confetti: l.confetti.map(c => raw(c)),
     dark: raw('#1a1020'),
+    crackle: l.bolt.crackle ?? CELL_ID.bolt,
+    twinkle: l.twinkle ?? CELL_ID.star,
   };
 }
 
@@ -155,13 +161,27 @@ export function impact(k: Kit, s: Spot, d: number, P: Pal, look: EventLook, seed
         const a = (i / n) * Math.PI * 2 + rnd(seed, i) * 0.5;
         const r = easeOut(p) * (1.6 + rnd(seed, i + 4) * 1.6) * scale;
         const tw = 0.7 + 0.3 * Math.sin(tt * 18 + i * 2);
-        k.g(CELL_ID.star, x + Math.cos(a) * r, 0.6 + easeOut(p) * 1.6 * rnd(seed, i + 8), z + Math.sin(a) * r * 0.7, 0.7 * tw * (1 - p * 0.5), tt * 2, false, P.sparks[i % 3], 1 - p);
+        k.g(P.twinkle, x + Math.cos(a) * r, 0.6 + easeOut(p) * 1.6 * rnd(seed, i + 8), z + Math.sin(a) * r * 0.7, 0.7 * tw * (1 - p * 0.5), tt * 2, false, P.sparks[i % 3], 1 - p);
       }
       break;
     }
     case 'bats':
       bats(k, x, z, d - 0.08, k.lite ? 4 : 7, 1.6, P.dark, seed);
       break;
+    case 'snow': {
+      // a cloud of powder and snowflakes thrown up, drifting down slowly
+      const n = k.lite ? 8 : 14;
+      for (let i = 0; i < n; i++) {
+        const tt = d - 0.04;
+        if (tt < 0 || tt > 1.6) continue;
+        const p = tt / 1.6;
+        const a = (i / n) * Math.PI * 2 + rnd(seed, i) * 0.5;
+        const r = easeOut(Math.min(1, p * 1.6)) * (1.4 + rnd(seed, i + 4) * 1.8) * scale;
+        const y = 0.3 + Math.sin(Math.min(1, p * 1.4) * Math.PI * 0.5) * (1.4 + rnd(seed, i + 8) * 1.4) - p * p * 1.2 + Math.sin(tt * 4 + i) * 0.1;
+        k.g(CELL_ID.flake, x + Math.cos(a) * r, Math.max(0.1, y), z + Math.sin(a) * r * 0.7, 0.55 + rnd(seed, i + 3) * 0.3, tt * (rnd(seed, i + 5) - 0.5) * 4, false, i % 3 ? WHITE : P.sparks[1], 1 - p * p);
+      }
+      break;
+    }
   }
 }
 
@@ -206,7 +226,7 @@ export function arrival(k: Kit, r: Run, t: number, P: Pal) {
     const p = t / 0.9;
     const a = (i / n) * Math.PI * 2 + r.seed;
     const d = 0.6 + easeOut(p) * 2.2;
-    k.g(CELL_ID.star, r.pile.x + Math.cos(a) * d, 0.3 + easeOut(p) * 1.3, r.pile.z + Math.sin(a) * d * 0.7, 0.45 * (1 - p), t * 3, false, P.sparks[i % 3], 1 - p);
+    k.g(P.twinkle, r.pile.x + Math.cos(a) * d, 0.3 + easeOut(p) * 1.3, r.pile.z + Math.sin(a) * d * 0.7, 0.45 * (1 - p), t * 3, false, P.sparks[i % 3], 1 - p);
   }
 }
 
@@ -321,7 +341,7 @@ export function lightning(k: Kit, r: Run, tl: number, P: Pal, look: EventLook) {
     if (tl > 0.8 || Math.sin(tl * 50 + i * 3) < 0) continue;
     const a = rnd(r.seed + Math.floor(tl * 20), i) * Math.PI * 2;
     const d = 0.5 + rnd(r.seed, i + 5) * 0.9;
-    k.g(CELL_ID.bolt, s.x + Math.cos(a) * d, 0.35, s.z + Math.sin(a) * d * 0.7, 0.55, a, false, P.boltGlow, 1 - tl / 0.8);
+    k.g(P.crackle, s.x + Math.cos(a) * d, 0.35, s.z + Math.sin(a) * d * 0.7, 0.55, a, false, P.boltGlow, 1 - tl / 0.8);
   }
   // the skip sign rises over the struck player
   const st = tl - 0.15;
@@ -349,7 +369,7 @@ export function jackpot(k: Kit, r: Run, tb: number, P: Pal) {
     const ang = rnd(r.seed, i + 3) * Math.PI * 2;
     const d = 0.4 + rnd(r.seed, i + 6) * 1.6;
     const tw = Math.abs(Math.sin(tt * 9 + i));
-    k.g(CELL_ID.star, s.x + Math.cos(ang) * d, 0.5 + rnd(r.seed, i + 8) * 2.2 + p * 0.6, s.z + Math.sin(ang) * d * 0.7, 0.75 * tw, 0, false, i % 3 ? P.sparkle : WHITE, 1 - p);
+    k.g(P.twinkle, s.x + Math.cos(ang) * d, 0.5 + rnd(r.seed, i + 8) * 2.2 + p * 0.6, s.z + Math.sin(ang) * d * 0.7, 0.75 * tw, 0, false, i % 3 ? P.sparkle : WHITE, 1 - p);
   }
 }
 
@@ -461,7 +481,7 @@ export function upside(k: Kit, r: Run, t: number, P: Pal) {
     const p = tt / 1.3;
     const a = i * 2.4 + tt * 5;
     const d = 0.3 + easeOut(p) * 2.6;
-    k.g(i % 2 ? CELL_ID.star : CELL_ID.spark, x + Math.cos(a) * d, 0.3 + p * 2.8, z + Math.sin(a) * d * 0.7, 0.55 * (1 - p * 0.5), tt * 4, false, P.confetti[i % P.confetti.length], 1 - p);
+    k.g(i % 2 ? P.twinkle : CELL_ID.spark, x + Math.cos(a) * d, 0.3 + p * 2.8, z + Math.sin(a) * d * 0.7, 0.55 * (1 - p * 0.5), tt * 4, false, P.confetti[i % P.confetti.length], 1 - p);
   }
   k.g(CELL_ID.swirl, x, 0.06, z, 3.6, t * 6, true, P.ring, 0.6 * hump(t / DUR));
 }
@@ -512,7 +532,7 @@ export function blitz(k: Kit, r: Run, t: number, P: Pal) {
   for (let i = 0; i < nc; i++) {
     if (t > 1 || Math.sin(t * 45 + i * 2) < 0.2) continue;
     const a = rnd(r.seed + Math.floor(t * 15), i) * Math.PI * 2;
-    k.g(CELL_ID.bolt, x + Math.cos(a) * 1.2, 0.4, z + Math.sin(a) * 0.8, 0.6, a, false, P.boltGlow, 1 - t);
+    k.g(P.crackle, x + Math.cos(a) * 1.2, 0.4, z + Math.sin(a) * 0.8, 0.6, a, false, P.boltGlow, 1 - t);
   }
   // everyone is on the clock
   for (let i = 0; i < r.nSeats; i++) {
@@ -555,7 +575,7 @@ export function robin(k: Kit, r: Run, t: number, P: Pal, view: THREE.Matrix4) {
       const pj = p - j * 0.025;
       if (pj < 0) break;
       const w = arc(ra, rb, pj, 2.2, dartPrev);
-      k.g(j % 2 ? CELL_ID.glow : CELL_ID.star, w.x, w.y, w.z, 0.7 * (1 - j / n), j, false, j % 3 ? P.sparkle : WHITE, 0.9 * (1 - j / n));
+      k.g(j % 2 ? CELL_ID.glow : P.twinkle, w.x, w.y, w.z, 0.7 * (1 - j / n), j, false, j % 3 ? P.sparkle : WHITE, 0.9 * (1 - j / n));
     }
     k.g(CELL_ID.glow, dart.x, dart.y, dart.z, 1.6, 0, false, P.sparkle, 0.6);
     k.i(CELL_ID.dart, dart.x, dart.y, dart.z, 2.2, ang, false, null, 1);
@@ -593,6 +613,6 @@ export function coin(k: Kit, r: Run, t: number, P: Pal) {
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2 + t * 2;
     const tw = Math.abs(Math.sin(t * 7 + i * 1.3));
-    k.g(CELL_ID.star, s.x + Math.cos(a) * 1.1, y + Math.sin(a) * 0.5, s.z, 0.5 * tw, 0, false, i % 2 ? P.sparkle : WHITE, al * (1 - p * 0.5));
+    k.g(P.twinkle, s.x + Math.cos(a) * 1.1, y + Math.sin(a) * 0.5, s.z, 0.5 * tw, 0, false, i % 2 ? P.sparkle : WHITE, al * (1 - p * 0.5));
   }
 }

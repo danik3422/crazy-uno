@@ -51,6 +51,14 @@
     repeating-radial-gradient(circle at 0 0, transparent 0 16px, rgba(243, 233, 210, 0.2) 16px 17px),
     repeating-conic-gradient(from 0deg at 0 0, transparent 0 10deg, rgba(243, 233, 210, 0.18) 10deg 11deg);
 }
+.th-winter .theme-floor::before {
+  content: ''; position: absolute; inset: 0;
+  background:
+    radial-gradient(1.5px 1.5px at 30% 30%, #fff 50%, transparent 51%) 0 0 / 22px 26px,
+    radial-gradient(2px 2px at 70% 60%, rgba(255, 255, 255, 0.8) 50%, transparent 51%) 0 0 / 34px 30px,
+    linear-gradient(170deg, transparent 8%, rgba(80, 255, 180, 0.32) 18%, rgba(160, 120, 255, 0.22) 28%, transparent 38%),
+    radial-gradient(ellipse 120% 40% at 50% 112%, rgba(235, 244, 255, 0.6) 60%, transparent 62%);
+}
 
 /* the fan: a face, the back in front, another face; it spreads on hover and when chosen */
 .theme-fan { position: relative; width: 120px; height: 84px; }

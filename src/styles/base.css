@@ -59,6 +59,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outl
 .btn.back { align-self: flex-start; width: auto; }
 .page-neon { --stage: radial-gradient(ellipse at 50% 25%, #3a0a4a 0%, #14052a 45%, #05010c 85%); --panel: rgba(10, 4, 30, 0.7); }
 .page-space { --stage: radial-gradient(ellipse at 30% 20%, #2a1a6e 0%, #0b0828 45%, #02010a 85%); --panel: rgba(8, 6, 30, 0.7); }
+.page-winter { --stage: linear-gradient(180deg, #0a1440 0%, #16255e 45%, #2a2f6e 75%, #3a3270 100%); --panel: rgba(8, 16, 44, 0.72); }
 .page-halloween { --stage: radial-gradient(ellipse at 70% 15%, #4a2a6e 0%, #20103a 45%, #07020f 85%); --panel: rgba(20, 4, 20, 0.7); }
 /* switching the table look crossfades the page */
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.55s; animation-timing-function: ease-in-out; }
