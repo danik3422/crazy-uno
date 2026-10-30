@@ -21,6 +21,7 @@ import { useLocalBots } from './useLocalBots';
 import { useRoundStart } from './useRoundStart';
 import { useTableEffects } from './useTableEffects';
 import { useTableSounds } from './useTableSounds';
+import { useBotReactions, useReactionSound } from './Reactions';
 import './GameScreen.css';
 
 interface Props {
@@ -63,6 +64,8 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
   );
   const kb = useKeyboardPlay(game, locked, playCard);
   useTableSounds(game, version);
+  useBotReactions(game, version);
+  useReactionSound();
   const effects = useTableEffects(game, version, onOver);
   useLocalBots(local, version, locked);
   const { bombLeft, roundLeft } = useCountdowns(game, local);

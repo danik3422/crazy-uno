@@ -2,6 +2,7 @@ import type { Rules, State, Table, ThemeId } from '../game/types';
 import type { TeamId } from '../game/teams';
 import type { Msg } from '../i18n/msg';
 import type { Lang } from '../i18n/types';
+import type { ReactionId } from '../game/reactions';
 
 /** Shared between the browser client and the Node server. */
 
@@ -129,6 +130,8 @@ export type ClientMsg =
   | { t: 'orient'; round: number; upright: boolean }
   /** host: deal now, without waiting for phones that are still upright */
   | { t: 'dealNow' }
+  /** a quick reaction (a drawn face or a set phrase) over your plate */
+  | { t: 'react'; id: ReactionId }
   | { t: 'ping' };
 
 export type ErrorCode = 'no-room' | 'full' | 'bad-request' | 'not-host' | 'kicked' | 'replaced' | 'too-few' | 'slow-down';
@@ -140,6 +143,8 @@ export type ServerMsg =
   /** msg: what to tell the player, rendered in their language */
   | { t: 'error'; code: ErrorCode; msg: Msg }
   | { t: 'left' }
+  /** someone at the table reacted */
+  | { t: 'react'; seat: number; id: ReactionId }
   | { t: 'pong' };
 
 export const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';

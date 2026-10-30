@@ -126,6 +126,27 @@ describe('Game engine', () => {
     expect(g.s.skipNext).toEqual([]);
   });
 
+  it('lets "UNO!" be called only with two cards and one of them playable', () => {
+    const g = new Game({ players: [{ name: 'A', bot: false }, { name: 'B', bot: false }], rules: { ...DEFAULT_RULES, events: false, uno: true } }, { rng: seeded(3) });
+    g.confirmHandover();
+    const s = g.s;
+    const p = s.players[s.cur];
+    const other = (['red', 'yellow', 'green', 'blue'] as const).find(c => c !== s.color)!;
+    // a full hand: nothing happens
+    g.callUno();
+    expect(s.unoCalled).toBe(false);
+    // two cards, neither playable: still nothing
+    p.hand = [{ id: 9101, color: other, type: 'num', value: 9 === g.top()?.value ? 8 : 9 }, { id: 9102, color: other, type: 'num', value: 9 === g.top()?.value ? 8 : 9 }];
+    if (!p.hand.some(c => g.playable(c))) {
+      g.callUno();
+      expect(s.unoCalled).toBe(false);
+    }
+    // two cards, one playable: it counts
+    p.hand = [{ id: 9103, color: s.color as never, type: 'num', value: 1 }, { id: 9104, color: other, type: 'num', value: 2 }];
+    g.callUno();
+    expect(s.unoCalled).toBe(true);
+  });
+
   it('settles a +4 challenge both ways', () => {
     for (const guilty of [true, false]) {
       const g = new Game({ players: [{ name: 'A', bot: false }, { name: 'B', bot: false }], rules: { ...DEFAULT_RULES, events: false } }, { rng: seeded(9) });

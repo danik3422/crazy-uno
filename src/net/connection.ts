@@ -1,6 +1,7 @@
 import { Observable } from '../lib/observable';
 import { STORAGE_KEYS, readJson, writeJson } from '../lib/storage';
 import type { Msg } from '../i18n/msg';
+import { isReactionId, reactionBus, type ReactionId } from '../game/reactions';
 import { PROTOCOL_VERSION, type Action, type ClientMsg, type ErrorCode, type PlayerView, type RoomInfo, type ServerMsg } from './protocol';
 
 /** The server speaks another protocol version (a new deploy): load the new page, once per tab session. */
@@ -120,6 +121,11 @@ export class Connection extends Observable {
     if (this.status === 'open') this.raw({ t: 'act', act });
   }
 
+  /** a quick reaction: only while connected (one sent later would be out of place) */
+  react(id: ReactionId) {
+    if (this.status === 'open') this.raw({ t: 'react', id });
+  }
+
   send(m: ClientMsg) {
     if (this.status === 'open') this.raw(m);
     else this.queue.push(m);
@@ -236,6 +242,10 @@ export class Connection extends Observable {
         this.error = { code: m.code, msg: m.msg, at: Date.now() };
         if (errorLeavesRoom(m.code, !!this.room)) this.forget();
         break;
+      case 'react':
+        // a reaction is not part of the room or the game: it goes straight to the table, no re-render
+        if (Number.isInteger(m.seat) && isReactionId(m.id)) reactionBus.push(m.seat, m.id);
+        return;
       case 'pong':
         return;
     }

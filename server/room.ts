@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { isAvatarId, randomBot } from '../src/game/avatars';
+import { ReactionLimiter, isReactionId } from '../src/game/reactions';
 import { PACKS } from '../src/i18n/core';
 import { msg as text } from '../src/i18n/msg';
 import { isLang } from '../src/i18n/types';
@@ -112,6 +113,8 @@ export class Room {
   /** the turn number autopilot is playing for an absent person (-1: none) */
   private autoTurn = -1;
   private flushQueued = false;
+  /** each member's anti-spam counter for quick reactions */
+  private reactLimits = new Map<string, ReactionLimiter>();
   private scored = new WeakSet<Game>();
   private unsubscribe: (() => void) | null = null;
 
@@ -352,6 +355,8 @@ export class Room {
         if (!needHost()) return;
         this.maybeDeal(true);
         return this.flush();
+      case 'react':
+        return this.react(m, msg.id);
       case 'join':
       case 'create':
       case 'ping':
@@ -673,6 +678,17 @@ export class Room {
   }
 
   /* ---------- sending ---------- */
+
+  /** A quick reaction: only from someone seated in a running game, and never faster than the anti-spam rule allows. */
+  private react(m: Member, id: unknown) {
+    if (!this.game || !isReactionId(id)) return;
+    const seat = this.seats.indexOf(m.id);
+    if (seat < 0) return;
+    let lim = this.reactLimits.get(m.id);
+    if (!lim) this.reactLimits.set(m.id, (lim = new ReactionLimiter()));
+    if (!lim.take()) return;
+    for (const x of this.members) if (x.sock) this.sendTo(x.sock, { t: 'react', seat, id });
+  }
 
   private broadcastRoom() {
     for (const m of this.members) if (m.sock) this.sendTo(m.sock, { t: 'room', room: this.info(m) });

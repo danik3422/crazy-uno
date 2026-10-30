@@ -1,3 +1,4 @@
+import type { ReactionId } from '../game/reactions';
 import { canJumpIn, isCatchable, nextSeat, playableCard } from '../game/rules';
 import type { Card, State } from '../game/types';
 import type { GameView } from '../game/view';
@@ -87,4 +88,5 @@ export class RemoteGame extends Observable implements GameView {
   lateUno() { this.conn.act({ a: 'lateUno' }); }
   challengeWild4() { this.conn.act({ a: 'challenge' }); }
   declineChallenge() { this.conn.act({ a: 'decline' }); }
+  react(id: ReactionId) { this.conn.react(id); }
 }

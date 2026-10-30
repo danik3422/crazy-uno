@@ -42,7 +42,10 @@ class TestClient {
     this.send({ t: 'act', act: a });
   }
 
+  reactions: { seat: number; id: string }[] = [];
+
   private onMsg(m: ServerMsg) {
+    if (m.t === 'react') this.reactions.push({ seat: m.seat, id: m.id });
     if (m.t === 'joined') { this.token = m.token; this.code = m.code; }
     if (m.t === 'room') this.room = m.room;
     if (m.t === 'error') this.errors.push(m.code);
@@ -509,6 +512,27 @@ describe('online rooms', () => {
     host.send({ t: 'ping' });
     await new Promise(r => setTimeout(r, 100));
     expect(host.room!.theme).toBe('winter');
+    host.close();
+    guest.close();
+  });
+
+  it('passes quick reactions to the whole table, drops unknown ones and stops spam', async () => {
+    const [host, guest] = await openRoom(['Хост', 'Гость']);
+    host.auto = guest.auto = false;
+    // nothing before the game starts
+    guest.send({ t: 'react', id: 'hi' });
+    host.send({ t: 'start' });
+    await guest.until(() => !!guest.view && guest.view.you !== null);
+    const seat = guest.view!.you!;
+    guest.send({ t: 'react', id: 'gg' });
+    await host.until(() => host.reactions.length === 1);
+    expect(host.reactions[0]).toEqual({ seat, id: 'gg' });
+    await guest.until(() => guest.reactions.length === 1);
+    // free text and unknown ids go nowhere; a second one right away is too soon
+    guest.send({ t: 'react', id: 'you are bad' as never });
+    guest.send({ t: 'react', id: 'laugh' });
+    await new Promise(r => setTimeout(r, 300));
+    expect(host.reactions).toHaveLength(1);
     host.close();
     guest.close();
   });

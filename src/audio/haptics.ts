@@ -28,7 +28,9 @@ const TICKS: Record<Kind, [number, number]> = {
   win: [4, 110],
 };
 
-const canVibrate = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+// desktop Chrome has navigator.vibrate too, but nothing to shake: only touch screens count
+const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+const canVibrate = touch && typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
 /** Safari ≥ 17.4 knows `<input type="checkbox" switch>`; iOS 18 makes its toggle tick */
 const canTick =
   !canVibrate &&

@@ -7,6 +7,7 @@ import { AvatarImg } from '../components/AvatarImg';
 import { EventIcon } from '../components/EventIcon';
 import { cardImage } from '../../three/textures';
 import { TurnTimer } from './TurnTimer';
+import { ReactionBubble } from './Reactions';
 import { useLogRoom } from './useLogRoom';
 import type { OnlineCtx } from './onlineCtx';
 import './Hud.css';
@@ -112,6 +113,7 @@ export function Hud({ game, toasts, bombLeft, online, locked, roundLeft }: Props
 
       <div className={`hud-bottom ${playing ? 'my-turn' : ''}`}>
         <div className="me">
+          <ReactionBubble seat={game.seat()} mine />
           <div className={`plate me-plate ${s.cur === game.seat() && s.phase !== 'over' ? 'cur' : ''}`}>
             <div className="plate-name">{seatP.name}</div>
             <div className="plate-body">

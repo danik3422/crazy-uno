@@ -36,6 +36,25 @@ export interface View {
   compact?: boolean;
   /** width / height of the canvas (the layout fits the hand to what the camera sees) */
   aspect?: number;
+  /** height of the canvas in CSS pixels */
+  h?: number;
+}
+
+/**
+ * How much bigger your hand's cards are than on a big screen. A phone lying on its side is short, so its cards
+ * would come out tiny: the shorter the screen, the more they grow (about 1.25× on a tall phone, up to 1.4×).
+ */
+export function handScale(v: View) {
+  if (!v.compact) return 1;
+  const h = v.h ?? 390;
+  // a narrower phone (16:9) has less room between the corner panels
+  const byWidth = 1.22 + ((v.aspect ?? 2.1) - 1.75) * 0.3;
+  return Math.max(1.18, Math.min(1.36, 1.32 + (390 - h) * 0.0018, byWidth));
+}
+
+/** The pile in the middle: bigger than a hand card on the table's far side would look, easier to read on a phone. */
+export function pileScale(v: View) {
+  return v.compact ? 1.5 : v.portrait ? 1.35 : 1.22;
 }
 
 /**
@@ -202,7 +221,7 @@ export const OPP_FAN = {
 /** the fan floats this much (card heights) over the table, so its outer cards' corners stay above it */
 const FAN_LIFT = (OPP_FAN.radius * (1 - Math.cos(OPP_FAN.spread / 2)) + (CARD_W / 2) * Math.sin(OPP_FAN.spread / 2)) / CARD_H + 0.02;
 /** half the width of a full fan (card widths, at scale 1) */
-export const FAN_HALF = OPP_FAN.radius * Math.sin(OPP_FAN.spread / 2) + (CARD_W / 2) * Math.cos(OPP_FAN.spread / 2) + (CARD_H / 2) * Math.sin(OPP_FAN.spread / 2);
+const FAN_HALF = OPP_FAN.radius * Math.sin(OPP_FAN.spread / 2) + (CARD_W / 2) * Math.cos(OPP_FAN.spread / 2) + (CARD_H / 2) * Math.sin(OPP_FAN.spread / 2);
 
 const eulTmp = new THREE.Euler(0, 0, 0, 'YXZ');
 const qTmp = new THREE.Quaternion();
@@ -236,7 +255,9 @@ export function oppWall(g: GameView, i: number, v: View): OppWall {
   // the size of every fan on screen: a little smaller as the table fills up
   const base = (v.portrait ? 0.62 : 0.86) * (n <= 4 ? 1 : n === 5 ? 0.94 : n === 6 ? 0.88 : n === 7 ? 0.82 : 0.78);
   let x = Math.cos(a) * A.rx;
-  const z = Math.sin(a) * A.rz;
+  // a phone lying on its side is short: the far seats come a little closer, so their plates fit above them
+  const near = v.compact && Math.sin(a) < 0 ? Math.max(0.76, Math.min(0.92, 0.85 + ((v.h ?? 390) - 390) * 0.001)) : 1;
+  const z = Math.sin(a) * A.rz * near;
   const midY = 0.75 * base;
   // the far seat is the reference: a fan nearer the camera shrinks so it looks the same size
   const dRef = Math.hypot(cam[0], cam[1] - midY, cam[2] + A.rz);
@@ -270,8 +291,6 @@ const hash = (n: number) => {
 
 /** how far (table units, a card is 1.5 tall) the hand sinks while it is someone else's turn */
 const HAND_REST = 0.75;
-/** hand cards on a phone lying on its side are this much bigger */
-const PHONE_CARD = 1.18;
 
 export function computeTargets(g: GameView, v: View): Map<number, Target> {
   const s = g.s;
@@ -308,12 +327,13 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
   // and they rest on the table, not on the hidden ones
   const dl = s.discard.length;
   const PILE_SHOWN = 10;
+  const ps = pileScale(v);
   s.discard.forEach((c, i) => {
     const layer = Math.max(0, i - (dl - PILE_SHOWN));
     out.set(c.id, {
-      pos: [A.discard[0] + (hash(c.id) - 0.5) * 0.55, 0.02 + layer * 0.016, A.discard[2] + (hash(c.id + 3) - 0.5) * 0.4],
+      pos: [A.discard[0] + (hash(c.id) - 0.5) * 0.55 * ps, 0.02 + layer * 0.016, A.discard[2] + (hash(c.id + 3) - 0.5) * 0.4 * ps],
       rot: [-PI / 2, (hash(c.id + 5) - 0.5) * 1.3, 0],
-      zone: 'discard', interactive: false, dim: false, delay: dealDelay(c.dealIdx), hidden: i < dl - PILE_SHOWN,
+      zone: 'discard', interactive: false, dim: false, delay: dealDelay(c.dealIdx), hidden: i < dl - PILE_SHOWN, scale: ps,
     });
   });
 
@@ -342,7 +362,8 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
       // never wider than the screen at the hand's depth (minus the mouse parallax and a card's width)
       const vis = visibleHalfWidth(v, A.hand.y, A.hand.z);
       // a phone lying on its side: the hand stays between the corner panels (your plate, the draw button)
-      const fitW = v.compact ? 2 * vis * 0.6 - PHONE_CARD : 2 * (vis * 0.95 - PARALLAX_X) - 1.0;
+      const big = handScale(v);
+      const fitW = v.compact ? 2 * vis * ((v.aspect ?? 2.1) < 1.95 ? 0.54 : 0.6) - big : 2 * (vis * 0.95 - PARALLAX_X) - 1.0;
       const h = { ...A.hand, maxW: Math.min(A.hand.maxW, fitW) };
       // blind event: you still play, but you cannot see what
       const faceUp = (viewer === seat && s.blindTurns === 0) || over;
@@ -372,7 +393,7 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
         const rowN = row ? m - backN : backN;
         // two rows: smaller cards and a narrower spread, so both rows fit on screen
         // a phone lying on its side: bigger cards, easier to read and to hit with a finger
-        const cs = (rows === 2 ? (v.portrait ? 0.86 : 0.8) : 1) * (v.compact ? PHONE_CARD : 1);
+        const cs = (rows === 2 ? (v.portrait ? 0.86 : 0.8) : 1) * big;
         const sp = Math.min(h.sp * cs, (h.maxW - (rows === 2 ? (v.portrait ? 0.9 : 1.2) : 0)) / Math.max(rowN - 1, 1));
         const off = inRow - (rowN - 1) / 2;
         const x = off * sp;
@@ -391,7 +412,7 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
         const layer = inRow * Math.min(0.02, 0.3 / rowN) + row * 0.32 + lift * 0.5;
         // two rows sit a bit higher, so the front row clears the bottom panel
         // waiting for someone else: the hand sinks a little (corners still readable); on your turn it rises
-        const up = (rows === 2 ? (row ? -0.38 : 0.42) * cs + (v.portrait ? 0.1 : 0.32) : 0) - rest + (v.compact ? (PHONE_CARD - 1) * 0.3 : 0);
+        const up = (rows === 2 ? (row ? -0.38 : 0.42) * cs + (v.portrait ? 0.1 : 0.32) : 0) - rest + (big - 1) * 0.3;
         out.set(c.id, {
           pos: [x, h.y + lift + ny * layer + uy * up - Math.abs(off) * sp * 0.02, h.z + nz * layer + uz * up],
           rot: [faceUp ? tilt : tilt + PI, 0, -off * Math.min(0.035, 0.4 / rowN)],

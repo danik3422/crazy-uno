@@ -410,9 +410,17 @@ export class Game extends Observable {
     this.emitChange();
   }
 
+  /** "UNO!" can be shouted only on your turn, holding two cards, one of which you can play */
+  canCallUno() {
+    const s = this.s;
+    const p = this.cp();
+    return s.rules.uno && s.phase === 'play' && p.hand.length === 2 && p.hand.some(c => this.playable(c));
+  }
+
   callUno() {
     const s = this.s;
-    if (s.phase !== 'play' || s.unoCalled) return;
+    // only when it means something: down to two cards with one of them about to be laid
+    if (s.phase !== 'play' || s.unoCalled || !this.canCallUno()) return;
     s.unoCalled = true;
     this.fx('uno', msg('fx.uno', { who: this.cp().name }));
     this.emitChange();

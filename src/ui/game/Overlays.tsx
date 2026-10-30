@@ -1,17 +1,17 @@
 import { type ReactNode, useEffect, useState } from 'react';
 import { CNAME, COLORS, HEX, teamName } from '../../game/content';
 import { render, useT } from '../../i18n';
-import { LangSwitch } from '../components/LangSwitch';
 import type { GameView } from '../../game/view';
-import { IconCards, IconMenu } from '../components/Icons';
+import { IconCards, IconExit } from '../components/Icons';
 import { EventIcon } from '../components/EventIcon';
 import { EventLegend, Legend } from '../components/Legend';
 import { FullscreenButton, FullscreenIcon } from '../components/RotateGate';
-import { GearMenu, SoundMenu } from '../components/SoundMenu';
+import { GearMenu } from '../components/SoundMenu';
 import { canFullscreen, enterFullscreen, SMALL_SCREEN, useMedia, usePhone } from '../hooks/phone';
 import { UiIcon } from '../components/UiIcon';
 import { CoinFlip } from './CoinFlip';
 import { RematchVote } from './RematchVote';
+import { ReactionButton } from './Reactions';
 import type { OnlineCtx } from './onlineCtx';
 import './Overlays.css';
 
@@ -194,26 +194,17 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
 
   return (
     <>
-      {small ? (
-        <div className="corner-btns">
-          <GearMenu items={[
-            ...(phone.phone && !phone.portrait && !phone.fullscreen && canFullscreen() ? [{ icon: <FullscreenIcon />, label: t('fs.btn'), onClick: () => void enterFullscreen() }] : []),
-            { icon: <IconCards />, label: t('ov.cardsTitle'), onClick: () => setHelp(true) },
-            { icon: <IconMenu />, label: online ? t('ov.leave') : t('ov.toMenu'), onClick: () => setMenu(true) },
-          ]} />
-        </div>
-      ) : (
       <div className="corner-btns">
-        <FullscreenButton />
-        <SoundMenu />
-        <button className="btn glass icon-btn labeled" onClick={() => setHelp(true)} title={t('ov.cardsTitle')}>
-          <IconCards /><span>{t('ov.cardsBtn')}</span>
-        </button>
-        <button className="btn glass icon-btn labeled" onClick={() => setMenu(true)} title={t('ov.menu')}>
-          <IconMenu /><span>{t('ov.menu')}</span>
-        </button>
+        {/* quick reactions: whoever plays at this screen (not a spectator), once the cards are dealt */}
+        {!locked && game.viewer() !== null && !online?.spectator && <ReactionButton game={game} seat={game.viewer()!} />}
+        {!small && <FullscreenButton />}
+        {/* sound settings and the way out, together: a gold gear on a phone, the "Menu" button on a computer */}
+        <GearMenu labeled={!small} items={[
+          ...(small && phone.phone && !phone.portrait && !phone.fullscreen && canFullscreen() ? [{ icon: <FullscreenIcon />, label: t('fs.btn'), onClick: () => void enterFullscreen() }] : []),
+          { icon: <IconCards />, label: t('ov.cardsTitle'), onClick: () => setHelp(true) },
+          { icon: <IconExit />, label: online ? t('ov.leave') : t('ov.toMenu'), onClick: () => setMenu(true), danger: true },
+        ]} />
       </div>
-      )}
       {modal}
       {help && (
         <Modal onClose={() => setHelp(false)}>
@@ -238,7 +229,6 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
                 : t('ov.botTakes')
               : t('ov.roundLost')}
           </p>
-          <LangSwitch className="menu-lang" />
           <div className="row center">
             <button className="btn" onClick={() => setMenu(false)}>{t('ov.stay')}</button>
             <button className="btn big" onClick={onMenu}>{online ? t('ov.leave') : t('ov.toMenu')}</button>

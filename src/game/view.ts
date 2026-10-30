@@ -1,3 +1,4 @@
+import type { ReactionId } from './reactions';
 import type { Card, Player, State } from './types';
 
 /**
@@ -44,4 +45,6 @@ export interface GameView {
   lateUno(): void;
   challengeWild4(): void;
   declineChallenge(): void;
+  /** online: sends a quick reaction through the server (the local game shows it directly) */
+  react?(id: ReactionId): void;
 }

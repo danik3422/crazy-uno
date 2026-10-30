@@ -8,6 +8,7 @@ import { teamName } from '../game/content';
 import { useT } from '../i18n';
 import { AvatarImg } from '../ui/components/AvatarImg';
 import { IconStack } from '../ui/components/Icons';
+import { ReactionBubble } from '../ui/game/Reactions';
 import { UiIcon } from '../ui/components/UiIcon';
 import { TurnTimer } from '../ui/game/TurnTimer';
 import { Card3D, setPlayableGlow } from './Card3D';
@@ -18,7 +19,7 @@ import { Arena, PALETTES } from './Environment';
 import { EventFx } from './eventFx/EventFx';
 import { DEBUG, fxState, nowSec } from './fxState';
 import { FitProbe } from './FitProbe';
-import { CAMERA, FAN_HALF, PARALLAX_X, RING_R, RING_Z, arena, cameraFov, computeTargets, deckCenter, deckSpot, oppWall, visibleHalfWidth, type View } from './layout';
+import { CAMERA, PARALLAX_X, RING_R, RING_Z, arena, cameraFov, computeTargets, deckCenter, deckSpot, oppWall, visibleHalfWidth, type View } from './layout';
 import { Mascot } from './Mascot';
 import { PlayFx, StackFx } from './PlayFx';
 import { CardFx } from './cardFx/CardFx';
@@ -46,7 +47,9 @@ export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dea
   const compact = !portrait && size.height < 520;
   // rounded, so resizing a window does not rebuild the layout on every pixel
   const aspect = Math.round((size.width / size.height) * 50) / 50;
-  const view: View = useMemo(() => ({ portrait, compact, aspect }), [portrait, compact, aspect]);
+  // the screen's height in CSS pixels (rounded): a short phone gets bigger cards
+  const h = Math.round(size.height / 10) * 10;
+  const view: View = useMemo(() => ({ portrait, compact, aspect, h }), [portrait, compact, aspect, h]);
   const targets = useMemo(() => computeTargets(game, view), [game, version, view]);
   const s = game.s;
   const A = arena(view);
@@ -378,25 +381,19 @@ function PlayerPlates({ game, view, dealing }: { game: GameView; view: View; dea
         const out = Math.max(0, Math.min(1, (Math.abs(w.pos[0]) / (arena(view).rx * 0.8) - 0.55) / 0.45));
         const maxX = Math.max(0, vhw - PARALLAX_X - (halfPx + 6) * perPx);
         pos[0] = Math.max(-maxX, Math.min(maxX, pos[0] + Math.sign(pos[0]) * out * halfPx * 0.6 * perPx));
-        // and never at the top edge of the screen (a far seat on a short phone screen: rounded corners and
-        // the browser's bar would cut it). A seat near the middle then gets its plate beside its fan, as in
-        // the mobile game; any other one is just pulled down.
+        // and never at the top edge of the screen: a gap that grows with the screen (rounded corners and the
+        // browser's bar on a phone). On a phone the far seats already sit lower (see oppWall), so this rarely bites.
         const halfH = tiny ? 20 : small ? 24 : 32;
-        const margin = view.compact ? 14 : 6;
+        const margin = Math.round(Math.max(8, height * 0.03));
         const ndc = tmpV.set(...pos).project(camera);
         const topPx = ((1 - ndc.y) / 2) * height - halfH - margin;
-        if (topPx < 0 && !end && out < 0.5) {
-          const side = w.pos[0] > 0.3 ? 1 : -1;
-          const fanPx = FAN_HALF * w.scale;
-          pos[0] = w.pos[0] + side * (fanPx + (halfPx + 8) * perPx);
-          pos[1] = w.top * 0.55;
-          pos[2] = w.pos[2];
-        } else if (topPx < 0) pos[1] = Math.max(0, pos[1] + (topPx * (2 * visibleHalfWidth(view, pos[1], pos[2]))) / width);
+        if (topPx < 0) pos[1] = Math.max(0, pos[1] + (topPx * (2 * visibleHalfWidth(view, pos[1], pos[2]))) / width);
         const cur = i === s.cur && s.phase !== 'over';
         const sub = standIn(p.name);
         return (
           <Html key={i} position={pos} center zIndexRange={[20, 0]} pointerEvents="none">
             <div className={`oplate ${cur ? 'cur' : ''} ${i === s.winner ? 'win' : ''} ${p.offline ? 'off' : ''} ${p.out ? 'out' : ''} ${s.teams ? `team t${s.teams[i]}` : ''} ${small ? 'small' : ''} ${tiny ? 'tiny' : ''}`} title={p.name}>
+              <ReactionBubble seat={i} below />
               {s.teams && (
                 <span className={`oplate-team ${s.teams[i] === s.teams[game.seat()] ? 'partner' : ''}`}>
                   {s.teams[i] === s.teams[game.seat()] && <UiIcon name="players" size={12} />}

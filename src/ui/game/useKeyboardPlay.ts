@@ -68,7 +68,8 @@ export function useKeyboardPlay(game: GameView, locked: boolean, onCard: (id: nu
       if (e.code === 'KeyD') {
         if (s.phase === 'play' && (!s.drawn || s.pending > 0)) game.draw();
       } else if (e.code === 'KeyU') {
-        if (s.phase === 'play') game.callUno();
+        // the same rule as the button: two cards, one of them playable
+        if (s.phase === 'play' && s.rules.uno && game.cp().hand.length === 2 && game.cp().hand.some(c => game.playable(c))) game.callUno();
         else if (game.catchable()) game.lateUno();
       } else if (e.code === 'KeyP') {
         if (s.phase === 'play' && s.drawn && s.pending === 0) game.pass();

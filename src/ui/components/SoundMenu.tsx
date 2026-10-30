@@ -2,7 +2,8 @@ import { type ReactNode, useEffect, useRef, useState, useSyncExternalStore } fro
 import { haptics } from '../../audio/haptics';
 import { sound } from '../../audio/sound';
 import { useT } from '../../i18n';
-import { IconGear, IconMusic, IconMute, IconSound } from './Icons';
+import { IconGear, IconMenu, IconMusic, IconSound, IconVibrate } from './Icons';
+import { LangSwitch } from './LangSwitch';
 import './SoundMenu.css';
 
 /** A button with a small panel under it. A tap anywhere else, or Escape, closes it. */
@@ -25,7 +26,7 @@ function Popover({ icon, label, className = '', children }: { icon: ReactNode; l
   }, [open]);
   return (
     <div className={`sound-menu ${className}`} ref={root}>
-      <button className={`btn glass icon-btn ${open ? 'on' : ''}`} aria-expanded={open} aria-label={label} title={label} onClick={() => setOpen(o => !o)}>
+      <button className={`btn glass icon-btn ${className.includes('labeled-menu') ? 'labeled' : ''} ${open ? 'on' : ''}`} aria-expanded={open} aria-label={label} title={label} onClick={() => setOpen(o => !o)}>
         {icon}
       </button>
       {open && (
@@ -37,6 +38,18 @@ function Popover({ icon, label, className = '', children }: { icon: ReactNode; l
   );
 }
 
+/** One setting row: icon, name, and the switch at the right edge. */
+function Toggle({ id, icon, label, on, set }: { id: string; icon: ReactNode; label: string; on: boolean; set: (v: boolean) => void }) {
+  return (
+    <label className={`menu-toggle ${on ? 'is-on' : ''}`} htmlFor={id}>
+      <span className="menu-ico">{icon}</span>
+      <span className="menu-label">{label}</span>
+      <input id={id} type="checkbox" checked={on} onChange={e => set(e.target.checked)} />
+      <span className="sw" aria-hidden />
+    </label>
+  );
+}
+
 /** Music, sound effects and (phones) vibration switches. */
 function SoundSwitches() {
   const t = useT();
@@ -45,57 +58,52 @@ function SoundSwitches() {
   const { sfx, music } = sound.prefs;
   return (
     <>
-      <label className="switch">
-        <input id="snd-music" type="checkbox" checked={music} onChange={e => sound.setMusic(e.target.checked)} />
-        <span className="sw" aria-hidden />
-        {t('sound.music')}
-      </label>
-      <label className="switch">
-        <input id="snd-sfx" type="checkbox" checked={sfx} onChange={e => sound.setSfx(e.target.checked)} />
-        <span className="sw" aria-hidden />
-        {t('sound.sfx')}
-      </label>
+      <Toggle id="snd-music" icon={<IconMusic />} label={t('sound.music')} on={music} set={v => sound.setMusic(v)} />
+      <Toggle id="snd-sfx" icon={<IconSound />} label={t('sound.sfx')} on={sfx} set={v => sound.setSfx(v)} />
       {/* phones only: a light tap on your turn, harder for a penalty and for "UNO!" */}
       {haptics.supported && (
-        <label className="switch">
-          <input id="snd-haptics" type="checkbox" checked={buzz} onChange={e => { haptics.set(e.target.checked); setBuzz(e.target.checked); }} />
-          <span className="sw" aria-hidden />
-          {t('sound.haptics')}
-        </label>
+        <Toggle id="snd-haptics" icon={<IconVibrate />} label={t('sound.haptics')} on={buzz} set={v => { haptics.set(v); setBuzz(v); }} />
       )}
     </>
   );
-}
-
-/** Speaker button with the sound switches. */
-export function SoundMenu() {
-  const t = useT();
-  useSyncExternalStore(sound.subscribe, sound.getVersion);
-  const { sfx, music } = sound.prefs;
-  const icon = !sfx && !music ? <IconMute /> : music ? <IconMusic /> : <IconSound />;
-  return <Popover icon={icon} label={t('sound.aria')}>{() => <SoundSwitches />}</Popover>;
 }
 
 export interface GearItem {
   icon: ReactNode;
   label: string;
   onClick: () => void;
+  /** leaving the table: drawn apart, in red */
+  danger?: boolean;
 }
 
-/** Phones: one gear button holding the sound switches and the table's other buttons, so the screen stays clear. */
-export function GearMenu({ items }: { items: GearItem[] }) {
+/**
+ * The table's menu: sound settings on top, then the table's other actions.
+ * On a phone it hides behind a round gold gear; on a computer it is the "Menu" button.
+ */
+export function GearMenu({ items, labeled }: { items: GearItem[]; labeled?: boolean }) {
   const t = useT();
+  const icon = labeled ? <><IconMenu /><span>{t('ov.menu')}</span></> : <IconGear />;
   return (
-    <Popover icon={<IconGear />} label={t('ov.settings')} className="gear-menu">
+    <Popover icon={icon} label={t('ov.settings')} className={`gear-menu ${labeled ? 'labeled-menu' : ''}`}>
       {close => (
         <>
-          <SoundSwitches />
-          <div className="gear-sep" aria-hidden />
-          {items.map(it => (
-            <button key={it.label} type="button" className="gear-item" onClick={() => { close(); it.onClick(); }}>
-              {it.icon}<span>{it.label}</span>
-            </button>
-          ))}
+          <div className="menu-head">{t('ov.settings')}</div>
+          <div className="menu-sec">{t('sound.aria')}</div>
+          <div className="menu-card">
+            <SoundSwitches />
+          </div>
+          <div className="menu-sec">{t('lang.label')}</div>
+          <div className="menu-card menu-lang-card">
+            <LangSwitch className="menu-langs" />
+          </div>
+          <div className="menu-card menu-actions">
+            {items.map(it => (
+              <button key={it.label} type="button" className={`gear-item ${it.danger ? 'danger' : ''}`} onClick={() => { close(); it.onClick(); }}>
+                <span className="menu-ico">{it.icon}</span><span className="menu-label">{it.label}</span>
+                <svg className="menu-chev" viewBox="0 0 24 24" width="16" height="16" aria-hidden><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </button>
+            ))}
+          </div>
         </>
       )}
     </Popover>
