@@ -34,6 +34,14 @@ const FILES: Record<string, string> = {
   '/manifest.webmanifest': 'application/manifest+json',
 };
 const SPLASH = /^\/splash\/splash-\d+x\d+\.jpg$/;
+/** the game's files, named by their content (index-3f9a1c.js): they never change, so browsers keep them for good */
+const ASSET = /^\/assets\/[\w.-]+\.(js|css|woff2?|png|jpg|svg|webp|mp3|json)$/;
+const ASSET_TYPES: Record<string, string> = {
+  js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', woff: 'font/woff', woff2: 'font/woff2',
+  png: 'image/png', jpg: 'image/jpeg', svg: 'image/svg+xml', webp: 'image/webp', mp3: 'audio/mpeg', json: 'application/json',
+};
+/** text files worth compressing */
+const COMPRESS = new Set(['js', 'css', 'svg', 'json']);
 const PAGE_CACHE_LIMIT = 200;
 
 const escapeHtml = (v: string) =>
@@ -48,7 +56,7 @@ const langOf = (req: http.IncomingMessage): Lang =>
   langFrom(String(req.headers['accept-language'] ?? '').split(',').map(x => x.split(';')[0].trim()).filter(Boolean));
 
 /**
- * Serves the single-file client and its few static neighbours.
+ * Serves the client: the page, its files in /assets/ (cached for good), the service worker and a few neighbours.
  * Page variants differ only in their link-preview tags: absolute URLs for this host,
  * and for invite links (?room=CODE) who is calling you to which room.
  */
@@ -113,9 +121,59 @@ export function createStaticSite({ dir, trustProxy, rooms }: StaticSiteOptions) 
     return f;
   };
 
+  /** A game file, read and compressed once. */
+  const assets = new Map<string, Promise<Page | null>>();
+  const loadAsset = (name: string) => {
+    let a = assets.get(name);
+    if (!a) {
+      a = readFile(path.join(dir, name.slice(1))).then(raw => {
+        const ext = name.split('.').pop()!;
+        const small = !COMPRESS.has(ext);
+        return {
+          raw,
+          gz: small ? raw : gzipSync(raw, { level: 9 }),
+          br: small ? raw : brotliCompressSync(raw, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 11 } }),
+          etag: '',
+        };
+      }).catch(() => {
+        assets.delete(name);
+        return null;
+      });
+      assets.set(name, a);
+    }
+    return a;
+  };
+
   /** Answers a GET or HEAD request. */
   return async function serve(req: http.IncomingMessage, res: http.ServerResponse, url: URL) {
     const head = req.method === 'HEAD';
+    const accept = String(req.headers['accept-encoding'] ?? '');
+    if (ASSET.test(url.pathname)) {
+      const a = await loadAsset(url.pathname);
+      if (!a) return void res.writeHead(404, { 'cache-control': 'no-store' }).end();
+      const ext = url.pathname.split('.').pop()!;
+      const packed = COMPRESS.has(ext);
+      const [body, enc] = packed && /\bbr\b/.test(accept) ? [a.br, 'br'] : packed && /\bgzip\b/.test(accept) ? [a.gz, 'gzip'] : [a.raw, null];
+      const headers: http.OutgoingHttpHeaders = {
+        'content-type': ASSET_TYPES[ext],
+        'content-length': body.length,
+        'cache-control': 'public, max-age=31536000, immutable',
+        'x-content-type-options': 'nosniff',
+      };
+      if (packed) headers.vary = 'Accept-Encoding';
+      if (enc) headers['content-encoding'] = enc;
+      res.writeHead(200, headers);
+      res.end(head ? undefined : body);
+      return;
+    }
+    // the service worker: always checked for a new version
+    if (url.pathname === '/sw.js') {
+      const file = await loadFile('/sw.js');
+      if (!file) return void res.writeHead(404).end();
+      res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'content-length': file.length, 'cache-control': 'no-cache' });
+      res.end(head ? undefined : file);
+      return;
+    }
     const type = FILES[url.pathname] ?? (SPLASH.test(url.pathname) ? 'image/jpeg' : undefined);
     if (type) {
       const file = await loadFile(url.pathname);
@@ -124,14 +182,15 @@ export function createStaticSite({ dir, trustProxy, rooms }: StaticSiteOptions) 
       res.end(head ? undefined : file);
       return;
     }
-    // single-file build: every page route gets index.html (?room=CODE links included)
+    // a missing file is a 404, not the page (a stale link to an old build must not get HTML instead of a script)
+    if (/\.\w+$/.test(url.pathname)) return void res.writeHead(404).end();
+    // every page route gets index.html (?room=CODE links included)
     const page = await loadPage(req, url);
     if (!page) {
       res.writeHead(500).end(tr('en', 'server.noBuild'));
       return;
     }
-    // the page is ~1.2 MB raw but ~0.3 MB compressed: always send the smallest the browser accepts
-    const accept = String(req.headers['accept-encoding'] ?? '');
+    // always send the smallest the browser accepts
     const [body, enc] = /\bbr\b/.test(accept) ? [page.br, 'br'] : /\bgzip\b/.test(accept) ? [page.gz, 'gzip'] : [page.raw, null];
     const headers: http.OutgoingHttpHeaders = {
       'content-type': 'text/html; charset=utf-8',

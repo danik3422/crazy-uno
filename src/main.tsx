@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import './styles/base.css';
 import App from './app/App';
+import { ErrorBoundary } from './ui/components/ErrorBoundary';
 import { applyDocument, onLangChange } from './i18n/core';
 import { repaintCards } from './three/textures';
 
@@ -18,7 +19,8 @@ let started = false;
 const start = () => {
   if (started) return;
   started = true;
-  createRoot(document.getElementById('root')!).render(<App />);
+  // the last resort: even if the app shell itself breaks, there is a way back
+  createRoot(document.getElementById('root')!).render(<ErrorBoundary><App /></ErrorBoundary>);
   // the launch splash (drawn by index.html) fades out once the app has painted its first frame
   requestAnimationFrame(() =>
     requestAnimationFrame(() => {
@@ -35,3 +37,10 @@ setTimeout(() => {
   start();
   fonts.then(() => repaintCards());
 }, 1200);
+
+// the service worker: instant repeat starts and bot games without a connection (built version only)
+if (import.meta.env.PROD && 'serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => undefined);
+  });
+}

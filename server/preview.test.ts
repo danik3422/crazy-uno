@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { gunzipSync } from 'node:zlib';
@@ -14,6 +14,9 @@ beforeAll(async () => {
   // the real page template, so the test breaks if the meta tags change shape
   await writeFile(path.join(dir, 'index.html'), await readFile(path.resolve(__dirname, '../index.html'), 'utf8'));
   await writeFile(path.join(dir, 'og.jpg'), Buffer.from([0xff, 0xd8, 0xff]));
+  await mkdir(path.join(dir, 'assets'));
+  await writeFile(path.join(dir, 'assets', 'index-abc123.js'), 'console.log("uno");'.repeat(50));
+  await writeFile(path.join(dir, 'sw.js'), 'self.addEventListener("fetch", () => {});');
   app = await createUnoServer({ port: 0, staticDir: dir, limits: { connections: 1e6, rooms: 1e6, badJoins: 1e6 } });
 });
 afterAll(() => app.close());
@@ -53,4 +56,23 @@ it('sends the page compressed', async () => {
   const r = await fetch(`http://localhost:${app.port}/`, { headers: { 'accept-encoding': 'gzip' } });
   expect(r.headers.get('content-encoding')).toBe('gzip');
   expect(gunzipSync).toBeTypeOf('function');
+});
+
+it('keeps the game files for good, but always checks the page and the service worker', async () => {
+  const js = await fetch(`http://localhost:${app.port}/assets/index-abc123.js`, { headers: { 'accept-encoding': 'br' } });
+  expect(js.status).toBe(200);
+  expect(js.headers.get('content-type')).toContain('text/javascript');
+  expect(js.headers.get('cache-control')).toContain('immutable');
+  expect(js.headers.get('content-encoding')).toBe('br');
+  expect(await js.text()).toContain('console.log("uno")');
+
+  const sw = await fetch(`http://localhost:${app.port}/sw.js`);
+  expect(sw.headers.get('cache-control')).toBe('no-cache');
+  const page = await fetch(`http://localhost:${app.port}/`);
+  expect(page.headers.get('cache-control')).toBe('no-cache');
+
+  // a file of an older build is gone: a plain 404, never the page in its place
+  const old = await fetch(`http://localhost:${app.port}/assets/index-old999.js`);
+  expect(old.status).toBe(404);
+  expect((await fetch(`http://localhost:${app.port}/missing.png`)).status).toBe(404);
 });

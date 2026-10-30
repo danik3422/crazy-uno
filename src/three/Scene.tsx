@@ -17,7 +17,7 @@ import { dealTiming } from '../net/protocol';
 import { drag } from './drag';
 import { Arena, PALETTES } from './Environment';
 import { EventFx } from './eventFx/EventFx';
-import { DEBUG, fxState, nowSec } from './fxState';
+import { DEBUG, fxState, nowSec, crashProbe } from './fxState';
 import { FitProbe } from './FitProbe';
 import { CAMERA, PARALLAX_X, RING_R, RING_Z, arena, cameraFov, computeTargets, deckCenter, deckSpot, oppWall, visibleHalfWidth, type View } from './layout';
 import { Mascot } from './Mascot';
@@ -41,6 +41,7 @@ interface Props {
 }
 
 export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dealing = false }: Props) {
+  crashProbe('3d');
   const size = useThree(s => s.size);
   const portrait = size.width / size.height < 0.9;
   // a phone lying on its side: wide but very short, so the HUD and plates get compact

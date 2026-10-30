@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { randomHumanAvatar } from '../game/avatars';
 import { render, t, useLang, type Msg } from '../i18n';
 import { Game, type LocalSetup } from '../game/engine';
 import { Connection, errorLeavesRoom, savedAvatar, savedName } from '../net/connection';
 import { CardLoader } from '../ui/components/CardLoader';
+import { ErrorBoundary } from '../ui/components/ErrorBoundary';
 import { GameScreen } from '../ui/game/GameScreen';
 import { Home } from '../ui/screens/Home';
 import { ConnBadge, Lobby } from '../ui/screens/Lobby';
@@ -94,89 +95,101 @@ export default function App() {
     setScreen('online');
   };
 
-  if (screen === 'local-setup') {
-    return (
-      <Setup
-        cfg={setup}
-        setCfg={setSetup}
-        onBack={() => setScreen('home')}
-        onStart={() => {
-          setLocal(new Game(localGameConfig(setup, 1)));
-          setScreen('local-game');
-        }}
-      />
-    );
-  }
+  /** "Menu" on the crash card: out of whatever broke, back to the start (an online seat is given up) */
+  const toMenu = () => {
+    if (screen === 'online') return leaveRoom();
+    setLocal(null);
+    setScreen('home');
+  };
 
-  if (screen === 'local-game' && local) {
-    return (
-      <GameScreen
-        game={local}
-        score={localScore}
-        onOver={onLocalOver}
-        onAgain={() => setLocal(new Game(localGameConfig(setup, local.s.round + 1)))}
-        onMenu={() => { setLocal(null); setScreen('local-setup'); }}
-      />
-    );
-  }
-
-  if (screen === 'online') {
-    const room = conn.room;
-    if (!room) {
-      const code = conn.session?.code ?? invite;
+  const view = (): ReactNode => {
+    if (screen === 'local-setup') {
       return (
-        <div className="loading-screen">
-          <CardLoader
-            title={code ? t('home.joining', { code }) : t('home.creating')}
-            sub={conn.status === 'reconnecting' ? t('home.reconnecting') : t('home.shuffling')}
-          >
-            <button className="btn" onClick={leaveRoom}>{t('cancel')}</button>
-          </CardLoader>
-        </div>
+        <Setup
+          cfg={setup}
+          setCfg={setSetup}
+          onBack={() => setScreen('home')}
+          onStart={() => {
+            setLocal(new Game(localGameConfig(setup, 1)));
+            setScreen('local-game');
+          }}
+        />
       );
     }
-    const me = room.members.find(m => m.id === room.you);
-    if (room.started && remote.current) {
+
+    if (screen === 'local-game' && local) {
       return (
-        <>
-          <GameScreen
-            game={remote.current}
-            score={room.score}
-            onAgain={() => conn.send({ t: 'again' })}
-            onMenu={leaveRoom}
-            online={{
-              code: room.code,
-              isHost: !!me?.host,
-              spectator: remote.current.you === null,
-              onLobby: () => conn.send({ t: 'toLobby' }),
-              me: room.you,
-              members: room.members,
-              rematch: room.rematch,
-              roomAt: conn.roomAt,
-              onVote: ready => conn.send({ t: 'again', off: !ready }),
-              onForce: () => conn.send({ t: 'again', force: true }),
-            }}
-          />
-          {conn.status !== 'open' && <div className="net-banner"><ConnBadge conn={conn} /></div>}
-        </>
+        <GameScreen
+          game={local}
+          score={localScore}
+          onOver={onLocalOver}
+          onAgain={() => setLocal(new Game(localGameConfig(setup, local.s.round + 1)))}
+          onMenu={() => { setLocal(null); setScreen('local-setup'); }}
+        />
       );
     }
-    return <Lobby conn={conn} room={room} onLeave={leaveRoom} avatar={avatar} setAvatar={setAvatar} />;
-  }
 
-  return (
-    <Home
-      online={serverUp}
-      name={name}
-      setName={setName}
-      avatar={avatar}
-      setAvatar={setAvatar}
-      invite={invite}
-      busy={conn.status === 'connecting'}
-      error={notice ? render(notice) : null}
-      onLocal={() => setScreen('local-setup')}
-      onCreate={() => goOnline(() => conn.create())}
-      onJoin={c => goOnline(() => conn.join(c))}
-    />
-  );
+    if (screen === 'online') {
+      const room = conn.room;
+      if (!room) {
+        const code = conn.session?.code ?? invite;
+        return (
+          <div className="loading-screen">
+            <CardLoader
+              title={code ? t('home.joining', { code }) : t('home.creating')}
+              sub={conn.status === 'reconnecting' ? t('home.reconnecting') : t('home.shuffling')}
+            >
+              <button className="btn" onClick={leaveRoom}>{t('cancel')}</button>
+            </CardLoader>
+          </div>
+        );
+      }
+      const me = room.members.find(m => m.id === room.you);
+      if (room.started && remote.current) {
+        return (
+          <>
+            <GameScreen
+              game={remote.current}
+              score={room.score}
+              onAgain={() => conn.send({ t: 'again' })}
+              onMenu={leaveRoom}
+              online={{
+                code: room.code,
+                isHost: !!me?.host,
+                spectator: remote.current.you === null,
+                onLobby: () => conn.send({ t: 'toLobby' }),
+                me: room.you,
+                members: room.members,
+                rematch: room.rematch,
+                roomAt: conn.roomAt,
+                onVote: ready => conn.send({ t: 'again', off: !ready }),
+                onForce: () => conn.send({ t: 'again', force: true }),
+              }}
+            />
+            {conn.status !== 'open' && <div className="net-banner"><ConnBadge conn={conn} /></div>}
+          </>
+        );
+      }
+      return <Lobby conn={conn} room={room} onLeave={leaveRoom} avatar={avatar} setAvatar={setAvatar} />;
+    }
+
+    return (
+      <Home
+        online={serverUp}
+        name={name}
+        setName={setName}
+        avatar={avatar}
+        setAvatar={setAvatar}
+        invite={invite}
+        busy={conn.status === 'connecting'}
+        error={notice ? render(notice) : null}
+        onLocal={() => setScreen('local-setup')}
+        onCreate={() => goOnline(() => conn.create())}
+        onJoin={c => goOnline(() => conn.join(c))}
+      />
+    );
+  };
+
+  // a crash anywhere in the screen shows a calm card instead of a blank page (see ErrorBoundary)
+  return <ErrorBoundary key={screen} onMenu={toMenu}>{view()}</ErrorBoundary>;
 }

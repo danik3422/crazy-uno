@@ -75,3 +75,21 @@ export const SPIN_TIME = 1.3;
 /** dev builds, or any build opened with ?debug: the game, effects and renderer are reachable from the console */
 export const DEBUG = import.meta.env.DEV || (typeof location !== 'undefined' && /[?&]debug\b/.test(location.search));
 if (DEBUG && typeof window !== 'undefined') (window as unknown as { __fx: typeof fxState }).__fx = fxState;
+
+/**
+ * Debug only: `window.__crash = 'hud' | '3d'` makes that part throw on its next render, to try the crash card.
+ * The flag clears itself, so "Continue" brings the screen back.
+ */
+export function crashProbe(where: 'hud' | '3d') {
+  if (!DEBUG) return;
+  const w = window as unknown as { __crash?: string; __crashUntil?: number };
+  if (w.__crash !== where) return;
+  // React retries a broken render before giving up: keep failing for a moment, like a real bug would
+  w.__crashUntil ??= performance.now() + 300;
+  if (performance.now() > w.__crashUntil) {
+    delete w.__crash;
+    delete w.__crashUntil;
+    return;
+  }
+  throw new Error(`test crash in ${where}`);
+}

@@ -7,6 +7,7 @@ import { AvatarImg } from '../components/AvatarImg';
 import { EventIcon } from '../components/EventIcon';
 import { cardImage } from '../../three/textures';
 import { TurnTimer } from './TurnTimer';
+import { crashProbe } from '../../three/fxState';
 import { ReactionBubble } from './Reactions';
 import { useLogRoom } from './useLogRoom';
 import type { OnlineCtx } from './onlineCtx';
@@ -33,6 +34,7 @@ interface Props {
 }
 
 export function Hud({ game, toasts, bombLeft, online, locked, roundLeft }: Props) {
+  crashProbe('hud');
   const t = useT();
   const s = game.s;
   const log = useLogRoom(3);

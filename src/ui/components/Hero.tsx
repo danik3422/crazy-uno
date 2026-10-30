@@ -1,10 +1,11 @@
-import { type CSSProperties, lazy, Suspense } from 'react';
+import { type CSSProperties, Suspense } from 'react';
+import { lazyFile } from '../../lib/lazyFile';
 import { useT } from '../../i18n';
 import type { Card } from '../../game/types';
 import { cardImage } from '../../three/textures';
 import './Hero.css';
 
-const MascotStage = lazy(() => import('./MascotStage'));
+const MascotStage = lazyFile(() => import('./MascotStage'));
 
 const HERO: Card[] = [
   { id: 1, color: 'red', type: 'num', value: 7 },

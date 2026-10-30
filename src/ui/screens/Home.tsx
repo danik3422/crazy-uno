@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { lazyFile } from '../../lib/lazyFile';
 import { CODE_LEN, normalizeCode } from '../../net/protocol';
 import { AvatarImg, AvatarPicker } from '../components/AvatarImg';
 import { FitLetter } from '../components/FitLetter';
@@ -7,7 +8,7 @@ import { UiIcon } from '../components/UiIcon';
 import { useT } from '../../i18n';
 import './Home.css';
 
-const MascotStage = lazy(() => import('../components/MascotStage'));
+const MascotStage = lazyFile(() => import('../components/MascotStage'));
 
 interface Props {
   /** null while we check whether a game server is reachable */
@@ -117,7 +118,7 @@ export function Home({ online, name, setName, avatar, setAvatar, invite, busy, e
 
         {offline ? (
           <p className="pc-note">
-            {t('home.offline')}
+            {typeof navigator !== 'undefined' && navigator.onLine === false ? t('home.noInternet') : t('home.offline')}
           </p>
         ) : (
           <>
