@@ -9,6 +9,7 @@ import { useT } from '../i18n';
 import { AvatarImg } from '../ui/components/AvatarImg';
 import { IconStack } from '../ui/components/Icons';
 import { ReactionBubble } from '../ui/game/Reactions';
+import { peek } from '../ui/game/peek';
 import { UiIcon } from '../ui/components/UiIcon';
 import { TurnTimer } from '../ui/game/TurnTimer';
 import { Card3D, setPlayableGlow } from './Card3D';
@@ -391,9 +392,16 @@ function PlayerPlates({ game, view, dealing }: { game: GameView; view: View; dea
         if (topPx < 0) pos[1] = Math.max(0, pos[1] + (topPx * (2 * visibleHalfWidth(view, pos[1], pos[2]))) / width);
         const cur = i === s.cur && s.phase !== 'over';
         const sub = standIn(p.name);
+        // a partner's hand is open to you (2 on 2 and up): tap their plate to see it big
+        const canPeek = !!s.teams && seat >= 0 && s.teams[i] === s.teams[seat] && s.phase !== 'over' && p.hand.length > 0 && p.hand.every(c => !c.hidden);
         return (
           <Html key={i} position={pos} center zIndexRange={[20, 0]} pointerEvents="none">
-            <div className={`oplate ${cur ? 'cur' : ''} ${i === s.winner ? 'win' : ''} ${p.offline ? 'off' : ''} ${p.out ? 'out' : ''} ${s.teams ? `team t${s.teams[i]}` : ''} ${small ? 'small' : ''} ${tiny ? 'tiny' : ''}`} title={p.name}>
+            <div
+              className={`oplate ${cur ? 'cur' : ''} ${i === s.winner ? 'win' : ''} ${p.offline ? 'off' : ''} ${p.out ? 'out' : ''} ${s.teams ? `team t${s.teams[i]}` : ''} ${small ? 'small' : ''} ${tiny ? 'tiny' : ''} ${canPeek ? 'peekable' : ''}`}
+              title={canPeek ? t('peek.hint', { who: p.name }) : p.name}
+              onClick={canPeek ? () => peek.open(i) : undefined}
+            >
+              {canPeek && <span className="oplate-eye" aria-hidden><svg viewBox="0 0 24 24" width="15" height="15"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" /><circle cx="12" cy="12" r="3" fill="currentColor" /></svg></span>}
               <ReactionBubble seat={i} below />
               {s.teams && (
                 <span className={`oplate-team ${s.teams[i] === s.teams[game.seat()] ? 'partner' : ''}`}>
@@ -419,6 +427,8 @@ function PlayerPlates({ game, view, dealing }: { game: GameView; view: View; dea
                 )}
               </span>
               {p.hand.length === 1 && s.phase !== 'over' && <span className="plate-uno">UNO!</span>}
+              {/* whose turn: a gold tag hanging from the plate, pointing down at their cards */}
+              {cur && !dealing && <span className="oplate-turn">{t('plate.turn')}</span>}
             </div>
           </Html>
         );

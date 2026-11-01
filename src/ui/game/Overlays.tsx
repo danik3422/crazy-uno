@@ -103,7 +103,10 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
           {t('ov.challengeHelp', { who: by.name })}
         </p>
         <div className="row center">
-          <button className="btn big blue" onClick={() => game.declineChallenge()}>{t('ov.accept')}</button>
+          <button className="btn big blue" onClick={() => game.declineChallenge()}>
+            {/* nothing to answer it with: accepting means taking the cards, so the button says so */}
+            {game.cp().hand.some(c => game.playable(c)) ? t('ov.accept') : t('ov.acceptTake', { n: s.pending })}
+          </button>
           <button className="btn big red" autoFocus onClick={() => game.challengeWild4()}>{t('ov.challengeBtn')}</button>
         </div>
       </Modal>

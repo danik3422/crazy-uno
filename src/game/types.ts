@@ -64,6 +64,8 @@ export interface Rules {
    * you may lay it out of turn; play then carries on from you as if it were your turn.
    */
   jumpIn: boolean;
+  /** No Mercy only: 25 cards in hand knock you out of the round (off: hands grow without limit) */
+  mercy: boolean;
 }
 
 export type EventId =

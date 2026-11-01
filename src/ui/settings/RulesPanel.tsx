@@ -79,8 +79,9 @@ function RuleList({ rules, onChange, on }: { rules: Rules; onChange: (r: Rules) 
           {RULE_GROUPS.map(g => (
             <section key={g.id} className="rule-group">
               <h4>{g.title}</h4>
-              {g.rules.map(r => (
-                <label key={r.id} className={`rule-row ${rules[r.id] ? 'on' : ''}`}>
+              {/* the 25-card knockout belongs to No Mercy: shown only with it */}
+              {g.rules.filter(r => r.id !== 'mercy' || rules.noMercy).map(r => (
+                <label key={r.id} className={`rule-row ${rules[r.id] ? 'on' : ''} ${r.id === 'mercy' ? 'sub-rule' : ''}`}>
                   <span className="rule-text">
                     <b>{ruleOf(r.id).name}</b>
                     <small>{r.short}</small>

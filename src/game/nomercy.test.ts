@@ -157,6 +157,19 @@ describe('No Mercy cards', () => {
 });
 
 describe('mercy rule', () => {
+  it('with the knockout switched off, a hand of 25 and more stays in the game', () => {
+    const g = game(3);
+    g.s.rules.mercy = false;
+    const victim = g.nextIdx();
+    play(g, card('wild10', 'wild'));
+    g.resolveChoice('red');
+    g.s.players[victim].hand.push(...g.s.deck.splice(0, MERCY_LIMIT - 10 - g.s.players[victim].hand.length));
+    g.draw();
+    expect(g.s.players[victim].hand.length).toBeGreaterThanOrEqual(MERCY_LIMIT);
+    expect(g.s.players[victim].out).toBeFalsy();
+    expect(g.s.log.some(l => l.k === 'log.knockout')).toBe(false);
+  });
+
   it(`knocks out a player with ${MERCY_LIMIT} cards and skips them from then on`, () => {
     const g = game(3);
     const total = g.totalCards();

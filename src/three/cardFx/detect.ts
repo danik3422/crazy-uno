@@ -180,8 +180,9 @@ export function detect(prev: Snap | null, s: State, next: NextIdx): Trigger[] {
       out.push({ ...base, targets: [], n: Math.max(1, (prev.hands[actor] ?? 0) - s.players[actor].hand.length - 1) });
       break;
     case 'roulette':
-      // the next player names the colour and digs for it
-      out.push({ ...base, waits: true, targets: victim() });
+      // the next player names the colour and digs for it; if that already happened by this update (a quick bot,
+      // an online update that skipped the moment), the wheel does not wait for a choice it will never see
+      out.push({ ...base, waits: s.phase === 'choose' && (s.choice as { mode?: string } | null)?.mode === 'roulette', targets: victim() });
       break;
     case 'bomb':
     case 'dare':

@@ -363,7 +363,12 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
       const vis = visibleHalfWidth(v, A.hand.y, A.hand.z);
       // a phone lying on its side: the hand stays between the corner panels (your plate, the draw button)
       const big = handScale(v);
-      const fitW = v.compact ? 2 * vis * ((v.aspect ?? 2.1) < 1.95 ? 0.54 : 0.6) - big : 2 * (vis * 0.95 - PARALLAX_X) - 1.0;
+      const fitW = v.compact
+        ? 2 * vis * ((v.aspect ?? 2.1) < 1.95 ? 0.54 : 0.6) - big
+        : v.portrait
+          ? 2 * (vis * 0.95 - PARALLAX_X) - 1.0
+          // a computer: the hand stays between your card (bottom-left) and the action button (bottom-right)
+          : Math.min(2 * (vis * 0.95 - PARALLAX_X) - 1.0, 2 * vis * 0.58 - 1.0);
       const h = { ...A.hand, maxW: Math.min(A.hand.maxW, fitW) };
       // blind event: you still play, but you cannot see what
       const faceUp = (viewer === seat && s.blindTurns === 0) || over;

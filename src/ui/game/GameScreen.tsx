@@ -6,6 +6,8 @@ import { useT } from '../../i18n';
 import type { GameView } from '../../game/view';
 import type { RemoteGame } from '../../net/remoteGame';
 import { GameScene } from '../../three/Scene';
+import { tableEvents } from '../../three/tableEvents';
+import { PartnerHand } from './PartnerHand';
 import { DEBUG } from '../../three/fxState';
 import { useAdaptiveDpr } from '../../three/useAdaptiveDpr';
 import { useGlRecovery } from '../../three/useGlRecovery';
@@ -86,6 +88,7 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
           if (DEBUG) (window as unknown as { __gl?: unknown }).__gl = st.gl;
         }}
         shadows
+        events={tableEvents}
         dpr={resolution.dpr}
         camera={{ fov: 42, position: [0, 9, 10] }}
         gl={{ antialias: true, powerPreference: 'high-performance' }}
@@ -112,6 +115,7 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
           onCard={playCard}
         />
       </Canvas>
+      <PartnerHand game={game} version={version} />
       <Hud game={game} version={version} toasts={effects.toasts} bombLeft={bombLeft} roundLeft={locked ? null : roundLeft} online={online} locked={locked} />
       {round.stage === 'dealing' && <div className="deal-banner">{t('hud.dealing')}</div>}
       <p className="sr-only" aria-live="polite">{kb.said}</p>

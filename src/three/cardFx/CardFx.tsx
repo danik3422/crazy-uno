@@ -194,6 +194,8 @@ export function CardFx({ game, version, view, theme, pile }: Props) {
       }
       const t = now - a.start;
       if (t < 0) continue;
+      // still waiting for a decision nobody is making any more (the moment slipped by between updates): stop now
+      if (a.motif.waits && a.resolved === null && t > 0.6 && game.s.phase !== 'choose') a.resolved = now;
       const since = a.resolved === null || now < a.resolved ? -1 : now - a.resolved;
       const done = a.motif.waits ? (since >= 0 ? since > a.motif.life : t > MAX_WAIT) : t > a.motif.life;
       if (done) {

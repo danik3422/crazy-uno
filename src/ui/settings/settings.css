@@ -25,3 +25,9 @@
   .rule-list { animation: none; }
   .rules-toggle .chev { transition: none; }
 }
+/* a rule that belongs to the one above it (the 25-card knockout under No Mercy): set in, with a thread to its parent */
+.rule-row.sub-rule { margin-left: 22px; position: relative; }
+.rule-row.sub-rule::before {
+  content: ''; position: absolute; left: -14px; top: -6px; width: 10px; height: calc(50% + 6px);
+  border-left: 2px solid rgba(255, 255, 255, 0.25); border-bottom: 2px solid rgba(255, 255, 255, 0.25); border-bottom-left-radius: 8px;
+}

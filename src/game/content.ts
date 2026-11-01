@@ -54,6 +54,7 @@ const RULE_DEFAULTS: [keyof Rules, boolean][] = [
   ['startAction', false],
   ['noMercy', false],
   ['jumpIn', true],
+  ['mercy', true],
 ];
 
 /** Every rule: its default, and its name and description in the current language. */
@@ -96,7 +97,7 @@ const GROUPS: { id: 'cards' | 'party' | 'pace'; rules: { id: keyof Rules; icon: 
     id: 'cards',
     rules: [
       { id: 'stack', icon: '📚' }, { id: 'sevenZero', icon: '🔄' }, { id: 'crazy', icon: '🃏' },
-      { id: 'drawPlay', icon: '♾️' }, { id: 'startAction', icon: '🎬' }, { id: 'jumpIn', icon: '⚡' }, { id: 'noMercy', icon: '💀' },
+      { id: 'drawPlay', icon: '♾️' }, { id: 'startAction', icon: '🎬' }, { id: 'jumpIn', icon: '⚡' }, { id: 'noMercy', icon: '💀' }, { id: 'mercy', icon: '☠️' },
     ],
   },
   { id: 'party', rules: [{ id: 'uno', icon: '📣' }, { id: 'challenge', icon: '⚖️' }, { id: 'dares', icon: '🎭' }, { id: 'punish', icon: '😈' }] },
@@ -116,20 +117,20 @@ export const PRESETS: { id: 'classic' | 'nomercy' | 'party' | 'chaos'; icon: str
     // the official rules of UNO (Mattel, 2023): no stacking, +4 only without a card to match (can be challenged),
     // draw one card and play it if it fits, and the pile starts with a number
     id: 'classic', icon: '🎴', get name() { return t('preset.classic'); }, get desc() { return t('presetDesc.classic'); },
-    rules: { stack: false, sevenZero: false, crazy: false, dares: false, uno: true, drawPlay: false, punish: false, events: false, timer: true, challenge: true, noMercy: false, startAction: false, jumpIn: false },
+    rules: { stack: false, sevenZero: false, crazy: false, dares: false, uno: true, drawPlay: false, punish: false, events: false, timer: true, challenge: true, noMercy: false, startAction: false, jumpIn: false, mercy: true },
   },
   {
     // the official rules of UNO Show 'Em No Mercy, nothing added
     id: 'nomercy', icon: '💀', get name() { return t('preset.nomercy'); }, get desc() { return t('presetDesc.nomercy'); },
-    rules: { stack: true, sevenZero: true, crazy: false, dares: false, uno: true, drawPlay: true, punish: false, events: false, timer: true, challenge: false, noMercy: true, startAction: false, jumpIn: false },
+    rules: { stack: true, sevenZero: true, crazy: false, dares: false, uno: true, drawPlay: true, punish: false, events: false, timer: true, challenge: false, noMercy: true, startAction: false, jumpIn: false, mercy: true },
   },
   {
     id: 'party', icon: '🎉', get name() { return t('preset.party'); }, get desc() { return t('presetDesc.party'); },
-    rules: { stack: true, sevenZero: true, crazy: true, dares: true, uno: true, drawPlay: false, punish: true, events: true, timer: true, challenge: true, noMercy: false, startAction: false, jumpIn: true },
+    rules: { stack: true, sevenZero: true, crazy: true, dares: true, uno: true, drawPlay: false, punish: true, events: true, timer: true, challenge: true, noMercy: false, startAction: false, jumpIn: true, mercy: true },
   },
   {
     id: 'chaos', icon: '🌪', get name() { return t('preset.chaos'); }, get desc() { return t('presetDesc.chaos'); },
-    rules: { stack: true, sevenZero: true, crazy: true, dares: true, uno: true, drawPlay: true, punish: true, events: true, timer: true, challenge: true, noMercy: false, startAction: true, jumpIn: true },
+    rules: { stack: true, sevenZero: true, crazy: true, dares: true, uno: true, drawPlay: true, punish: true, events: true, timer: true, challenge: true, noMercy: false, startAction: true, jumpIn: true, mercy: true },
   },
 ];
 

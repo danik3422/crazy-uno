@@ -116,6 +116,8 @@ export function Hud({ game, toasts, bombLeft, online, locked, roundLeft }: Props
       <div className={`hud-bottom ${playing ? 'my-turn' : ''}`}>
         <div className="me">
           <ReactionBubble seat={game.seat()} mine />
+          {/* whose turn, at a glance: your card wears a gold tag while it is yours */}
+          {playing && <span className="me-turn-tag">{t('hud.yourTurnTag')}</span>}
           <div className={`plate me-plate ${s.cur === game.seat() && s.phase !== 'over' ? 'cur' : ''}`}>
             <div className="plate-name">{seatP.name}</div>
             <div className="plate-body">
@@ -131,7 +133,13 @@ export function Hud({ game, toasts, bombLeft, online, locked, roundLeft }: Props
           {hint && (
             <span className={`hint ${jumpCard ? 'jump' : ''}`}>
               {jumpCard && <img className="jump-card" src={cardImage(jumpCard, s.theme ?? 'classic', 30)} alt="" aria-hidden />}
-              <b>{hintTitle}</b>
+              <b>
+                {/* someone else is moving: their face next to the words */}
+                {!myTurn && !jumpCard && s.phase !== 'over' && s.cur !== game.seat() && (
+                  <AvatarImg id={cur.avatar} name={cur.name} bot={cur.bot} size={22} className="hint-ava" />
+                )}
+                {hintTitle}
+              </b>
               {hintSub && <small>{hintSub}</small>}
             </span>
           )}

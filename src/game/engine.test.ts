@@ -179,6 +179,26 @@ describe('Game engine', () => {
     }
   });
 
+  it('accepting a +4 with nothing to answer it takes the cards at once', () => {
+    const g = new Game({ players: [{ name: 'A', bot: false }, { name: 'B', bot: false }], rules: { ...DEFAULT_RULES, events: false, stack: false } }, { rng: seeded(9) });
+    g.confirmHandover();
+    const s = g.s;
+    const a = s.cur;
+    const b = g.nextIdx();
+    const other = (['red', 'yellow', 'green', 'blue'] as const).find(c => c !== s.color)!;
+    s.players[a].hand = [{ id: 9001, color: 'wild', type: 'wild4' }, { id: 9003, color: other, type: 'num', value: 7 }, { id: 9004, color: other, type: 'num', value: 8 }];
+    expect(g.play(9001)).toBe(true);
+    g.resolveChoice('red');
+    g.confirmHandover();
+    expect(s.challenge?.target).toBe(b);
+    // B holds nothing that could answer a +4
+    s.players[b].hand = [{ id: 9010, color: 'blue', type: 'num', value: 3 }, { id: 9011, color: 'green', type: 'num', value: 5 }];
+    g.declineChallenge();
+    expect(s.players[b].hand.length).toBe(6);
+    expect(s.pending).toBe(0);
+    expect(s.cur).not.toBe(b);
+  });
+
   it('lets others catch a missing UNO, and the victim save themselves', () => {
     const mk = () => {
       const g = new Game({ players: [{ name: 'A', bot: false }, { name: 'B', bot: false }, { name: 'C', bot: true }], rules: { ...DEFAULT_RULES, events: false } }, { rng: seeded(4) });

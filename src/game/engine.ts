@@ -594,10 +594,12 @@ export class Game extends Observable {
     this.draw();
   }
 
+  /** The +4 is accepted. With nothing to answer it, the penalty is taken at once (no second press on "draw"). */
   declineChallenge() {
     const s = this.s;
     if (!s.challenge || s.challenge.target !== s.cur) return;
     s.challenge = null;
+    if (s.phase === 'play' && !this.cp().hand.some(c => this.playable(c))) return this.draw();
     this.emitChange();
   }
 
@@ -1148,7 +1150,7 @@ export class Game extends Observable {
     }
     // a couple of new cards and nobody can tell what colours that hand is missing any more
     if (got.length >= 2) this.lacks.delete(p.hand);
-    if (this.s.rules.noMercy && !p.out && p.hand.length >= MERCY_LIMIT) this.knockOut(p);
+    if (this.s.rules.noMercy && this.s.rules.mercy && !p.out && p.hand.length >= MERCY_LIMIT) this.knockOut(p);
     return got;
   }
 
@@ -1204,7 +1206,7 @@ export class Game extends Observable {
   protected emitChange() {
     const s = this.s;
     if (s.rules.noMercy && s.phase !== 'over') {
-      for (const p of s.players) if (!p.out && p.hand.length >= MERCY_LIMIT) this.knockOut(p);
+      if (s.rules.mercy) for (const p of s.players) if (!p.out && p.hand.length >= MERCY_LIMIT) this.knockOut(p);
       if ((s.phase as string) !== 'over' && this.cp().out) this.advance();
     }
     super.emitChange();

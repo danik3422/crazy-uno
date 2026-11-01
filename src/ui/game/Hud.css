@@ -239,3 +239,39 @@
 @media (prefers-reduced-motion: reduce) { .hint.jump .jump-card { animation: none; } }
 /* plates under the log (see useLogRoom): newest line on top, no box, so nothing but the shown lines covers the table */
 .log.cramped { flex-direction: column-reverse; background: none; backdrop-filter: none; -webkit-mask-image: none; mask-image: none; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85); }
+
+/* ---- a computer screen: your own small card bottom-left and the action bottom-right, the hand gets the middle ---- */
+@media (min-width: 561px) and (min-height: 521px) {
+  .hud-bottom {
+    left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); width: auto; transform: none;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px)); padding: 0; gap: 12px; align-items: flex-end;
+    background: none; border: 0; box-shadow: none; backdrop-filter: none; pointer-events: none;
+  }
+  .hud-bottom.my-turn { box-shadow: none; }
+  .hud-bottom .me {
+    pointer-events: auto; gap: 12px; max-width: min(330px, 26vw); padding: 8px 16px 8px 8px; border-radius: 20px;
+    background: linear-gradient(180deg, rgba(30, 10, 40, 0.72), rgba(14, 4, 18, 0.72)); border: 1.5px solid rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(12px); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.32); transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .hud-bottom.my-turn .me { border-color: rgba(255, 216, 74, 0.85); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.32), 0 0 0 3px rgba(255, 216, 74, 0.14), 0 0 28px rgba(255, 196, 60, 0.35); }
+  .me-plate .plate-ava { width: 50px !important; height: 50px !important; border-width: 3px; }
+  .me-plate .plate-count { min-width: 26px; height: 32px; font-size: 15px; }
+  .hint b { font-size: 15px; }
+  .actions { pointer-events: auto; }
+}
+
+/* the "your turn" tag on your card */
+.me-turn-tag {
+  position: absolute; right: 14px; top: 0; transform: translateY(-62%); z-index: 2; pointer-events: none;
+  padding: 3px 10px; border-radius: 999px; font-family: var(--display); font-weight: 900; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: #3a1d00; background: linear-gradient(180deg, #fff09a, #ffc61a 55%, #f59a00); border: 2px solid #fff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35); animation: turn-tag-in 0.35s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+/* the face of whoever is moving, inside "X is moving…" */
+.hint b { display: inline-flex; align-items: center; gap: 7px; }
+.hint-ava { flex: none; border-radius: 7px !important; border: 2px solid #fff; box-shadow: 0 0 0 2px rgba(255, 216, 74, 0.8); }
+@keyframes turn-tag-in { from { transform: translateY(-62%) scale(0.4); opacity: 0; } }
+@media (orientation: landscape) and (max-height: 520px) {
+  .me-turn-tag { display: none; }
+  .hint-ava { width: 18px !important; height: 18px !important; }
+}
