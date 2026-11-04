@@ -1,0 +1,20 @@
+.howto { width: min(900px, 100%); margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.ht-card {
+  padding: 16px 18px; border-radius: 24px; display: flex; flex-direction: column; gap: 10px;
+  background: linear-gradient(170deg, rgba(43, 16, 54, 0.92), rgba(18, 6, 26, 0.92)); border: 2px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.35);
+}
+.ht-card h2 { margin: 0; font-family: var(--display); font-weight: 900; font-size: 18px; }
+.ht-modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.ht-mode { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.06); }
+.ht-mode div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ht-mode b { font-family: var(--display); font-size: 14.5px; }
+.ht-mode small { color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+.ht-basic { margin: 0; color: rgba(255, 255, 255, 0.85); font-size: 14px; line-height: 1.45; }
+@media (max-width: 560px) {
+  .ht-card { padding: 14px 12px; border-radius: 20px; }
+  .ht-modes { grid-template-columns: minmax(0, 1fr); }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .ht-card { padding: 10px 12px; border-radius: 18px; }
+}

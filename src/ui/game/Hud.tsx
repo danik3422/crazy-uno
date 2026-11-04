@@ -61,7 +61,8 @@ export function Hud({ game, toasts, bombLeft, online, locked, roundLeft }: Props
   else if (online?.spectator) hint = t('hud.spectator', { who: cur.name });
   else if (s.phase === 'dare') hint = t('hud.dare', { who: cur.name, dare: render(s.dare) });
   else if (s.phase === 'coin') hint = t('hud.coin', { who: cur.name });
-  else if (s.phase === 'choose') hint = t('hud.thinking', { who: cur.name });
+  // your own choice (a colour, a player): its question; someone else's: they are thinking
+  else if (s.phase === 'choose') hint = myTurn && s.choice ? render(s.choice.title) : t('hud.thinking', { who: cur.name });
   else if (s.phase !== 'handover') hint = cur.offline ? t('hud.standIn', { bot: standIn(cur.name).name, who: cur.name }) : t('hud.turnOf', { who: cur.name });
 
   // "Your turn|Drag a card…" -> a big title and a quiet second line

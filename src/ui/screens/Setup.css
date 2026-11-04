@@ -70,3 +70,6 @@
   .prow input { min-width: 0; }
 }
 .setup-page { background: transparent; padding-top: max(20px, env(safe-area-inset-top, 0px)); }
+/* the top row: back on the left, the language on the right */
+.page-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; align-self: stretch; width: 100%; max-width: 1100px; margin-inline: auto; }
+.page-top .btn.back { align-self: center; }

@@ -356,6 +356,8 @@ function PlayerPlates({ game, view, dealing }: { game: GameView; view: View; dea
   // a crowded table on a not-so-tall screen: smaller plates, so they stay off the neighbours' fans
   const small = view.portrait || view.compact || (s.players.length >= 7 && height < 900);
   const tiny = (view.portrait && s.players.length > 3) || (view.compact && s.players.length > 5);
+  // the HUD's corner widgets, measured on the screen (the colour pill, the menu buttons)
+  const corners = typeof document === 'undefined' ? [] : [...document.querySelectorAll('.hud-top .status, .corner-btns')].map(e => e.getBoundingClientRect());
   return (
     <>
       {s.players.map((p, i) => {
@@ -390,6 +392,15 @@ function PlayerPlates({ game, view, dealing }: { game: GameView; view: View; dea
         const ndc = tmpV.set(...pos).project(camera);
         const topPx = ((1 - ndc.y) / 2) * height - halfH - margin;
         if (topPx < 0) pos[1] = Math.max(0, pos[1] + (topPx * (2 * visibleHalfWidth(view, pos[1], pos[2]))) / width);
+        // nor under the screen's own corner widgets (the colour pill top-left, the buttons top-right):
+        // a plate that would sit under one slides down below it
+        const cx = ((ndc.x + 1) / 2) * width;
+        const plateTop = Math.max(margin, ((1 - ndc.y) / 2) * height - halfH);
+        for (const r of corners) {
+          if (cx + halfPx < r.left - 4 || cx - halfPx > r.right + 4 || plateTop > r.bottom + 4) continue;
+          const down = r.bottom + 8 - plateTop;
+          if (down > 0) pos[1] = Math.max(0, pos[1] - (down * (2 * visibleHalfWidth(view, pos[1], pos[2]))) / width);
+        }
         const cur = i === s.cur && s.phase !== 'over';
         const sub = standIn(p.name);
         // a partner's hand is open to you (2 on 2 and up): tap their plate to see it big

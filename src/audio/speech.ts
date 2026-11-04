@@ -6,10 +6,10 @@ import { sound } from './sound';
  * (Siri voices on iPhone and Mac, Google voices on Android and in Chrome), so nothing recorded ships with the game.
  * Every seat gets its own pitch, so the players at a table sound like different people.
  */
-const WORD: Record<Lang, string> = { ru: 'Уно!', en: 'Uno!', pl: 'Uno!' };
-const LOCALE: Record<Lang, string> = { ru: 'ru', en: 'en', pl: 'pl' };
+const WORD: Record<Lang, string> = { ru: 'Уно!', en: 'Uno!', pl: 'Uno!', uk: 'Уно!' };
+const LOCALE: Record<Lang, string> = { ru: 'ru', en: 'en', pl: 'pl', uk: 'uk' };
 /** the more natural-sounding voices go first */
-const GOOD = /premium|enhanced|natural|neural|siri|google|milena|yuri|samantha|zosia|ava|allison|daniel|karen/i;
+const GOOD = /premium|enhanced|natural|neural|siri|google|milena|yuri|lesya|samantha|zosia|ava|allison|daniel|karen/i;
 const ROBOTIC = /espeak|compact|novelty|whisper|bells|bad news|boing|bubbles|cellos|jester|organ|trinoids|zarvox|albert|fred|junior|ralph/i;
 
 const synth = typeof window !== 'undefined' && 'speechSynthesis' in window ? window.speechSynthesis : null;

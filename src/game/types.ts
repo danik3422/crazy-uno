@@ -125,6 +125,8 @@ export interface Fx {
   event?: EventId;
   /** player index the effect lands on */
   target?: number;
+  /** who caused it, where that matters (who caught a missing UNO) */
+  from?: number;
 }
 
 export interface State {

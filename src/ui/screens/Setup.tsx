@@ -11,6 +11,7 @@ import { EventLegend, Legend } from '../components/Legend';
 import { SwapTeamIcon, TeamBox } from '../components/TeamBox';
 import { PhoneTip } from '../components/RotateGate';
 import { SwipeBack } from '../components/SwipeBack';
+import { LangMenu } from '../components/LangMenu';
 import { enterFullscreen, SMALL_SCREEN, useMedia } from '../hooks/phone';
 import { RulesPanel } from '../settings/RulesPanel';
 import { TablePanel } from '../settings/TablePanel';
@@ -93,7 +94,10 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
   return (
     <div className="setup-page">
       <SwipeBack onBack={onBack} />
-      <button className="btn back" onClick={onBack}>{t('setup.back')}</button>
+      <header className="page-top">
+        <button className="btn back" onClick={onBack}>{t('setup.back')}</button>
+        <LangMenu />
+      </header>
       <Hero sub={t('setup.sub')} />
 
       <div className="setup">

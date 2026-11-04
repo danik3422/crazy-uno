@@ -5,6 +5,7 @@ import { DEFAULT_RULES } from '../game/content';
 import { langFrom, PACKS, render, tr } from './core';
 import { enLists } from './en';
 import { plLists } from './pl';
+import { ukLists } from './uk';
 import { ruLists, ruStrings } from './ru';
 import { LANGS } from './types';
 
@@ -15,7 +16,7 @@ describe('i18n', () => {
   });
 
   it('has the same number of dares, forfeits and group dares everywhere', () => {
-    for (const lists of [ruLists, enLists, plLists]) {
+    for (const lists of [ruLists, enLists, plLists, ukLists]) {
       expect(lists.dares).toHaveLength(DARE_COUNT);
       expect(lists.punish).toHaveLength(PUNISH_COUNT);
       expect(lists.groupDares).toHaveLength(GROUP_DARE_COUNT);
@@ -23,7 +24,7 @@ describe('i18n', () => {
   });
 
   it('picks the language from the browser', () => {
-    expect(langFrom(['uk-UA', 'en'])).toBe('ru');
+    expect(langFrom(['uk-UA', 'en'])).toBe('uk');
     expect(langFrom(['be'])).toBe('ru');
     expect(langFrom(['pl-PL'])).toBe('pl');
     expect(langFrom(['de-DE', 'pl'])).toBe('pl');
@@ -38,6 +39,9 @@ describe('i18n', () => {
     expect(tr('pl', 'table.cards', { n: 1 })).toBe('1 karta');
     expect(tr('pl', 'table.cards', { n: 22 })).toBe('22 karty');
     expect(tr('pl', 'table.cards', { n: 12 })).toBe('12 kart');
+    expect(tr('uk', 'table.cards', { n: 1 })).toBe('1 картка');
+    expect(tr('uk', 'table.cards', { n: 3 })).toBe('3 картки');
+    expect(tr('uk', 'table.cards', { n: 5 })).toBe('5 карток');
     expect(tr('en', 'table.cards', { n: 1 })).toBe('1 card');
     expect(tr('en', 'table.cards', { n: 7 })).toBe('7 cards');
   });

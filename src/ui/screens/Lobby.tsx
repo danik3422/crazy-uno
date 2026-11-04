@@ -1,4 +1,5 @@
 import qrcode from 'qrcode-generator';
+import { LangMenu } from '../components/LangMenu';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { teamName, THEMES_LIST } from '../../game/content';
 import { lang, render, useT } from '../../i18n';
@@ -127,7 +128,10 @@ export function Lobby({ conn, room: serverRoom, onLeave, avatar, setAvatar }: Pr
       <SwipeBack onBack={onLeave} />
       <header className="lobby-top">
         <button className="btn ghost back" onClick={onLeave}>{t('lobby.leave')}</button>
-        <ConnBadge conn={conn} />
+        <div className="lobby-top-r">
+          <ConnBadge conn={conn} />
+          <LangMenu />
+        </div>
       </header>
 
       <main className="lobby-card">

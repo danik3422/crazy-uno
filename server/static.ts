@@ -51,7 +51,7 @@ const escapeHtml = (v: string) =>
 const setMeta = (html: string, prop: string, value: string) =>
   html.replace(new RegExp(`(<meta (?:property|name)="${prop}" content=")[^"]*(")`), `$1${escapeHtml(value)}$2`);
 
-/** The page's language from Accept-Language (ru / uk / be → Russian, pl → Polish, else English). */
+/** The page's language from Accept-Language (uk → Ukrainian, ru / be → Russian, pl → Polish, else English). */
 const langOf = (req: http.IncomingMessage): Lang =>
   langFrom(String(req.headers['accept-language'] ?? '').split(',').map(x => x.split(';')[0].trim()).filter(Boolean));
 
@@ -88,7 +88,7 @@ export function createStaticSite({ dir, trustProxy, rooms }: StaticSiteOptions) 
     // link previews and the first paint in the reader's language (the app itself may switch later)
     const title = tr(lang, 'app.title');
     html = html.replace(/<html lang="[^"]*"/, `<html lang="${lang}"`).replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(title)}</title>`);
-    html = setMeta(html, 'og:locale', { ru: 'ru_RU', en: 'en_US', pl: 'pl_PL' }[lang]);
+    html = setMeta(html, 'og:locale', { ru: 'ru_RU', en: 'en_US', pl: 'pl_PL', uk: 'uk_UA' }[lang]);
     for (const p of ['og:site_name', 'og:title', 'apple-mobile-web-app-title']) html = setMeta(html, p, title);
     for (const p of ['og:description', 'description']) html = setMeta(html, p, tr(lang, 'og.desc'));
     html = setMeta(html, 'og:image:alt', tr(lang, 'og.alt'));

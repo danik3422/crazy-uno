@@ -2,6 +2,7 @@ import { en } from './en';
 import { isMsg, type Msg } from './msg';
 import { pl } from './pl';
 import { ru } from './ru';
+import { uk } from './uk';
 import { isLang, type Lang, type Pack, type Params, type StrKey } from './types';
 
 export type { Lang, StrKey } from './types';
@@ -9,20 +10,21 @@ export { LANGS } from './types';
 export type { Msg } from './msg';
 
 /**
- * A tiny i18n layer: three dictionaries with the same keys, the current language (saved, else the browser's),
+ * A tiny i18n layer: four dictionaries with the same keys, the current language (saved, else the browser's),
  * `t()` for plain text, `render()` for messages that came from the game or the server, and a hook that re-renders.
  * Switching the language is local to this screen: other players keep theirs.
  */
 
-export const PACKS: Record<Lang, Pack> = { ru, en, pl };
+export const PACKS: Record<Lang, Pack> = { ru, en, pl, uk };
 
 const STORAGE_KEY = 'crazy-uno-lang';
 
-/** ru / uk / be → Russian, pl → Polish, anything else → English. */
+/** uk → Ukrainian, ru / be → Russian, pl → Polish, anything else → English. */
 export function langFrom(list: readonly string[]): Lang {
   for (const raw of list) {
     const l = raw.toLowerCase().split(/[-_]/)[0];
-    if (l === 'ru' || l === 'uk' || l === 'be') return 'ru';
+    if (l === 'uk') return 'uk';
+    if (l === 'ru' || l === 'be') return 'ru';
     if (l === 'pl') return 'pl';
     if (l === 'en') return 'en';
   }

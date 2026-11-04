@@ -13,6 +13,8 @@ export const STORAGE_KEYS = {
   localSetup: 'crazy-uno-cfg-v2',
   sound: 'crazy-uno-sound',
   haptics: 'crazy-uno-haptics',
+  /** the player's own record and achievements (game/stats.ts) */
+  stats: 'crazy-uno-stats',
 } as const;
 
 export function readJson<T>(key: string): T | null {

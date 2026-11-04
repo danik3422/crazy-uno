@@ -21,9 +21,10 @@ const ruleOf = (id: keyof Rules) => RULES.find(r => r.id === id)!;
 export function RulesPanel({ rules, onChange }: Props) {
   const t = useT();
   const current = presetOf(rules);
-  const ids = RULES.map(r => r.id);
+  // the 25-card knockout only means something with No Mercy: otherwise it is neither counted nor listed
+  const ids = RULES.map(r => r.id).filter(k => k !== 'mercy' || rules.noMercy);
   const on = ids.filter(k => rules[k]).length;
-  const summary = current ? current.desc : t('rules.customOn', { on, all: RULES.length });
+  const summary = current ? current.desc : t('rules.customOn', { on, all: ids.length });
 
   if (!onChange) {
     return (
@@ -31,7 +32,7 @@ export function RulesPanel({ rules, onChange }: Props) {
         <p className="mode-title">
           <ModeIcon id={current?.id ?? 'custom'} size={30} /> {current?.name ?? t('rules.custom')}
         </p>
-        <p className="mode-now">{current ? current.desc : t('rules.hostCustom', { on, all: RULES.length })}</p>
+        <p className="mode-now">{current ? current.desc : t('rules.hostCustom', { on, all: ids.length })}</p>
         <ul className="rule-chips" aria-label={t('rules.enabled')}>
           {ids.filter(k => rules[k]).map(k => <li key={k} title={ruleOf(k).desc}>{ruleOf(k).name}</li>)}
         </ul>
@@ -57,13 +58,13 @@ export function RulesPanel({ rules, onChange }: Props) {
         ))}
       </div>
       <p className="mode-now" aria-live="polite">{summary}</p>
-      <RuleList rules={rules} onChange={onChange} on={on} />
+      <RuleList rules={rules} onChange={onChange} on={on} all={ids.length} />
     </div>
   );
 }
 
 /** "Customize rules": every rule as one quiet row with a switch. Closed by default. */
-function RuleList({ rules, onChange, on }: { rules: Rules; onChange: (r: Rules) => void; on: number }) {
+function RuleList({ rules, onChange, on, all }: { rules: Rules; onChange: (r: Rules) => void; on: number; all: number }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const id = useId();
@@ -71,7 +72,7 @@ function RuleList({ rules, onChange, on }: { rules: Rules; onChange: (r: Rules) 
     <>
       <button type="button" className={`rules-toggle ${open ? 'open' : ''}`} aria-expanded={open} aria-controls={id} onClick={() => setOpen(o => !o)}>
         <span>{open ? t('rules.collapse') : t('rules.customize')}</span>
-        <span className="rules-count">{t('lobby.of', { a: on, b: RULES.length })}</span>
+        <span className="rules-count">{t('lobby.of', { a: on, b: all })}</span>
         <svg className="chev" viewBox="0 0 24 24" width="18" height="18" aria-hidden><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
       {open && (

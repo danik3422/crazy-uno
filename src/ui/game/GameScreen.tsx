@@ -8,6 +8,8 @@ import type { RemoteGame } from '../../net/remoteGame';
 import { GameScene } from '../../three/Scene';
 import { tableEvents } from '../../three/tableEvents';
 import { PartnerHand } from './PartnerHand';
+import { useStatsRecorder } from './useStatsRecorder';
+import { AchievementToasts } from '../profile/AchievementToasts';
 import { DEBUG } from '../../three/fxState';
 import { useAdaptiveDpr } from '../../three/useAdaptiveDpr';
 import { useGlRecovery } from '../../three/useGlRecovery';
@@ -67,6 +69,8 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
   const kb = useKeyboardPlay(game, locked, playCard);
   useTableSounds(game, version);
   useBotReactions(game, version);
+  // your own record: stats and achievements
+  useStatsRecorder(game, version);
   useReactionSound();
   const effects = useTableEffects(game, version, onOver);
   useLocalBots(local, version, locked);
@@ -116,6 +120,7 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
         />
       </Canvas>
       <PartnerHand game={game} version={version} />
+      <AchievementToasts />
       <Hud game={game} version={version} toasts={effects.toasts} bombLeft={bombLeft} roundLeft={locked ? null : roundLeft} online={online} locked={locked} />
       {round.stage === 'dealing' && <div className="deal-banner">{t('hud.dealing')}</div>}
       <p className="sr-only" aria-live="polite">{kb.said}</p>

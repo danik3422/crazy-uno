@@ -175,3 +175,11 @@ button.pl-ava { cursor: pointer; }
 @keyframes pl-seating { to { background-position: -200% 0; } }
 @media (max-width: 560px) { .pl-ghost { width: 52px; height: 52px; } }
 @media (prefers-reduced-motion: reduce) { .pl-ghost { animation: none; } }
+.lobby-top-r { display: flex; align-items: center; gap: 8px; }
+/* a phone on its side: the start bar stays slim — the hint and the button side by side, the list stays in view */
+@media (orientation: landscape) and (max-height: 520px) {
+  .lb-start, .lb-start.stuck { display: flex; align-items: center; gap: 12px; padding-block: 8px calc(8px + env(safe-area-inset-bottom, 0px)); }
+  .lb-start .lb-start-hint, .lb-start.stuck .lb-start-hint { flex: 1; margin: 0; font-size: 12px; text-align: left; line-height: 1.3; }
+  .lb-start .start-btn { width: auto; flex: none; min-width: 200px; padding-block: 10px; font-size: 15px; }
+  .lb-start:not(:has(.lb-start-hint)) .start-btn { width: 100%; }
+}

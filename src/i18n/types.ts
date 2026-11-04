@@ -5,9 +5,9 @@ import type { ruStrings } from './ru';
  * Everything a player reads travels as a key + params and is turned into words on each screen, in that screen's language.
  */
 
-export type Lang = 'ru' | 'en' | 'pl';
-export const LANGS: readonly Lang[] = ['en', 'ru', 'pl'];
-export const isLang = (v: unknown): v is Lang => v === 'ru' || v === 'en' || v === 'pl';
+export type Lang = 'ru' | 'en' | 'pl' | 'uk';
+export const LANGS: readonly Lang[] = ['en', 'uk', 'ru', 'pl'];
+export const isLang = (v: unknown): v is Lang => v === 'ru' || v === 'en' || v === 'pl' || v === 'uk';
 
 /** Every text key. Russian is the reference: the other languages must have exactly the same keys. */
 export type StrKey = keyof typeof ruStrings;

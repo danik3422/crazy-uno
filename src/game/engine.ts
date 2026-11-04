@@ -533,7 +533,7 @@ export class Game extends Observable {
     const penalty = s.table.unoPenalty;
     this.give(v, penalty);
     this.say('log.caught', { by: s.players[by].name, who: v.name, n: penalty });
-    this.fx('caught', msg('fx.caught', { by: s.players[by].name, who: v.name, n: penalty }));
+    this.fx('caught', msg('fx.caught', { by: s.players[by].name, who: v.name, n: penalty }), { target: s.players.indexOf(v), from: by });
     this.fx('shake');
     this.emitChange();
   }
@@ -583,14 +583,14 @@ export class Game extends Observable {
       s.pending = Math.max(0, s.pending - 4);
       if (!s.pending) s.pendingType = null;
       this.say('log.challengeWon', { who: me.name, by: offender.name });
-      this.fx('challenge', msg('fx.challengeWon', { by: offender.name }));
+      this.fx('challenge', msg('fx.challengeWon', { by: offender.name }), { target: s.cur, from: ch.by });
       this.fx('shake');
       this.emitChange();
       return;
     }
     s.pending += 2;
     this.say('log.challengeLost', { who: me.name, by: offender.name, n: s.pending });
-    this.fx('challenge', msg('fx.challengeLost', { who: me.name, n: s.pending }));
+    this.fx('challenge', msg('fx.challengeLost', { who: me.name, n: s.pending }), { target: s.cur, from: ch.by });
     this.draw();
   }
 

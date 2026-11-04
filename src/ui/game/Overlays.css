@@ -116,3 +116,5 @@
 @keyframes rise { from { transform: translateY(30px) scale(0.94); opacity: 0; } }
 @keyframes band-in { from { transform: scaleY(0.1); opacity: 0; } }
 @keyframes sheet-in { from { transform: translateY(110%); } }
+/* an open menu (reactions, settings) stays above an event banner that pops up meanwhile (z 40), below dialogs (z 50) */
+.corner-btns:has(.sound-pop, .react-pop) { z-index: 45; }
