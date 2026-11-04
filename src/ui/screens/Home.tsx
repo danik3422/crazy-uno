@@ -8,6 +8,7 @@ import { CODE_LEN, normalizeCode } from '../../net/protocol';
 import { AvatarImg, AvatarPicker } from '../components/AvatarImg';
 import { FitLetter } from '../components/FitLetter';
 import { LangMenu } from '../components/LangMenu';
+import type { ServerStatus } from '../../app/useServerCheck';
 import { UiIcon } from '../components/UiIcon';
 import { useT } from '../../i18n';
 import './Home.css';
@@ -15,8 +16,8 @@ import './Home.css';
 const MascotStage = lazyFile(() => import('../components/MascotStage'));
 
 interface Props {
-  /** null while we check whether a game server is reachable */
-  online: boolean | null;
+  /** is the game server there and awake (it may be waking up: the free host puts it to sleep) */
+  server: ServerStatus;
   name: string;
   setName: (n: string) => void;
   avatar: string;
@@ -27,6 +28,9 @@ interface Props {
   onCreate: () => void;
   onJoin: (code: string) => void;
   onLocal: () => void;
+  /** a local game saved on this device (it was left mid-round: a reload, a closed tab) */
+  resume: { round: number; players: number; cards: number | null } | null;
+  onResume: () => void;
 }
 
 type Tab = 'play' | 'profile' | 'howto';
@@ -44,7 +48,7 @@ const FEATURES = [
   { icon: 'robot', key: 'home.feat.bots' },
 ] as const;
 
-export function Home({ online, name, setName, avatar, setAvatar, invite, busy, error, onCreate, onJoin, onLocal }: Props) {
+export function Home({ server, name, setName, avatar, setAvatar, invite, busy, error, onCreate, onJoin, onLocal, resume, onResume }: Props) {
   useSyncExternalStore(profile.subscribe, profile.getVersion);
   const achOpen = ACHIEVEMENTS.filter(a => profile.get().unlocked[a.id]).length;
   const t = useT();
@@ -55,7 +59,9 @@ export function Home({ online, name, setName, avatar, setAvatar, invite, busy, e
   const nameRef = useRef<HTMLInputElement>(null);
   const named = name.trim().length > 0;
   const codeOk = code.length === CODE_LEN;
-  const offline = online === false;
+  const online: boolean | null = server.state === 'up' ? true : server.state === 'checking' || server.state === 'waking' || server.state === 'down' ? null : false;
+  // no game server behind this page at all, or no internet: only the one-device game
+  const offline = server.state === 'none' || server.state === 'offline';
 
   // every action needs a name: point at the field instead of a dead button
   const need = (go: () => void) => () => {
@@ -142,20 +148,32 @@ export function Home({ online, name, setName, avatar, setAvatar, invite, busy, e
           </div>
         </div>
 
+        {/* a game left mid-round on this device: one tap back to the table */}
+        {resume && (
+          <button type="button" className="pc-resume" onClick={onResume}>
+            <span className="pc-resume-ic" aria-hidden>▶</span>
+            <span className="pc-resume-txt">
+              <b>{t('resume.title')}</b>
+              <small>{resume.cards === null ? t('resume.round', { n: resume.round }) : t('resume.sub', { n: resume.round, cards: resume.cards })}</small>
+            </span>
+          </button>
+        )}
+
         {picking && (
           <AvatarPicker value={avatar} onChange={id => { setAvatar(id); setPicking(false); }} onClose={() => setPicking(false)} />
         )}
 
         {offline ? (
           <p className="pc-note">
-            {typeof navigator !== 'undefined' && navigator.onLine === false ? t('home.noInternet') : t('home.offline')}
+            {server.state === 'offline' ? t('home.noInternet') : t('home.offline')}
           </p>
         ) : (
           <>
+            <WakePanel server={server} />
             {!invite && (
               <button className="btn big pc-main" disabled={busy || !online} onClick={need(onCreate)}>
                 <span className="pc-main-icon" aria-hidden>＋</span>
-                {online === null ? t('home.checking') : t('home.create')}
+                {server.state === 'checking' ? t('home.checking') : online ? t('home.create') : t('wake.wait')}
               </button>
             )}
 
@@ -192,6 +210,60 @@ export function Home({ online, name, setName, avatar, setAvatar, invite, busy, e
         </button>
       </section>
       </>}
+    </div>
+  );
+}
+
+/** a sleeping server usually takes about this long to wake (the progress bar is an estimate) */
+const WAKE_MS = 50_000;
+
+/**
+ * While the free host wakes the server up: what is going on, about how long it takes, and that bots are playable now.
+ * When it is up, a short "ready!" and it folds away; if it never answers, an honest message and "try again".
+ */
+function WakePanel({ server }: { server: ServerStatus }) {
+  const t = useT();
+  const [now, setNow] = useState(Date.now());
+  const [ready, setReady] = useState(false);
+  const was = useRef(server.state);
+  useEffect(() => {
+    if (server.state !== 'waking') return;
+    const id = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(id);
+  }, [server.state]);
+  // it just woke up: say so for a moment
+  useEffect(() => {
+    const prev = was.current;
+    was.current = server.state;
+    if (server.state === 'up' && (prev === 'waking' || prev === 'down')) {
+      setReady(true);
+      const id = setTimeout(() => setReady(false), 2600);
+      return () => clearTimeout(id);
+    }
+  }, [server.state]);
+
+  if (ready) return <div className="wake ready" role="status"><span className="wake-ok" aria-hidden>✓</span>{t('wake.ready')}</div>;
+  if (server.state !== 'waking' && server.state !== 'down') return null;
+  const secs = Math.max(0, Math.round((now - server.since) / 1000));
+  const pct = Math.min(95, ((now - server.since) / WAKE_MS) * 100);
+  if (server.state === 'down') {
+    return (
+      <div className="wake down" role="status">
+        <b>{t('wake.downTitle')}</b>
+        <small>{t('wake.downText')}</small>
+        <button type="button" className="btn wake-retry" onClick={server.retry}>{t('wake.retry')}</button>
+      </div>
+    );
+  }
+  return (
+    <div className="wake" role="status" aria-live="polite">
+      <div className="wake-head">
+        <span className="wake-zz" aria-hidden><i>z</i><i>z</i><i>z</i></span>
+        <b>{t('wake.title')}</b>
+        <em>{t('wake.secs', { n: secs })}</em>
+      </div>
+      <div className="wake-bar" aria-hidden><span style={{ width: `${pct}%` }} /></div>
+      <small>{t('wake.text')}</small>
     </div>
   );
 }

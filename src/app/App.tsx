@@ -11,6 +11,7 @@ import { ConnBadge, Lobby } from '../ui/screens/Lobby';
 import { Setup } from '../ui/screens/Setup';
 import { loadLocalSetup, localGameConfig, saveLocalSetup } from './localSetup';
 import { inviteFromUrl, setUrlRoom } from './roomUrl';
+import { clearLocalSave, describeSave, readLocalSave, resumeLocal, writeLocalSave } from './localSave';
 import { useRemoteGame } from './useRemoteGame';
 import { useServerCheck } from './useServerCheck';
 import './App.css';
@@ -22,7 +23,8 @@ type Screen = 'home' | 'local-setup' | 'local-game' | 'online';
  * the local (one device) game, and the connection to an online room.
  */
 export default function App() {
-  const serverUp = useServerCheck();
+  const server = useServerCheck();
+  const serverUp = server.state === 'up';
   const conn = useMemo(() => new Connection(), []);
   useSyncExternalStore(conn.subscribe, conn.getVersion);
   const [screen, setScreen] = useState<Screen>('home');
@@ -85,6 +87,39 @@ export default function App() {
     setScreen('home');
   }, [conn, remote]);
 
+  // a local game is written to the device as it goes (a reload, a phone that drops the tab), and forgotten
+  // when the round ends or the player leaves it
+  const [saved, setSaved] = useState(readLocalSave);
+  useEffect(() => {
+    if (!local) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const write = () => {
+      timer = null;
+      if (local.s.phase === 'over') clearLocalSave();
+      else writeLocalSave(local, localScore);
+    };
+    const off = local.subscribe(() => { if (!timer) timer = setTimeout(write, 400); });
+    write();
+    const flush = () => { if (document.visibilityState === 'hidden') write(); };
+    document.addEventListener('visibilitychange', flush);
+    return () => {
+      off();
+      if (timer) clearTimeout(timer);
+      document.removeEventListener('visibilitychange', flush);
+    };
+  }, [local, localScore]);
+  // back on the home screen: what is saved now (a game just left, or a new one started)
+  useEffect(() => {
+    if (screen === 'home') setSaved(readLocalSave());
+  }, [screen]);
+  const resume = () => {
+    const f = saved && resumeLocal(saved);
+    if (!f || !saved) return setSaved(null);
+    setLocalScore(saved.score);
+    setLocal(f);
+    setScreen('local-game');
+  };
+
   const onLocalOver = useCallback((winner: string) => setLocalScore(sc => ({ ...sc, [winner]: (sc[winner] ?? 0) + 1 })), []);
 
   const goOnline = (enter: () => void) => {
@@ -124,7 +159,7 @@ export default function App() {
           score={localScore}
           onOver={onLocalOver}
           onAgain={() => setLocal(new Game(localGameConfig(setup, local.s.round + 1)))}
-          onMenu={() => { setLocal(null); setScreen('local-setup'); }}
+          onMenu={() => { clearLocalSave(); setSaved(null); setLocal(null); setScreen('local-setup'); }}
         />
       );
     }
@@ -175,7 +210,7 @@ export default function App() {
 
     return (
       <Home
-        online={serverUp}
+        server={server}
         name={name}
         setName={setName}
         avatar={avatar}
@@ -184,6 +219,8 @@ export default function App() {
         busy={conn.status === 'connecting'}
         error={notice ? render(notice) : null}
         onLocal={() => setScreen('local-setup')}
+        resume={saved ? describeSave(saved) : null}
+        onResume={resume}
         onCreate={() => goOnline(() => conn.create())}
         onJoin={c => goOnline(() => conn.join(c))}
       />

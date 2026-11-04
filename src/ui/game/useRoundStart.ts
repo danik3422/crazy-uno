@@ -87,6 +87,13 @@ export function useRoundStart(game: GameView, local: Game | null, version: numbe
   // on one device: deal as soon as the table is drawn and the phone (if it is one) is turned
   useEffect(() => {
     if (game instanceof RemoteGame || !sceneReady || upright || Number.isFinite(fxState.dealAt)) return;
+    // a game brought back from a save: no deal to show, the cards are simply where they were
+    if (local?.resumed) {
+      local.resumeClocks();
+      const t = nowSec();
+      startDeal(t - 1, t - 0.5);
+      return;
+    }
     const ms = dealMs(game.s.players.length, game.s.table.handSize);
     const at = nowSec() + 0.6 + SHUFFLE_MS / 1000;
     local?.holdClock(ms + 600 + SHUFFLE_MS);

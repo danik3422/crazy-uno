@@ -24,6 +24,14 @@ export interface GameConfig {
 /** What the setup screen of a local (one device) game edits. */
 export type LocalSetup = Pick<GameConfig, 'players' | 'rules' | 'theme' | 'table'>;
 
+/** A local game written to the device, to carry on after a reload. */
+export interface GameSave {
+  v: 1;
+  s: State;
+  aside: Card[];
+  savedAt: number;
+}
+
 export interface GameOptions {
   rng?: Rng;
   now?: () => number;
@@ -52,8 +60,10 @@ export class Game extends Observable {
   readonly isLocal = true;
   /** server clock minus local clock; always 0 for a local game */
   readonly clockOffset = 0;
-  /** effects with an id up to this were already shown */
-  readonly fxBaseline = 0;
+  /** effects with an id up to this were already shown (a resumed game does not replay its past) */
+  fxBaseline = 0;
+  /** brought back from a save (after a reload): no deal to show, the table is laid out as it was */
+  resumed = false;
   private fxId = 0;
   private nextCardId = 0;
   /**
@@ -69,6 +79,47 @@ export class Game extends Observable {
   private jumpRoll: { top: number; plan: (BotJump & { at: number }) | null } | null = null;
   private rng: Rng;
   private now: () => number;
+
+  /** Everything needed to pick this game up again after a reload (a local game on this device). */
+  toSave(): GameSave {
+    return { v: 1, s: this.s, aside: this.aside, savedAt: this.now() };
+  }
+
+  /**
+   * A saved game, ready to play on. The clocks (turn, bomb, round limit) carry on from where they stood when it was
+   * saved: the time the page was closed does not count against anyone.
+   */
+  static resume(save: GameSave, opts: Pick<GameOptions, 'rng' | 'now'> = {}): Game {
+    const s = structuredClone(save.s);
+    const g = new Game({ players: [], rules: s.rules }, { ...opts, restore: s });
+    g.aside = structuredClone(save.aside ?? []);
+    const away = Math.max(0, g.now() - save.savedAt);
+    if (s.turnDeadline !== null) s.turnDeadline += away;
+    if (s.bombDeadline !== null) s.bombDeadline += away;
+    if (s.endsAt !== null) s.endsAt += away;
+    const lastFx = s.fx.reduce((m, f) => Math.max(m, f.id), 0);
+    g.fxId = lastFx;
+    g.fxBaseline = lastFx;
+    g.nextCardId = Math.max(g.nextCardId, ...g.aside.map(c => c.id + 1));
+    g.resumed = true;
+    g.resumedAt = g.now();
+    return g;
+  }
+
+  /** when a resumed game was read back (its table still had to load) */
+  private resumedAt = 0;
+
+  /** A resumed game's table is on screen: the time it took to load does not count against the turn clock either. */
+  resumeClocks() {
+    if (!this.resumed || !this.resumedAt) return;
+    const s = this.s;
+    const ms = Math.max(0, this.now() - this.resumedAt);
+    this.resumedAt = 0;
+    if (s.turnDeadline !== null) s.turnDeadline += ms;
+    if (s.bombDeadline !== null) s.bombDeadline += ms;
+    if (s.endsAt !== null) s.endsAt += ms;
+    this.emitChange();
+  }
 
   constructor(cfg: GameConfig, opts: GameOptions = {}) {
     super();
