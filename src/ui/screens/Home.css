@@ -378,3 +378,17 @@
   .player-card:has(.pc-resume) { gap: clamp(4px, 1.5vh, 8px); padding-block: clamp(8px, 2.4vh, 12px); }
   .player-card:has(.pc-resume) .pc-join .pc-label { display: none; }
 }
+
+/* ---------- installed on an iPhone home screen (standalone) ----------
+   iOS keeps the strip by the home indicator outside the page and paints it with the page's background:
+   under the tab bar that strip takes the bar's colour, so the bar reads as running to the very bottom.
+   The bar's own bottom padding drops the safe-area inset there: iOS has already set that zone aside. */
+@media (display-mode: standalone) and (max-width: 760px) and (orientation: portrait), (display-mode: fullscreen) and (max-width: 760px) and (orientation: portrait) {
+  html:has(.home) { background: #1a0826; }
+  .home-nav { padding-bottom: 8px; background: #1a0826; }
+  .home.tab-play, .home.tab-profile, .home.tab-howto { padding-bottom: 84px; }
+}
+/* the profile and how-to cards keep a little air under the camera cut-out */
+@media (max-width: 760px) and (orientation: portrait) {
+  .home.tab-profile, .home.tab-howto { padding-top: calc(env(safe-area-inset-top, 0px) + 10px); }
+}

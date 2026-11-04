@@ -64,10 +64,10 @@ export function useServerCheck(): ServerStatus {
         const r = await fetch('/api/health', { signal: ctrl.signal, cache: 'no-store' });
         if (r.ok) {
           const j = await r.json().catch(() => null);
-          // something answered, but not our server (a static host): no online play here
-          verdict = j?.ok ? 'up' : 'none';
-        } else if (r.status === 404) verdict = 'none';
-        // 502 / 503 / 504: the host is still starting the server
+          // our server answers with JSON; anything else (the host's own "waking up" page) means: not yet
+          if (j?.ok) verdict = 'up';
+        } else if (r.status === 404 && !r.headers.get('rndr-id')) verdict = 'none';
+        // 502 / 503 / 504, or a page that is not ours: the host is still starting the server
       } catch {
         // no answer in time, or the connection dropped while it starts: try again
       } finally {
