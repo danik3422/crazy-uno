@@ -507,6 +507,8 @@ export const enStrings: Record<keyof typeof ruStrings, Entry> = {
   'crash.details': 'Details for the developer',
   'home.noInternet': 'No internet, so online rooms are out for now. You can still play with bots or friends on one device.',
   'home.checking': 'Checking the server…',
+  'home.online': "Online with friends",
+  'home.serverUp': "Server online",
   'home.create': 'Create a room',
   'home.code': 'Room code',
   'home.orJoin': 'Or join with a friend’s code',

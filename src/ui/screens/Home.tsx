@@ -171,7 +171,15 @@ export function Home({ server, name, setName, avatar, setAvatar, invite, busy, e
             {server.state === 'offline' ? t('home.noInternet') : t('home.offline')}
           </p>
         ) : (
-          <>
+          <div className="pc-online">
+            {/* invited: the yellow banner above already says where to; no heading needed */}
+            {!invite && (
+              <div className="pc-online-head">
+                <UiIcon name="players" size={20} />
+                <b>{t('home.online')}</b>
+                {online && <span className="pc-up"><i aria-hidden />{t('home.serverUp')}</span>}
+              </div>
+            )}
             <WakePanel server={server} />
             {!invite && (
               <button className="btn big pc-main" disabled={busy || !online} onClick={need(onCreate)}>
@@ -188,14 +196,17 @@ export function Home({ server, name, setName, avatar, setAvatar, invite, busy, e
               }}
             >
               <span className="pc-label">{invite ? t('home.code') : t('home.orJoin')}</span>
-              <CodeTiles value={code} onChange={setCode} />
-              <button
-                className={`btn ${invite ? 'big pc-main' : 'big blue'}`}
-                type="submit"
-                disabled={!codeOk || busy || !online}
-              >
-                {invite ? t('home.joinCode', { code }) : t('home.join')}
-              </button>
+              {/* the code and the button side by side (one row on a computer), the button under it when invited */}
+              <div className={`pc-join-row ${invite ? 'invited' : ''}`}>
+                <CodeTiles value={code} onChange={setCode} />
+                <button
+                  className={`btn ${invite ? 'big pc-main' : 'big blue pc-join-btn'}`}
+                  type="submit"
+                  disabled={!codeOk || busy || !online}
+                >
+                  {invite ? t('home.joinCode', { code }) : t('home.join')}
+                </button>
+              </div>
             </form>
 
             {invite && (
@@ -203,7 +214,7 @@ export function Home({ server, name, setName, avatar, setAvatar, invite, busy, e
                 {t('home.orCreate')}
               </button>
             )}
-          </>
+          </div>
         )}
 
         <div className="pc-divider"><span>{t('home.noNet')}</span></div>

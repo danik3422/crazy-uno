@@ -514,6 +514,8 @@ export const plStrings: Record<keyof typeof ruStrings, Entry> = {
   'crash.details': 'Szczegóły dla programisty',
   'home.noInternet': 'Brak internetu, więc pokoje online są teraz niedostępne. Z botami lub ze znajomymi na jednym urządzeniu zagrasz i tak.',
   'home.checking': 'Sprawdzamy serwer…',
+  'home.online': "Online ze znajomymi",
+  'home.serverUp': "Serwer działa",
   'home.create': 'Stwórz pokój',
   'home.code': 'Kod pokoju',
   'home.orJoin': 'Albo wejdź z kodem znajomego',

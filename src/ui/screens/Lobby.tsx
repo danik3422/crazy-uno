@@ -135,6 +135,9 @@ export function Lobby({ conn, room: serverRoom, onLeave, avatar, setAvatar }: Pr
       </header>
 
       <main className="lobby-card">
+        {/* a computer: who is at the table on the left, how the game goes on the right, the start under both.
+            A phone: the two columns melt into one (display: contents) */}
+        <div className="lb-col lb-who">
         <Invite code={room.code} />
 
         <section className="lb-section" aria-labelledby="lb-players">
@@ -178,6 +181,9 @@ export function Lobby({ conn, room: serverRoom, onLeave, avatar, setAvatar }: Pr
             </p>
           )}
         </section>
+        </div>
+
+        <div className="lb-col lb-how">
 
         <section className="lb-section" aria-labelledby="lb-mode">
           <h2 className="lb-h" id="lb-mode">{t('lobby.mode')}</h2>
@@ -195,6 +201,7 @@ export function Lobby({ conn, room: serverRoom, onLeave, avatar, setAvatar }: Pr
           </h2>
           {isHost && <ThemePicker compact value={room.theme} onChange={th => { change('theme', th); conn.send({ t: 'theme', theme: th }); }} />}
         </section>
+        </div>
 
         <PhoneTip />
         {isHost ? (
@@ -288,7 +295,8 @@ function Invite({ code }: { code: string }) {
   const t = useT();
   const link = inviteLink(code);
   const [copied, setCopied] = useState<'link' | 'code' | null>(null);
-  const [qrOpen, setQrOpen] = useState(false);
+  // a computer: the QR is out from the start (friends scan it with their phones); a phone: on request
+  const [qrOpen, setQrOpen] = useState(() => typeof matchMedia === 'function' && matchMedia('(min-width: 1000px) and (min-height: 521px)').matches);
   const qr = useMemo(() => {
     const q = qrcode(0, 'M');
     q.addData(link);

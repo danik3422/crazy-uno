@@ -26,12 +26,6 @@
 .home-foot button { padding: 0; border: 0; background: none; font: inherit; font-weight: 700; cursor: pointer; }
 .hf-sep { opacity: 0.4; }
 .hf-legal { font-size: 11.5px; opacity: 0.85; }
-/* the play tab on a computer: the footer sits in the bottom padding, so the menu keeps its one-screen fit */
-@media (min-width: 761px) and (min-height: 521px) {
-  .home.tab-play { padding-bottom: 52px; }
-  .home.tab-play .home-foot { position: absolute; left: max(24px, calc((100% - 1280px) / 2)); right: max(24px, calc((100% - 1280px) / 2)); bottom: 10px; }
-}
-.home.tab-profile .home-foot, .home.tab-howto .home-foot { margin-top: 18px; }
 @media (max-width: 760px), (max-height: 520px) {
   .home-foot { display: none; }
 }

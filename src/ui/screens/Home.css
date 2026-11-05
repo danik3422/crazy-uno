@@ -77,6 +77,20 @@
 }
 .pc-main-icon { font-size: 22px; line-height: 1; }
 .pc-join { display: flex; flex-direction: column; gap: 8px; }
+/* playing online: its own panel inside the card, so the three ways in (create, join, one device) read apart */
+.pc-online {
+  display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: 18px;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.pc-online-head { display: flex; align-items: center; gap: 8px; }
+.pc-online-head b { flex: 1; font-family: var(--display); font-size: 15px; letter-spacing: 0.01em; }
+.pc-up {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700;
+  color: #b9ffcf; background: rgba(62, 201, 107, 0.14); border: 1px solid rgba(62, 201, 107, 0.45);
+}
+.pc-up i { width: 7px; height: 7px; border-radius: 50%; background: #3ec96b; box-shadow: 0 0 0 3px rgba(62, 201, 107, 0.25); animation: up-pulse 2s ease-in-out infinite; }
+@keyframes up-pulse { 50% { box-shadow: 0 0 0 5px rgba(62, 201, 107, 0.08); } }
+.pc-join-row { display: flex; flex-direction: column; gap: 8px; }
 .pc-join .btn { width: 100%; }
 /* the four code inputs: letters sized from the row width (4 tiles, 3 gaps), so they always fit */
 .code-tiles-in { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; cursor: text; container-type: inline-size; }
@@ -391,4 +405,34 @@
 /* the profile and how-to cards keep a little air under the camera cut-out */
 @media (max-width: 760px) and (orientation: portrait) {
   .home.tab-profile, .home.tab-howto, .home.tab-about { padding-top: calc(env(safe-area-inset-top, 0px) + 10px); }
+}
+
+/* a computer: a real footer, always at the very bottom of the page, after everything else and over nothing.
+   The page is at least a screen tall; the content takes the free height and the footer the last row. */
+@media (min-width: 761px) and (min-height: 521px) {
+  .home { min-height: 100dvh; box-sizing: border-box; }
+  .home.tab-play { grid-template-rows: minmax(0, 1fr) auto; padding-bottom: 12px; }
+  .home.tab-play .home-foot { align-self: end; margin-top: 18px; }
+  .home.tab-profile, .home.tab-howto, .home.tab-about { display: flex; flex-direction: column; align-items: stretch; padding-bottom: 12px; }
+  .home.tab-profile .home-page, .home.tab-howto .home-page, .home.tab-about .home-page { flex: 1 0 auto; }
+  .home.tab-profile .home-foot, .home.tab-howto .home-foot { margin-top: 28px; width: min(1280px, 100%); align-self: center; }
+}
+
+/* the room card on a computer: a little wider; the code and "Join" on one row, the tiles square instead of tall */
+@media (min-width: 901px) and (min-height: 521px) {
+  .home { grid-template-columns: minmax(0, 1.1fr) minmax(400px, 500px); }
+  .player-card { gap: 16px; padding: 24px 26px 22px; }
+  .pc-join-row:not(.invited) { flex-direction: row; align-items: stretch; gap: 10px; }
+  .pc-join-row:not(.invited) .code-tiles-in { flex: 1; min-width: 0; gap: 8px; }
+  .pc-join-row:not(.invited) .ct { aspect-ratio: 1 / 1.08; border-width: 3px; }
+  .pc-join-row:not(.invited) .ct { font-size: calc((100cqw - 24px) / 4 * 0.5); }
+  .btn.pc-join-btn { width: auto; flex: none; padding-inline: 22px; align-self: stretch; display: flex; align-items: center; }
+  /* invited: the code is filled in already, it only needs to be read */
+  .pc-join-row.invited .ct { aspect-ratio: 1.8 / 1; }
+  .pc-join-row.invited .ct { font-size: calc((100cqw - 30px) / 4 * 0.34); }
+}
+/* a phone: no room for a panel inside the card; the online part is laid out as before, without its heading */
+@media (max-width: 760px), (max-height: 520px) {
+  .pc-online { padding: 0; border: 0; background: none; border-radius: 0; gap: inherit; }
+  .pc-online-head { display: none; }
 }

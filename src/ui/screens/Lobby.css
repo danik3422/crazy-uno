@@ -183,3 +183,30 @@ button.pl-ava { cursor: pointer; }
   .lb-start .start-btn { width: auto; flex: none; min-width: 200px; padding-block: 10px; font-size: 15px; }
   .lb-start:not(:has(.lb-start-hint)) .start-btn { width: 100%; }
 }
+
+/* the two columns of the room: one list on a phone (the wrappers step aside), side by side on a computer */
+.lb-col { display: contents; }
+@media (min-width: 1000px) and (min-height: 521px) {
+  :where(.lobby) > * { max-width: 1140px; }
+  .lobby-card {
+    display: grid; grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr); column-gap: 0; row-gap: 22px;
+    padding: 30px 0 24px; align-items: start;
+  }
+  .lb-col { display: flex; flex-direction: column; gap: 32px; min-width: 0; padding: 0 36px; }
+  /* a quiet line between them */
+  .lb-how { border-left: 1px solid rgba(255, 255, 255, 0.1); }
+  .lb-who { position: sticky; top: 12px; }
+  /* everything under the columns (the phone tip, the start) spans both */
+  .lobby-card > :not(.lb-col) { grid-column: 1 / -1; margin-inline: 36px; }
+  .lb-start { margin: 4px 20px -12px; }
+  .lb-start .start-btn { font-size: 19px; padding-block: 16px; }
+  .lb-waiting { padding-block: 6px; }
+  /* the left column has room: bigger code tiles and avatars */
+  .lb-who .code-tiles.small .tile { --tw: 58px; }
+  .lb-who .players { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); }
+}
+@media (min-width: 1000px) and (min-height: 521px) {
+  .lb-who .qr-box { padding: 14px; border-radius: 18px; background: rgba(0, 0, 0, 0.18); border: 1px solid rgba(255, 255, 255, 0.08); }
+  .lb-who .qr-box .qr { width: 128px; height: 128px; }
+  .lb-who .qr-text p { font-size: 13.5px; line-height: 1.4; color: rgba(255, 255, 255, 0.8); }
+}
