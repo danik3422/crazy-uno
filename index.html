@@ -71,12 +71,12 @@
         content: ""; position: absolute; left: 50%; top: 50%; width: 34px; height: 64px; margin: -32px 0 0 -17px;
         border-radius: 50%; background: #fffdf6; transform: rotate(24deg);
       }
-      .sp-cards i:nth-child(1) { background: #2f6fde; --r: -22deg; animation-delay: 0s; }
-      .sp-cards i:nth-child(2) { background: #f5b800; --r: 0deg; animation-delay: 0.08s; }
-      .sp-cards i:nth-child(3) { background: #e5413a; --r: 22deg; animation-delay: 0.16s; }
-      .sp-cards i:nth-child(3)::after {
+      .sp-cards i:nth-child(1) { background: #2f6fde; --c: #2f6fde; --r: -22deg; animation-delay: 0s; }
+      .sp-cards i:nth-child(2) { background: #f5b800; --c: #d99a00; --r: 0deg; animation-delay: 0.08s; }
+      .sp-cards i:nth-child(3) { background: #e5413a; --c: #e5413a; --r: 22deg; animation-delay: 0.16s; }
+      .sp-cards i::after {
         content: "UNO"; position: absolute; inset: 0; display: grid; place-items: center; transform: rotate(-24deg);
-        font-weight: 900; font-size: 15px; color: #e5413a; letter-spacing: -0.02em;
+        font-weight: 900; font-size: 15px; color: var(--c); letter-spacing: -0.02em;
       }
       @keyframes sp-fan {
         0%, 100% { transform: rotate(0deg) translateY(0); }
