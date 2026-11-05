@@ -107,6 +107,13 @@ export function cardImage(card: Card | null, theme: ThemeId = 'classic', cssWidt
     const ctx = cv.getContext('2d')!;
     ctx.scale(w / W, w / W);
     drawCard(ctx, card, theme);
+    // the 3D card is cut to its rounded outline by its shape; a flat picture has to cut its own corners
+    // (some tables paint the face edge to edge)
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.beginPath();
+    ctx.roundRect(0, 0, W, H, 30);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
     u = cv.toDataURL('image/png');
     urlCache.set(key, u);
   }

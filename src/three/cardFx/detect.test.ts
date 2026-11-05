@@ -37,7 +37,7 @@ describe('card effect detection', () => {
       g.s.color = 'red';
       g.s.discard.push(card('num', 'red', 5));
       const gone = g.nextIdx(g.s.cur);
-      g.s.players[gone].out = true;
+      g.s.players[gone].out = 1;
       g.s.players[gone].hand = [];
       const { out } = playAndDetect(g, c());
       const t = out.find(x => x.kind === 'play') as PlayTrigger;

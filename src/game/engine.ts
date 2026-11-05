@@ -324,6 +324,10 @@ export class Game extends Observable {
     // the turn is theirs now
     s.cur = seat;
     s.turn++;
+    // now and then the barrel-plane mascot flies by. Decided here, by the game, so every screen at the table
+    // sees the same flight at the same moment (a cosmetic hash, so the game's own dice are not touched)
+    const h = mix(s.round * 7919 + s.turn);
+    if (h % 100 < 6) this.fx('flyby', undefined, { seed: (h >>> 8) % 1000 });
     s.drawn = false;
     s.lastDrawn = null;
     s.unoCalled = uno;
@@ -1187,6 +1191,11 @@ export class Game extends Observable {
   private fx(kind: FxKind, text?: Msg, extra: Partial<Fx> = {}) {
     this.s.fx.push({ id: ++this.fxId, kind, text, ...extra });
     if (this.s.fx.length > FX_LIMIT) this.s.fx.shift();
+    // a random event: half the time the mascot swoops by with it (the bomber comes on its own)
+    if (kind === 'event' && extra.event !== 'bomber') {
+      const h = mix(this.fxId * 131 + this.s.turn);
+      if (h % 2 === 0) this.fx('flyby', undefined, { seed: (h >>> 8) % 1000 });
+    }
   }
 
   /** Deals `n` cards from the deck to `p` (fewer if even the reshuffled pile runs out). */
@@ -1317,4 +1326,11 @@ export class Game extends Observable {
     this.s.pendingLast = 0;
     return n;
   }
+}
+
+/** A small integer hash (cosmetic choices that must come out the same on every screen). */
+function mix(x: number): number {
+  x = Math.imul(x ^ (x >>> 16), 0x45d9f3b);
+  x = Math.imul(x ^ (x >>> 16), 0x45d9f3b);
+  return (x ^ (x >>> 16)) >>> 0;
 }

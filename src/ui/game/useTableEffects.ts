@@ -67,14 +67,6 @@ export function useTableEffects(game: GameView, version: number, onOver?: (winne
   // the table turned upside down by an event is set right again when leaving
   useEffect(() => () => { fxState.upsideUntil = 0; }, []);
 
-  // the barrel-plane mascot drops by now and then
-  useEffect(() => {
-    const t = setInterval(() => {
-      if (Math.random() < 0.22) summonMascot('fly');
-    }, 15_000);
-    return () => clearInterval(t);
-  }, [game]);
-
   const lastFx = useRef<{ game: GameView | null; id: number }>({ game: null, id: 0 });
   const scored = useRef<GameView | null>(null);
   useEffect(() => {
@@ -120,8 +112,6 @@ export function useTableEffects(game: GameView, version: number, onOver?: (winne
           fxState.eventAt = nowSec();
           fxState.event = { at: nowSec(), id: f.event ?? null, target: f.target ?? s.cur, seq: fxState.event.seq + 1 };
           sound.play((f.event && EVENT_SOUND[f.event]) || 'event');
-          // the mascot sometimes flies by, unless it is about to come as the bomber anyway
-          if (Math.random() < 0.5 && !s.fx.some(x => x.kind === 'bomber' && x.id > f.id)) summonMascot('fly', 0.3);
           setBanner({ id: f.id, event: f.event ?? null, title: f.text ?? null, sub: f.sub ?? null, top: s.phase !== 'play' });
           continue; // the banner shows the text, no toast
         case 'meteor':
@@ -149,6 +139,12 @@ export function useTableEffects(game: GameView, version: number, onOver?: (winne
           fxState.drop.until = fxState.drop.at + 0.4;
           break;
         }
+        case 'flyby':
+          // the game decides when and which route, so it is the same flight for everyone at the table.
+          // Right after an event it waits a moment for the banner; never over the bomber's run
+          if (nowSec() - fxState.mascot.at < 6) break; // the plane is already up (a fly-by, the bomber, the victory laps)
+          summonMascot('fly', s.fx.some(x => x.kind === 'event' && x.id === f.id - 1) ? 0.3 : 0, 0, (f.seed ?? 0) / 1000);
+          break;
         case 'spin':
           fxState.spinUntil = nowSec() + SPIN_TIME;
           break;

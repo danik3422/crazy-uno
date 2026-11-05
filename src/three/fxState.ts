@@ -58,8 +58,9 @@ export const BOMB_RELEASE = BOMBER_DROP - 0.3;
 /** seconds from release to impact */
 export const BOMB_FALL = 0.62;
 
-export function summonMascot(mode: MascotMode = 'fly', delay = 0, target = 0) {
-  fxState.mascot = { at: nowSec() + delay, mode, seed: Math.random(), target };
+/** `seed` (0..1) picks the route; online it comes from the game so every screen flies the same one */
+export function summonMascot(mode: MascotMode = 'fly', delay = 0, target = 0, seed = Math.random()) {
+  fxState.mascot = { at: nowSec() + delay, mode, seed, target };
 }
 
 export const nowSec = () => performance.now() / 1000;

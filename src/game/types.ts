@@ -115,7 +115,7 @@ export type Phase = 'handover' | 'dare' | 'group' | 'coin' | 'play' | 'choose' |
 export type FxKind =
   | 'toast' | 'shake' | 'chaos' | 'boom' | 'win' | 'uno' | 'flip'
   | 'event' | 'meteor' | 'spin' | 'lightning' | 'jackpot' | 'upside' | 'carousel' | 'bomber'
-  | 'caught' | 'challenge' | 'timeout' | 'knockout' | 'jump';
+  | 'caught' | 'challenge' | 'timeout' | 'knockout' | 'jump' | 'flyby';
 export interface Fx {
   id: number;
   kind: FxKind;
@@ -127,6 +127,8 @@ export interface Fx {
   target?: number;
   /** who caused it, where that matters (who caught a missing UNO) */
   from?: number;
+  /** flyby: which route the mascot takes (0..999), the same on every screen */
+  seed?: number;
 }
 
 export interface State {
