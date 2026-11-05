@@ -26,6 +26,16 @@ const deckBatch = { frame: -1, base: 0, list: [] as { key: number; f: Flight }[]
 
 /** The card's body: a thin rounded slab, so a tilted card shows a real edge instead of a paper plane. */
 const body = cardBodyGeometry(THICK);
+/** how high a hovered hand card rises: its pointer zone reaches that far up, so the lifted card stays under the pointer */
+const HOVER_REACH = 0.36;
+/**
+ * A hand card's pointer zone: the card's own outline where it rests (plus, while hovered, the strip it rises into).
+ * It does not move or grow with the card, so the hovered card cannot steal the pointer from its neighbours.
+ */
+const hitPlane = new THREE.PlaneGeometry(CARD_W, CARD_H);
+/** the zone of the card under the pointer reaches up to where it has risen, so it keeps the pointer */
+const hitPlaneLifted = new THREE.PlaneGeometry(CARD_W, CARD_H + HOVER_REACH).translate(0, HOVER_REACH / 2, 0);
+const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false, side: THREE.DoubleSide });
 const edgeMat = new THREE.MeshStandardMaterial({ color: '#e4ddcf', roughness: 0.7 });
 /** the same edge for a card held up out of the hand: drawn over its neighbours instead of cutting through them */
 const edgeMatTop = Object.assign(edgeMat.clone(), { depthTest: false, transparent: true });
@@ -138,6 +148,7 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
   const onTop = useRef(false);
   const glowRef = useRef<THREE.Mesh>(null!);
   const hovered = useRef(false);
+  const hitRef = useRef<THREE.Mesh>(null);
   const startAt = useRef<number | null>(null);
   const placed = useRef(false);
   const tq = useMemo(() => new THREE.Quaternion(), []);
@@ -527,6 +538,7 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
       vel.s.v = 0;
     } else g.scale.setScalar(smoothDamp(g.scale.x, sTarget, vel.s, 0.12, dt));
 
+    if (hitRef.current) hitRef.current.geometry = hovered.current && tt.interactive ? hitPlaneLifted : hitPlane;
     // playable cards are simply raised (see layout); the rest are dimmed
     const shade = tt.dim ? 0.42 : 1;
     const c = frontMat.current.color;
@@ -554,34 +566,39 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     }
   });
 
+  const inHand = t.zone === 'hand';
+  const handlers = {
+    onPointerOver: (e: ThreeEvent<PointerEvent>) => {
+      if (!t.interactive) return;
+      e.stopPropagation();
+      hovered.current = true;
+      document.body.style.cursor = 'pointer';
+    },
+    onPointerOut: () => {
+      hovered.current = false;
+      document.body.style.cursor = '';
+    },
+    onPointerDown: startDrag,
+    onClick: (e: ThreeEvent<MouseEvent>) => {
+      if (!t.interactive) return;
+      e.stopPropagation();
+      if (performance.now() < drag.suppressClickUntil) return;
+      hovered.current = false;
+      document.body.style.cursor = '';
+      onPick(card.id);
+    },
+  };
+
   const front = cardTexture(card, theme);
   const back = cardTexture(null, theme);
 
   return (
     <>
-    <group
-      ref={ref}
-      userData={{ fit: 'card', id: card.id }}
-      onPointerOver={e => {
-        if (!t.interactive) return;
-        e.stopPropagation();
-        hovered.current = true;
-        document.body.style.cursor = 'pointer';
-      }}
-      onPointerOut={() => {
-        hovered.current = false;
-        document.body.style.cursor = '';
-      }}
-      onPointerDown={startDrag}
-      onClick={e => {
-        if (!t.interactive) return;
-        e.stopPropagation();
-        if (performance.now() < drag.suppressClickUntil) return;
-        hovered.current = false;
-        document.body.style.cursor = '';
-        onPick(card.id);
-      }}
-    >
+    {/* in the hand the pointer is caught by a still zone where the card rests (see hitPlane), not by the moving card */}
+    {inHand && (
+      <mesh ref={hitRef} geometry={hitPlane} material={hitMat} position={t.pos} rotation={[t.rot[0], t.rot[1], t.rot[2], 'YXZ']} scale={t.scale ?? 1} {...handlers} />
+    )}
+    <group ref={ref} userData={{ fit: 'card', id: card.id }} {...(inHand ? {} : handlers)}>
       <mesh ref={bodyRef} geometry={body} material={edgeMat} castShadow />
       <mesh ref={frontRef} geometry={plane} position-z={THICK / 2 + 0.0015}>
         <meshStandardMaterial ref={frontMat} map={front} roughness={0.38} metalness={0} />

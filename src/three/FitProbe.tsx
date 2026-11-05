@@ -14,6 +14,11 @@ export interface FitRect {
   y0: number;
   x1: number;
   y1: number;
+  /** cards: the screen point of the card's centre and of the middle of its left edge */
+  cx?: number;
+  cy?: number;
+  lx?: number;
+  ly?: number;
 }
 
 const box = new THREE.Box3();
@@ -47,8 +52,16 @@ export function FitProbe() {
         const kind = o.userData.fit as string | undefined;
         if (!kind || !shown(o)) return;
         if (kind === 'card') {
-          box.setFromObject(o, true);
+          // the card itself (its body is the first child), not the wider glow behind it
+          box.setFromObject(o.children[0] ?? o, true);
           rect('card', corners(box), o.userData.id);
+          const at = (lx: number) => {
+            const p = o.localToWorld(new THREE.Vector3(lx, 0, 0)).project(camera);
+            return [Math.round(((p.x + 1) / 2) * size.width), Math.round(((1 - p.y) / 2) * size.height)];
+          };
+          const r = out[out.length - 1];
+          [r.cx, r.cy] = at(0);
+          [r.lx, r.ly] = at(-0.5);
         } else if (kind === 'badge') {
           // a sprite: a square facing the camera
           o.getWorldPosition(c).applyMatrix4(camera.matrixWorldInverse);

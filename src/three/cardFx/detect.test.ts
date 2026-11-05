@@ -31,6 +31,21 @@ function playAndDetect(g: Game, c: Card) {
 }
 
 describe('card effect detection', () => {
+  it('leaves knocked-out players out of every effect', () => {
+    for (const c of [() => card('num', 'red', 0), () => card('skipAll', 'red')]) {
+      const g = game({ ...rulesOf('nomercy'), sevenZero: true });
+      g.s.color = 'red';
+      g.s.discard.push(card('num', 'red', 5));
+      const gone = g.nextIdx(g.s.cur);
+      g.s.players[gone].out = true;
+      g.s.players[gone].hand = [];
+      const { out } = playAndDetect(g, c());
+      const t = out.find(x => x.kind === 'play') as PlayTrigger;
+      expect(t.targets.length).toBeGreaterThan(0);
+      expect(t.targets).not.toContain(gone);
+    }
+  });
+
   it('aims a skip at the player who misses the turn', () => {
     const g = game(rulesOf('classic'));
     const actor = g.s.cur;

@@ -100,13 +100,13 @@ function others(s: State, actor: number, next: NextIdx) {
 function partner(prev: Snap, s: State, actor: number, gift: boolean, next: NextIdx): number {
   const n = s.players.length;
   for (let i = 0; i < n; i++) {
-    if (i === actor) continue;
+    if (i === actor || s.players[i].out) continue;
     const grew = s.players[i].hand.length - (prev.hands[i] ?? 0);
     if (gift ? grew === 1 : grew !== 0) return i;
   }
   if (!gift) {
     for (let i = 0; i < n; i++) {
-      if (i === actor) continue;
+      if (i === actor || s.players[i].out) continue;
       const first = s.players[i].hand[0];
       const id = first && !first.hidden ? first.id : null;
       if (id !== null && prev.firstIds[i] !== null && id !== prev.firstIds[i]) return i;
@@ -114,7 +114,7 @@ function partner(prev: Snap, s: State, actor: number, gift: boolean, next: NextI
   }
   // the names mentioned in the newest log lines
   const words = s.log.slice(prev.logLen).flatMap(msgWords);
-  for (let i = 0; i < n; i++) if (i !== actor && words.includes(s.players[i].name)) return i;
+  for (let i = 0; i < n; i++) if (i !== actor && !s.players[i].out && words.includes(s.players[i].name)) return i;
   return next(actor);
 }
 
@@ -212,5 +212,7 @@ export function detect(prev: Snap | null, s: State, next: NextIdx): Trigger[] {
       });
       break;
   }
+  // the knocked-out are out of the picture: no card effect lands on them (their knock-out has its own)
+  for (const tr of out) if ('targets' in tr) tr.targets = tr.targets.filter(i => !s.players[i]?.out);
   return out;
 }

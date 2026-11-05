@@ -176,8 +176,11 @@ export function EventFx({ game, view, theme }: Props) {
       r.rx = A.rx;
       r.rz = A.rz;
       r.dir = s.dir;
-      r.nSeats = Math.min(r.seats.length, s.players.length);
-      for (let i = 0; i < r.nSeats; i++) seatSpot(game, i, view, r.seats[i]);
+      // only the players still in the game: the knocked-out ones get no effects
+      r.nSeats = 0;
+      for (let i = 0; i < s.players.length && r.nSeats < r.seats.length; i++) {
+        if (!s.players[i].out) seatSpot(game, i, view, r.seats[r.nSeats++]);
+      }
       const ti = Math.min(Math.max(0, ev.target), s.players.length - 1);
       seatSpot(game, ti, view, r.target);
       // Robin Hood: the cards went to whoever has the most now
