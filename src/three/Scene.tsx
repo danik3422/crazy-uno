@@ -21,6 +21,7 @@ import { EventFx } from './eventFx/EventFx';
 import { DEBUG, fxState, nowSec, crashProbe } from './fxState';
 import { FitProbe } from './FitProbe';
 import { CAMERA, PARALLAX_X, RING_R, RING_Z, arena, cameraFov, computeTargets, deckCenter, deckSpot, oppWall, visibleHalfWidth, type View } from './layout';
+import { KnockoutVan } from './KnockoutVan';
 import { Mascot } from './Mascot';
 import { PlayFx, StackFx } from './PlayFx';
 import { CardFx } from './cardFx/CardFx';
@@ -102,6 +103,7 @@ export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dea
       <Explosion />
       <EventFx game={game} view={view} theme={theme} />
       <Mascot scale={portrait ? 0.6 : 0.72} portrait={portrait} />
+      <KnockoutVan game={game} version={version} view={view} />
       {/* mounted all round (hidden) so their shaders are ready: the finale must not stall */}
       <Confetti active={s.phase === 'over'} />
       <Podium
@@ -358,6 +360,13 @@ function PlayerPlates({ game, view, dealing }: { game: GameView; view: View; dea
   const tiny = (view.portrait && s.players.length > 3) || (view.compact && s.players.length > 5);
   // the HUD's corner widgets, measured on the screen (the colour pill, the menu buttons)
   const corners = typeof document === 'undefined' ? [] : [...document.querySelectorAll('.hud-top .status, .corner-btns')].map(e => e.getBoundingClientRect());
+  // who went out while this table was open: their plate steps aside while the van takes them (KnockoutVan)
+  const outs = useRef<{ game: GameView | null; was: boolean[]; taken: Set<number> }>({ game: null, was: [], taken: new Set() });
+  if (outs.current.game !== game) outs.current = { game, was: s.players.map(p => !!p.out), taken: new Set() };
+  s.players.forEach((p, i) => {
+    if (p.out && !outs.current.was[i]) outs.current.taken.add(i);
+    outs.current.was[i] = !!p.out;
+  });
   return (
     <>
       {s.players.map((p, i) => {
@@ -408,7 +417,7 @@ function PlayerPlates({ game, view, dealing }: { game: GameView; view: View; dea
         return (
           <Html key={i} position={pos} center zIndexRange={[20, 0]} pointerEvents="none">
             <div
-              className={`oplate ${cur ? 'cur' : ''} ${i === s.winner ? 'win' : ''} ${p.offline ? 'off' : ''} ${p.out ? 'out' : ''} ${s.teams ? `team t${s.teams[i]}` : ''} ${small ? 'small' : ''} ${tiny ? 'tiny' : ''} ${canPeek ? 'peekable' : ''}`}
+              className={`oplate ${cur ? 'cur' : ''} ${i === s.winner ? 'win' : ''} ${p.offline ? 'off' : ''} ${p.out ? 'out' : ''} ${p.out && outs.current.taken.has(i) ? 'taken' : ''} ${s.teams ? `team t${s.teams[i]}` : ''} ${small ? 'small' : ''} ${tiny ? 'tiny' : ''} ${canPeek ? 'peekable' : ''}`}
               title={canPeek ? t('peek.hint', { who: p.name }) : p.name}
               onClick={canPeek ? () => peek.open(i) : undefined}
             >

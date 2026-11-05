@@ -645,6 +645,8 @@ export class Room {
         member: this.seats[i],
         // a person who dropped out: a bot is playing their seat until they come back
         offline: !!mem && !mem.bot && !mem.sock,
+        // No Mercy: knocked out, and in what order (the seat is skipped; the van comes for them on every screen)
+        out: p.out,
         // hidden hands are sorted by their opaque numbers, so the order tells nothing either
         // a teammate's hand is open too (2 vs 2 and up, as in the mobile game)
         hand: i === you || over || (you >= 0 && !!s.teams && s.teams[i] === s.teams[you]) ? p.hand.map(show) : p.hand.map(hide).sort((a, b) => a.id - b.id),

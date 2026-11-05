@@ -79,6 +79,9 @@
 .oplate.cur .plate-name { color: var(--gold); }
 /* No Mercy: knocked out of the round */
 .oplate.out { opacity: 0.55; filter: grayscale(0.85); }
+/* just knocked out: the plate steps aside while the van takes them away, then comes back greyed */
+.oplate.out.taken { animation: plate-taken 9.8s ease both; }
+@keyframes plate-taken { 0%, 3% { opacity: 1; filter: none; } 7%, 93% { opacity: 0; filter: grayscale(0.85); } 100% { opacity: 0.55; filter: grayscale(0.85); } }
 .oplate.off { opacity: 0.85; }
 .oplate.off .oplate-ava { filter: grayscale(0.6); }
 .oplate.win { border-color: #7dff8a; }

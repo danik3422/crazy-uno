@@ -494,6 +494,26 @@ describe('online rooms', () => {
     twin.close();
   });
 
+  it('tells every screen who is knocked out (No Mercy), so the seat is skipped and the van comes for them', async () => {
+    const [host, guest] = await openRoom(['Хост', 'Гость']);
+    host.auto = guest.auto = false;
+    host.send({ t: 'addBot' });
+    await host.until(() => host.room!.members.length === 3);
+    host.send({ t: 'start' });
+    await guest.until(() => !!guest.view && guest.view.warmup.dealAt !== null);
+    const g = app.rooms.get(host.code)!.game!;
+    const bot = g.s.players.findIndex(p => p.bot);
+    g.s.players[bot].out = 1;
+    g.s.players[bot].hand = [];
+    (g as unknown as { emitChange(): void }).emitChange();
+    for (const c of [host, guest]) {
+      await c.until(() => c.view?.state.players[bot].out === 1);
+      expect(c.view!.state.players.filter(p => p.out)).toHaveLength(1);
+    }
+    host.close();
+    guest.close();
+  });
+
   it('lets only the host switch the theme, also mid-round', async () => {
     const [host, guest] = await openRoom(['Хост', 'Гость']);
     host.auto = guest.auto = false;
