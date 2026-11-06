@@ -12,7 +12,6 @@
 .lang-switch button:focus-visible { outline: 2px solid var(--gold, var(--gold-bright)); outline-offset: 1px; }
 /* inside the in-game sound popover */
 .sound-pop .lang-switch { align-self: stretch; justify-content: space-between; margin-top: 4px; }
-.lang-switch.menu-lang { align-self: center; margin: 2px auto 6px; }
 /* phones on their side: smaller buttons */
 @media (max-height: 520px) and (orientation: landscape) {
   .lang-switch button { height: 26px; min-width: 34px; padding: 0 7px; font-size: 11.5px; }
