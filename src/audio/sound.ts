@@ -81,6 +81,7 @@ class SoundEngine extends Observable {
   private voices: number[] = [];
   private lastPlayed = new Map<SfxId, number>();
   private prop: { osc: OscillatorNode; gain: GainNode; level: number } | null = null;
+  private motor: { oscs: OscillatorNode[]; chop: OscillatorNode; lp: BiquadFilterNode; gain: GainNode; level: number; rev: number } | null = null;
 
   constructor() {
     super();
@@ -229,6 +230,72 @@ class SoundEngine extends Observable {
     this.prop.level = target;
     this.prop.gain.gain.setTargetAtTime(target, ctx.currentTime, 0.12);
     this.prop.osc.frequency.setTargetAtTime(70 + target * 200, ctx.currentTime, 0.2);
+  }
+
+  /**
+   * A sound built on the spot from the synth kit, the same for every table (the knock-out van's door and horn).
+   * It obeys the effects switch and the voice limit like the table's own sounds.
+   */
+  oneShot(build: (k: Kit, t: number) => void) {
+    const ctx = this.ctx;
+    if (!ctx || !this.prefs.sfx || ctx.state !== 'running') return;
+    const now = ctx.currentTime;
+    this.voices = this.voices.filter(end => end > now);
+    if (this.voices.length >= HARD_VOICES) return;
+    const out = ctx.createGain();
+    out.connect(this.sfxBus);
+    const k = new Kit(ctx, out, this.noise);
+    build(k, now + 0.01);
+    k.whenDone(() => out.disconnect());
+    this.voices.push(k.end);
+  }
+
+  /**
+   * A van's engine: `level` 0 = silent .. 1 = loud and close, `rev` 0 = idling .. 1 = pulling hard.
+   * Called every frame, cheap when unchanged (like the propeller).
+   */
+  engine(level: number, rev: number) {
+    const ctx = this.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+    const target = this.prefs.sfx ? Math.max(0, Math.min(1, level)) * 0.16 : 0;
+    const r = Math.max(0, Math.min(1, rev));
+    if (!this.motor) {
+      if (target <= 0) return;
+      // two detuned saws, low, pulsed by the "cylinders", through a lowpass that opens as it revs
+      const oscs = [38, 38.6].map(f => {
+        const o = ctx.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.value = f;
+        return o;
+      });
+      const pulse = ctx.createGain();
+      pulse.gain.value = 0.6;
+      const chop = ctx.createOscillator();
+      chop.frequency.value = 11;
+      const depth = ctx.createGain();
+      depth.gain.value = 0.4;
+      chop.connect(depth).connect(pulse.gain);
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 240;
+      lp.Q.value = 1.2;
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      for (const o of oscs) o.connect(pulse);
+      pulse.connect(lp).connect(gain).connect(this.sfxBus);
+      for (const o of oscs) o.start();
+      chop.start();
+      this.motor = { oscs, chop, lp, gain, level: 0, rev: 0 };
+    }
+    const m = this.motor;
+    if (Math.abs(target - m.level) < 0.003 && Math.abs(r - m.rev) < 0.02) return;
+    const now = ctx.currentTime;
+    m.level = target;
+    m.rev = r;
+    m.gain.gain.setTargetAtTime(target, now, 0.15);
+    m.oscs.forEach((o, i) => o.frequency.setTargetAtTime((38 + i * 0.6) * (1 + r * 1.4), now, 0.25));
+    m.chop.frequency.setTargetAtTime(11 + r * 22, now, 0.25);
+    m.lp.frequency.setTargetAtTime(240 + r * 700, now, 0.25);
   }
 
   /* ---------- music ---------- */

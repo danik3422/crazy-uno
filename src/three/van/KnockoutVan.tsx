@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { avatarUrl } from '../../art/avatarArt';
 import { sound } from '../../audio/sound';
+import { brakes, doorOpen, doorSlam, horn } from '../../audio/vanSounds';
 import { avatarOf } from '../../game/avatars';
 import type { GameView } from '../../game/view';
 import { debugValue, exposeDebug } from '../../lib/debug';
@@ -69,6 +70,9 @@ export function KnockoutVan({ game, version, view }: { game: GameView; version: 
   const run = useRef<Run | null>(null);
   const seen = useRef<{ game: GameView | null; outs: boolean[] }>({ game: null, outs: [] });
   const sfx = useRef(0);
+  const engineOn = useRef(false);
+  // leaving the table mid-scene: the engine stops too
+  useEffect(() => () => sound.engine(0, 0), []);
   const yaw = useRef([0, 0]);
   const loader = useMemo(() => new THREE.TextureLoader(), []);
   const ctx = useRef({ game, view });
@@ -99,7 +103,7 @@ export function KnockoutVan({ game, version, view }: { game: GameView; version: 
     });
   }, [game, version, loader]);
 
-  useFrame((_, dt) => {
+  useFrame(({ camera }, dt) => {
     const now = nowSec();
     // debug: window.__vanT pins the scene at that second (for stills)
     const pin = debugValue<number>('__vanT');
@@ -125,7 +129,14 @@ export function KnockoutVan({ game, version, view }: { game: GameView; version: 
       yaw.current = [f, f];
     }
     root.current.visible = !!r;
-    if (!r) return;
+    if (!r) {
+      if (engineOn.current) {
+        sound.engine(0, 0);
+        engineOn.current = false;
+      }
+      return;
+    }
+    engineOn.current = true;
     const t = typeof pin === 'number' ? pin : now - r.at;
     exposeDebug('__van', r);
     const { k, o, variant } = r;
@@ -137,11 +148,12 @@ export function KnockoutVan({ game, version, view }: { game: GameView; version: 
         play();
       }
     };
-    cue(1, 0.25, () => sound.play('whoosh'));
-    cue(2, ARRIVE + 0.1, () => sound.play('click'));
+    // the engine hums all along (see below); these are the moments on top of it
+    cue(1, ARRIVE - 0.35, brakes);
+    cue(2, ARRIVE + 0.1, doorOpen);
     if (pc) cue(3, pc.tLand, () => sound.play('stack'));
-    cue(4, r.tClose + DOOR_T * 0.8, () => sound.play('click'));
-    cue(5, r.tLeave, () => sound.play('whoosh'));
+    cue(4, r.tClose + DOOR_T * 0.85, doorSlam);
+    cue(5, r.tLeave - 0.4, horn);
 
     // ---- the van: along its bent road, nose first; leans back when it pulls away, dips when it brakes
     const s = roadAt(r, t);
@@ -154,6 +166,9 @@ export function KnockoutVan({ game, version, view }: { game: GameView; version: 
     vanAt.current.scale.set(r.mirror ? -k : k, k, k);
     const settle = t > ARRIVE ? Math.exp(-(t - ARRIVE) * 5) * Math.sin((t - ARRIVE) * 13) * 0.035 : 0;
     const going = Math.min(1, Math.abs(v) / 4);
+    // the engine: idling while it stands, revving as it drives; louder the closer it is to the camera
+    const near = THREE.MathUtils.clamp(1.3 - camera.position.distanceTo(vanAt.current.position) / 18, 0, 1);
+    sound.engine((0.45 + 0.55 * going) * near, going);
     van.current.rotation.z = THREE.MathUtils.clamp(-acc * 0.006, -0.07, 0.07) + settle;
     van.current.rotation.x = Math.sin(t * 17) * 0.008 * going;
     van.current.position.y = Math.abs(Math.sin(t * 21)) * 0.025 * going;
