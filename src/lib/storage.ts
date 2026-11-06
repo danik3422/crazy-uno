@@ -17,6 +17,8 @@ export const STORAGE_KEYS = {
   stats: 'crazy-uno-stats',
   /** a local game in progress, to carry on after a reload (app/storage/localSave.ts) */
   localGame: 'crazy-uno-local-game',
+  /** which tutorials (classic, No Mercy) were played or skipped (ui/tutorial) */
+  tutorial: 'crazy-uno-tutorial',
 } as const;
 
 export function readJson<T>(key: string): T | null {

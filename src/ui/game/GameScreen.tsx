@@ -26,6 +26,7 @@ import { useRoundStart } from './hooks/useRoundStart';
 import { useTableEffects } from './hooks/useTableEffects';
 import { useTableSounds } from './hooks/useTableSounds';
 import { useBotReactions, useReactionSound } from './Reactions';
+import { Coach } from '../tutorial/Coach';
 import './GameScreen.css';
 
 interface Props {
@@ -36,13 +37,15 @@ interface Props {
   /** called once per finished round with the winner's name (local games keep their own score) */
   onOver?: (winner: string) => void;
   online?: OnlineCtx;
+  /** the first game: hints at the moments they are needed */
+  coach?: boolean;
 }
 
 /**
  * The 3D table plus everything on top of it (HUD, prompts, banners).
  * Plays effects for any game; drives bots and clocks only for a local one (online the server does).
  */
-export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Props) {
+export function GameScreen({ game, score, onAgain, onMenu, onOver, online, coach }: Props) {
   const t = useT();
   const version = useSyncExternalStore(game.subscribe, game.getVersion);
   const local = game instanceof Game ? game : null;
@@ -130,6 +133,7 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
       {effects.flash !== null && <div key={`flash-${effects.flash}`} className={`flash th-${s.theme ?? 'classic'}`} />}
       {banner && <EventBanner key={`event-${banner.id}`} banner={banner} theme={s.theme ?? 'classic'} onDone={() => effects.dismissBanner(banner.id)} />}
       <Overlays game={game} version={version} score={score} onAgain={onAgain} onMenu={onMenu} online={online} locked={locked} />
+      {coach && !round.curtain && <Coach game={game} version={version} locked={locked} />}
       <RotateGate waiting={round.stage === 'loading'} />
       {round.curtain && (
         <LoadingCurtain

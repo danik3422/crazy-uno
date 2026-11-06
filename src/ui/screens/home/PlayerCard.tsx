@@ -6,6 +6,8 @@ import { AvatarImg, AvatarPicker } from '../../components/AvatarImg';
 import { UiIcon } from '../../components/UiIcon';
 import { CodeTiles } from './CodeTiles';
 import { WakePanel } from './WakePanel';
+import { TutorialLink } from '../../tutorial/TutorialLink';
+import type { TutorialMode } from '../../tutorial/tutorial';
 import './PlayerCard.css';
 
 /** a local game left mid-round on this device */
@@ -29,6 +31,8 @@ export interface PlayerCardProps {
   onCreate: () => void;
   onJoin: (code: string) => void;
   onLocal: () => void;
+  /** the first game with hints */
+  onTutorial: (mode: TutorialMode) => void;
   resume: ResumeInfo | null;
   onResume: () => void;
   /** kept by the home screen, so they survive a look at another tab: the code typed so far, the avatar picker open */
@@ -46,7 +50,7 @@ const NUDGE_MS = 700;
  * create or join an online room, or play on one device.
  */
 export function PlayerCard(props: PlayerCardProps) {
-  const { server, name, invite, error, resume, onResume, onLocal } = props;
+  const { server, name, invite, error, resume, onResume, onLocal, onTutorial } = props;
   const t = useT();
   const [nudge, setNudge] = useState(false);
   const nameInput = useRef<HTMLInputElement>(null);
@@ -86,6 +90,8 @@ export function PlayerCard(props: PlayerCardProps) {
         <span aria-hidden className="pc-local-ic"><UiIcon name="phone" size={26} /></span> {t('home.local')}
         {!offline && <small>{t('home.localSub')}</small>}
       </button>
+      {/* not for someone who came by an invite: they are on their way into a friend's room */}
+      {!invite && <TutorialLink mode="classic" onStart={onTutorial} />}
     </section>
   );
 }

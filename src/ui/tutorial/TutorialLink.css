@@ -1,0 +1,9 @@
+.tut-link {
+  display: flex; align-items: center; justify-content: center; gap: 8px; padding: 4px;
+  border: 0; background: none; color: var(--gold); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.tut-link span {
+  width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  background: var(--gold); color: var(--on-gold); font-family: var(--display); font-weight: 900; font-size: 12px;
+}
+.tut-link:hover { text-decoration: underline; }

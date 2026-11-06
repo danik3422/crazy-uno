@@ -23,7 +23,7 @@ export function Home(props: Props) {
     <div className={`home tab-${tab}`}>
       <HomeNav tab={tab} onTab={setTab} />
       {tab === 'profile' && <div className="home-page"><Profile name={props.name} avatar={props.avatar} /></div>}
-      {tab === 'howto' && <div className="home-page"><HowTo /></div>}
+      {tab === 'howto' && <div className="home-page"><HowTo onTutorial={props.onTutorial} /></div>}
       {tab === 'about' && <div className="home-page"><About /></div>}
       {tab === 'play' && (
         <>

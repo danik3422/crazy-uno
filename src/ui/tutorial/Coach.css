@@ -1,0 +1,40 @@
+/* The tutorial's hint: one bubble at the top middle of the screen, clear of the cards, the plates and the buttons.
+   Over the colour picker too (z 55 > the modals' 50), since that is where one of the hints belongs. */
+.coach {
+  position: fixed; z-index: 55; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 70px); translate: -50% 0;
+  width: max(300px, min(440px, 40vw)); display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px 12px 14px;
+  border-radius: 20px; background: linear-gradient(170deg, #2b1036, #1a0a22); border: 3px solid var(--gold);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 0 6px rgba(255, 208, 74, 0.15);
+  animation: coach-in 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.coach-badge {
+  flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--gold); color: var(--on-gold); font-family: var(--display); font-weight: 900; font-size: 19px;
+  box-shadow: 0 3px 0 var(--gold-edge);
+}
+.coach-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.coach-body b { font-family: var(--display); font-size: 16px; color: var(--gold); }
+.coach-body p { margin: 0; font-size: 14px; line-height: 1.4; color: rgba(255, 255, 255, 0.92); }
+.coach-btns { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+.btn.coach-ok {
+  padding: 7px 16px; border-radius: 12px; font-weight: 800; color: var(--on-gold);
+  background: linear-gradient(180deg, var(--gold-1), var(--gold-2) 55%, var(--gold-3)); box-shadow: 0 3px 0 var(--gold-edge);
+}
+.btn.coach-ok:hover { filter: brightness(1.06); background: linear-gradient(180deg, var(--gold-1), var(--gold-2) 55%, var(--gold-3)); }
+.coach-skip { padding: 4px 2px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12.5px; text-decoration: underline; cursor: pointer; }
+@keyframes coach-in { from { opacity: 0; transform: translateY(-10px) scale(0.96); } }
+
+/* a phone on its side: smaller and higher, in the gap between the two opponents' plates (about a third of the width) */
+@media (orientation: landscape) and (max-height: 520px) {
+  .coach { top: calc(env(safe-area-inset-top, 0px) + 8px); width: min(360px, 34vw); padding: 8px 10px 7px 9px; gap: 8px; border-width: 2px; border-radius: 16px; }
+  .coach-badge { width: 22px; height: 22px; font-size: 13px; }
+  .coach-body b { font-size: 13px; }
+  .coach-body p { font-size: 11.5px; line-height: 1.3; }
+  .coach-btns { margin-top: 3px; }
+  .btn.coach-ok { padding: 4px 11px; font-size: 12px; }
+  .coach-skip { font-size: 11px; }
+}
+/* reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .coach { animation: none; }
+}

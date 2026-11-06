@@ -18,6 +18,8 @@ import { TablePanel } from '../../settings/TablePanel';
 import { ThemePicker } from '../../settings/ThemePicker';
 import { PlayerRow } from './PlayerRow';
 import { RulesReference } from './RulesReference';
+import { TutorialLink } from '../../tutorial/TutorialLink';
+import type { TutorialMode } from '../../tutorial/tutorial';
 import './Setup.css';
 
 type SetupPlayer = LocalSetup['players'][number];
@@ -27,13 +29,15 @@ interface Props {
   setCfg: (f: (c: LocalSetup) => LocalSetup) => void;
   onStart: () => void;
   onBack: () => void;
+  /** the No Mercy tutorial, offered while those rules are picked */
+  onTutorial: (mode: TutorialMode) => void;
 }
 
 /**
  * Setting up a game on one device: who plays (people and bots), the rules and format, the table look,
  * and the card reference. "Deal" starts it.
  */
-export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
+export function Setup({ cfg, setCfg, onStart, onBack, onTutorial }: Props) {
   const t = useT();
   const players = cfg.players;
   const [pickFor, setPickFor] = useState<number | null>(null);
@@ -114,6 +118,7 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
         <section className="panel">
           <h2>{t('setup.rules')}</h2>
           <RulesPanel rules={cfg.rules} onChange={rules => setCfg(c => ({ ...c, rules }))} />
+          {cfg.rules.noMercy && <TutorialLink mode="nomercy" onStart={onTutorial} />}
           <h2 className="after-rules">{t('setup.format')}</h2>
           <TablePanel table={table} teams={teams} onChange={tb => setCfg(c => ({ ...c, table: tb }))} />
         </section>

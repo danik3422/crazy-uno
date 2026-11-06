@@ -15,6 +15,7 @@ import { inviteFromUrl, setUrlRoom } from './roomUrl';
 import { clearLocalSave, describeSave, readLocalSave, resumeLocal, writeLocalSave } from './storage/localSave';
 import { useRemoteGame } from './hooks/useRemoteGame';
 import { useServerCheck } from './hooks/useServerCheck';
+import { tutorialSetup, type TutorialMode } from '../ui/tutorial/tutorial';
 import './App.css';
 
 type Screen = 'home' | 'local-setup' | 'local-game' | 'online';
@@ -39,6 +40,8 @@ export default function App() {
   const [setup, setSetup] = useState<LocalSetup>(loadLocalSetup);
   const [local, setLocal] = useState<Game | null>(null);
   const [localScore, setLocalScore] = useState<Record<string, number>>({});
+  // the tutorial: its own setup, hints on for the first round, never saved to resume
+  const [tutorial, setTutorial] = useState<{ setup: LocalSetup; coach: boolean } | null>(null);
   useEffect(() => saveLocalSetup(setup), [setup]);
 
   const setName = (n: string) => {
@@ -92,7 +95,7 @@ export default function App() {
   // when the round ends or the player leaves it
   const [saved, setSaved] = useState(readLocalSave);
   useEffect(() => {
-    if (!local) return;
+    if (!local || tutorial) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const write = () => {
       timer = null;
@@ -108,7 +111,7 @@ export default function App() {
       if (timer) clearTimeout(timer);
       document.removeEventListener('visibilitychange', flush);
     };
-  }, [local, localScore]);
+  }, [local, localScore, tutorial]);
   // back on the home screen: what is saved now (a game just left, or a new one started)
   useEffect(() => {
     if (screen === 'home') setSaved(readLocalSave());
@@ -116,8 +119,17 @@ export default function App() {
   const resume = () => {
     const f = saved && resumeLocal(saved);
     if (!f || !saved) return setSaved(null);
+    setTutorial(null);
     setLocalScore(saved.score);
     setLocal(f);
+    setScreen('local-game');
+  };
+
+  const startTutorial = (mode: TutorialMode) => {
+    const tut = tutorialSetup(mode, name, avatar);
+    setTutorial({ setup: tut, coach: true });
+    setLocalScore({});
+    setLocal(new Game(localGameConfig(tut, 1)));
     setScreen('local-game');
   };
 
@@ -135,6 +147,7 @@ export default function App() {
   const toMenu = () => {
     if (screen === 'online') return leaveRoom();
     setLocal(null);
+    setTutorial(null);
     setScreen('home');
   };
 
@@ -145,10 +158,29 @@ export default function App() {
           cfg={setup}
           setCfg={setSetup}
           onBack={() => setScreen('home')}
+          onTutorial={startTutorial}
           onStart={() => {
+            setTutorial(null);
             setLocal(new Game(localGameConfig(setup, 1)));
             setScreen('local-game');
           }}
+        />
+      );
+    }
+
+    if (screen === 'local-game' && local && tutorial) {
+      return (
+        <GameScreen
+          game={local}
+          score={localScore}
+          onOver={onLocalOver}
+          coach={tutorial.coach}
+          onAgain={() => {
+            // the next round is an ordinary one: no more hints
+            setTutorial({ ...tutorial, coach: false });
+            setLocal(new Game(localGameConfig(tutorial.setup, local.s.round + 1)));
+          }}
+          onMenu={() => { setLocal(null); setTutorial(null); setLocalScore({}); setScreen('home'); }}
         />
       );
     }
@@ -220,6 +252,7 @@ export default function App() {
         busy={conn.status === 'connecting'}
         error={notice ? render(notice) : null}
         onLocal={() => setScreen('local-setup')}
+        onTutorial={startTutorial}
         resume={saved ? describeSave(saved) : null}
         onResume={resume}
         onCreate={() => goOnline(() => conn.create())}
