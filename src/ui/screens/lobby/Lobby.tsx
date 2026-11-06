@@ -6,7 +6,7 @@ import type { Connection } from '../../../net/connection';
 import { MAX_PLAYERS, type RoomInfo } from '../../../net/protocol';
 import { ConnBadge } from '../../components/ConnBadge';
 import { LangMenu } from '../../components/LangMenu';
-import { PhoneTip } from '../../components/RotateGate';
+import { PhoneTip } from '../../components/phone/PhoneTip';
 import { SwipeBack } from '../../components/SwipeBack';
 import { usePageTheme } from '../../backdrop/pageTheme';
 import { RulesPanel } from '../../settings/RulesPanel';

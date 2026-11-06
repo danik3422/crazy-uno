@@ -1,3 +1,4 @@
+/* The plates with a player's name and face: your own in the HUD (.plate) and the opponents' over the table (.oplate, three/Scene). */
 .plate { position: relative; display: inline-flex; flex-direction: column; align-items: flex-start; gap: 5px; user-select: none; }
 .plate-name {
   font-family: var(--display); font-weight: 600; font-size: 14px; color: #fff; white-space: nowrap; max-width: 190px;

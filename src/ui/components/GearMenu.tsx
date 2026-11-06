@@ -4,7 +4,7 @@ import { sound } from '../../audio/sound';
 import { useT } from '../../i18n';
 import { IconGear, IconMenu, IconMusic, IconSound, IconVibrate } from './Icons';
 import { LangSwitch } from './LangSwitch';
-import './SoundMenu.css';
+import './GearMenu.css';
 
 /** A button with a small panel under it. A tap anywhere else, or Escape, closes it. */
 function Popover({ icon, label, className = '', children }: { icon: ReactNode; label: string; className?: string; children: (close: () => void) => ReactNode }) {

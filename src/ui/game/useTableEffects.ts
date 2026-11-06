@@ -8,7 +8,7 @@ import type { GameView } from '../../game/view';
 import { BOMB_FALL, BOMB_RELEASE, fxState, METEOR_FALL, nowSec, shake, SPIN_TIME, summonMascot } from '../../three/fxState';
 import { spawn } from '../../three/layout';
 import type { Banner } from './EventBanner';
-import type { Toast } from './Hud';
+import type { Toast } from './hud/Hud';
 import type { Msg } from '../../i18n/msg';
 
 const TOAST_MS = 1900;

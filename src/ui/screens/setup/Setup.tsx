@@ -9,7 +9,7 @@ import { usePageTheme } from '../../backdrop/pageTheme';
 import { AvatarPicker } from '../../components/AvatarImg';
 import { Hero } from '../../components/Hero';
 import { LangMenu } from '../../components/LangMenu';
-import { PhoneTip } from '../../components/RotateGate';
+import { PhoneTip } from '../../components/phone/PhoneTip';
 import { SwipeBack } from '../../components/SwipeBack';
 import { TeamBox } from '../../components/TeamBox';
 import { enterFullscreen, SMALL_SCREEN, useMedia } from '../../hooks/phone';
