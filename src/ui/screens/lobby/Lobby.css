@@ -1,0 +1,78 @@
+/* The online room before a round: the top row, one card with everything in it; on a computer two columns (who is at the table | how the game goes). */
+:where(.lobby) > * { width: 100%; max-width: 680px; }
+.lobby-top { display: flex; justify-content: space-between; align-items: center; }
+.btn.ghost { background: transparent; color: var(--ink); font-weight: 600; min-height: 44px; }
+.btn.ghost:hover { background: rgba(255, 255, 255, 0.1); }
+.lobby-card {
+  display: flex;
+  flex-direction: column;
+  gap: 34px;
+  padding: 28px 32px 24px;
+  border-radius: 28px;
+  background: var(--panel);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+.lb-section { display: flex; flex-direction: column; min-width: 0; }
+.lb-h {
+  margin: 0 0 14px;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 16px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.lb-count {
+  font-family: var(--body);
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.lb-note { margin: 14px 0 0; font-size: 13px; color: var(--muted); }
+.lobby {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 12px max(16px, env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: transparent;
+  padding-top: max(12px, env(safe-area-inset-top, 0px));
+}
+.lobby-top .btn.back, .lobby-top .conn {
+  padding: 8px 14px;
+  min-height: 0;
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  background: rgba(14, 4, 18, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+.lobby-top .btn.back:hover { background: rgba(14, 4, 18, 0.7); }
+.lobby-top .conn { font-size: 13px; }
+.lobby-top-r { display: flex; align-items: center; gap: 8px; }
+.lb-col { display: contents; }
+@media (max-width: 560px) {
+  .lobby { gap: 6px; }
+  .lobby-card { padding: 22px 16px 18px; border-radius: 22px; gap: 28px; }
+}
+@media (min-width: 1000px) and (min-height: 521px) {
+  :where(.lobby) > * { max-width: 1140px; }
+  .lobby-card {
+    display: grid;
+    grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+    column-gap: 0;
+    row-gap: 22px;
+    padding: 30px 0 24px;
+    align-items: start;
+  }
+  .lb-col { display: flex; flex-direction: column; gap: 32px; min-width: 0; padding: 0 36px; }
+  .lb-how { border-left: 1px solid rgba(255, 255, 255, 0.1); }
+  .lb-who { position: sticky; top: 12px; }
+  .lobby-card > :not(.lb-col) { grid-column: 1 / -1; margin-inline: 36px; }
+}

@@ -1,0 +1,64 @@
+/* The host's start button (it sticks to the bottom of a long page), or the guests' "waiting for the host" line. */
+.lb-start {
+  position: sticky;
+  bottom: -1px;
+  z-index: 20;
+  margin: -10px -16px -12px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  border-radius: 20px;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.lb-start .start-btn { width: 100%; font-size: 18px; }
+.lb-start-hint { margin: 0 0 10px; text-align: center; font-size: 13px; color: var(--muted); }
+.lb-waiting {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: center;
+}
+.lb-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--gold);
+  flex: none;
+  animation: breathe 1.6s ease-in-out infinite;
+}
+.lb-start.stuck { background: #2a0810; backdrop-filter: none; box-shadow: 0 -6px 16px rgba(20, 2, 8, 0.35); }
+.lb-start.stuck .lb-start-hint { margin-bottom: 8px; font-size: 12.5px; text-wrap: balance; }
+/* a phone on its side: everything on one screen */
+@media (orientation: landscape) and (max-height: 520px) {
+  .lb-start, .lb-start.stuck {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-block: 8px calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+  .lb-start .lb-start-hint, .lb-start.stuck .lb-start-hint {
+    flex: 1;
+    margin: 0;
+    font-size: 12px;
+    text-align: left;
+    line-height: 1.3;
+  }
+  .lb-start .start-btn { width: auto; flex: none; min-width: 200px; padding-block: 10px; font-size: 15px; }
+  .lb-start:not(:has(.lb-start-hint)) .start-btn { width: 100%; }
+}
+@media (max-width: 560px) {
+  .lb-start { margin-inline: -8px; padding-inline: 8px; }
+}
+@media (min-width: 1000px) and (min-height: 521px) {
+  .lb-start { margin: 4px 20px -12px; }
+  .lb-start .start-btn { font-size: 19px; padding-block: 16px; }
+  .lb-waiting { padding-block: 6px; }
+}
+@keyframes breathe {50% { opacity: 0.3; transform: scale(0.7); }}
+/* reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .lb-dot { animation: none; }
+  .lb-start { transition: none; }
+}

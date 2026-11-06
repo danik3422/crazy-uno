@@ -1,0 +1,5 @@
+/* The connection status: a coloured dot and a word. */
+.conn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--muted); }
+.conn::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--yellow); }
+.conn.open::before { background: var(--green); }
+.conn.reconnecting::before { background: var(--danger); animation: pulse 0.8s infinite; }
