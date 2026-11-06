@@ -1,4 +1,4 @@
-import type { CardType } from '../../game/types';
+import type { CardType } from '../../../game/types';
 import type { Motif } from './kit';
 import { bomb } from './motifs/bomb';
 import { dare } from './motifs/dare';

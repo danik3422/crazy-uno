@@ -1,4 +1,4 @@
-import type { EventId } from '../game/types';
+import type { EventId } from '../../game/types';
 
 /**
  * Mutable, render-loop friendly effect clock shared by 3D components.

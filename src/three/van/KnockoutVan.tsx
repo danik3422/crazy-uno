@@ -1,14 +1,14 @@
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { avatarUrl } from '../art/avatarArt';
-import { sound } from '../audio/sound';
-import { avatarOf } from '../game/avatars';
-import type { GameView } from '../game/view';
-import { DEBUG, nowSec } from './fxState';
-import type { View } from './layout';
-import { BigGuy, DOOR_W, DOOR_X, Van, VAN_D, Victim, WHEEL_R, limbs, makePrint } from './van/models';
-import { ARRIVE, DOOR_T, add, along, clamp01, hold, lerp2, plan, road, roadAt, sideOf, smooth, span, type P2, type Run } from './van/plan';
+import { avatarUrl } from '../../art/avatarArt';
+import { sound } from '../../audio/sound';
+import { avatarOf } from '../../game/avatars';
+import type { GameView } from '../../game/view';
+import { DEBUG, nowSec } from '../effects/fxState';
+import type { View } from '../layout';
+import { BigGuy, DOOR_W, DOOR_X, Van, VAN_D, Victim, WHEEL_R, limbs, makePrint } from './models';
+import { ARRIVE, DOOR_T, add, along, clamp01, hold, lerp2, plan, road, roadAt, sideOf, smooth, span, type P2, type Run } from './plan';
 
 /*
  * No Mercy knock-out: an olive van pulls up behind the player, two big guys in uniform come out and take the

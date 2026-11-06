@@ -1,4 +1,4 @@
-import { CELL_ID } from '../../cardFx/atlas';
+import { CELL_ID } from '../../effects/cardFx/atlas';
 import type { TableTheme } from '../types';
 import { drawBack } from './back';
 import { Decor } from './Decor';

@@ -2,7 +2,7 @@ import { type CSSProperties, Suspense } from 'react';
 import { lazyFile } from '../../lib/lazyFile';
 import { useT } from '../../i18n';
 import type { Card } from '../../game/types';
-import { cardImage } from '../../three/textures';
+import { cardImage } from '../../three/cards/textures';
 import './Hero.css';
 
 const MascotStage = lazyFile(() => import('./MascotStage'));

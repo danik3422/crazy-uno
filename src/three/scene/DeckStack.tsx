@@ -1,12 +1,12 @@
 import { useFrame } from '@react-three/fiber';
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { CARD_R, roundedRect } from './cardShape';
-import type { ThemeId } from '../game/types';
-import { DECK_SLIDE_MS, SHUFFLE_MS } from '../net/protocol';
-import { fxState, nowSec } from './fxState';
-import { DECK_TOP, type Vec3 } from './layout';
-import { cardTexture, repaint } from './textures';
+import { CARD_R, roundedRect } from '../cards/cardShape';
+import type { ThemeId } from '../../game/types';
+import { DECK_SLIDE_MS, SHUFFLE_MS } from '../../net/protocol';
+import { fxState, nowSec } from '../effects/fxState';
+import { DECK_TOP, type Vec3 } from '../layout';
+import { cardTexture, repaint } from '../cards/textures';
 
 /** the stack is drawn as this many thick "cards" (each stands for a few real ones) */
 const LAYERS = 22;

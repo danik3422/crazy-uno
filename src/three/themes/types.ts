@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react';
 import type { Card, Color } from '../../game/types';
-import type { EventLook } from '../eventFx/look';
+import type { EventLook } from '../effects/eventFx/look';
 import type { Vec3 } from '../layout';
 
 /** Arena colours for one current colour: the floor glow inside, the middle, the far dark, and an accent for decor. */

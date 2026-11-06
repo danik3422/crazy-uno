@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { PRESETS } from '../../game/content';
-import { Game } from '../../game/engine';
-import type { Card, CardType, Rules } from '../../game/types';
+import { PRESETS } from '../../../game/content';
+import { Game } from '../../../game/engine';
+import type { Card, CardType, Rules } from '../../../game/types';
 import { detect, snap, type PlayTrigger, type ResolveTrigger } from './detect';
 
 const rulesOf = (id: string): Rules => PRESETS.find(p => p.id === id)!.rules;

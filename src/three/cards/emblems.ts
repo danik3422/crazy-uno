@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { HEX, SPECIAL } from '../game/content';
-import type { Card, Color } from '../game/types';
+import { HEX, SPECIAL } from '../../game/content';
+import type { Card, Color } from '../../game/types';
 import { drawArrowIcon, drawEmoji } from './textures';
 
 /**

@@ -1,6 +1,6 @@
 import type * as THREE from 'three';
 import type { GameView } from '../../game/view';
-import { DEBUG } from '../fxState';
+import { DEBUG } from '../effects/fxState';
 import { arena, spawn, type View } from '../layout';
 import { DOOR_X, VAN_D } from './models';
 

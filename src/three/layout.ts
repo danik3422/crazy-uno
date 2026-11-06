@@ -1,8 +1,8 @@
 import type { GameView } from '../game/view';
 import { DEAL_STEP_MS, dealTiming } from '../net/protocol';
 import * as THREE from 'three';
-import { dropZone } from './drag';
-import { CARD_H, CARD_W } from './cardShape';
+import { dropZone } from './cards/drag';
+import { CARD_H, CARD_W } from './cards/cardShape';
 
 export type Vec3 = [number, number, number];
 export type Zone = 'deck' | 'discard' | 'hand' | 'opp';

@@ -1,10 +1,10 @@
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef, type RefObject } from 'react';
 import * as THREE from 'three';
-import { sound } from '../audio/sound';
-import { BOMBER_TIME, BOMB_RELEASE, fxState, nowSec } from './fxState';
+import { sound } from '../../audio/sound';
+import { BOMBER_TIME, BOMB_RELEASE, fxState, nowSec } from '../effects/fxState';
 import { bomberRoute, pickRoute, type Route } from './mascotRoutes';
-import { spawn } from './layout';
+import { spawn } from '../layout';
 
 const PI = Math.PI;
 

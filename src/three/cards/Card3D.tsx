@@ -1,13 +1,13 @@
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { memo, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import type { Card, ThemeId } from '../game/types';
+import type { Card, ThemeId } from '../../game/types';
 import { DRAG_HEIGHT, drag, dropZone, keySel } from './drag';
-import { SPIN_TIME, fxState, nowSec } from './fxState';
-import { lastPlace, spawn, type Target } from './layout';
+import { SPIN_TIME, fxState, nowSec } from '../effects/fxState';
+import { lastPlace, spawn, type Target } from '../layout';
 import { cardBodyGeometry, cardFaceGeometry, CARD_H, CARD_W } from './cardShape';
 import { cardTexture } from './textures';
-import { THEMES } from './themes';
+import { THEMES } from '../themes/index';
 
 /** the printed faces, cut to the card's rounded outline */
 const plane = cardFaceGeometry();

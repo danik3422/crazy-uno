@@ -1,7 +1,7 @@
 import { CELL_ID } from '../atlas';
 import type { Active, Kit, Motif } from '../kit';
 import { WHITE, burst, easeInOut, easeOutBack, fade, flash, hump, ring } from '../shapes';
-import { RING_R, RING_Z } from '../../layout';
+import { RING_R, RING_Z } from '../../../layout';
 
 const LIFE = 1.25;
 

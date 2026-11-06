@@ -1,7 +1,7 @@
 import type { Card } from '../../../game/types';
 import type { GameView } from '../../../game/view';
 import { useT } from '../../../i18n';
-import { cardImage } from '../../../three/textures';
+import { cardImage } from '../../../three/cards/textures';
 import { AvatarImg } from '../../components/AvatarImg';
 import { ReactionBubble } from '../Reactions';
 import { TurnTimer } from '../TurnTimer';

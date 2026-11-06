@@ -6,7 +6,7 @@ import './styles/utilities.css';
 import App from './app/App';
 import { ErrorBoundary } from './ui/components/ErrorBoundary';
 import { applyDocument, onLangChange } from './i18n/core';
-import { repaintCards } from './three/textures';
+import { repaintCards } from './three/cards/textures';
 
 // Card faces are painted onto canvases, so the display font should be ready first.
 // On a slow connection we do not wait long: the cards are repainted when the fonts arrive.

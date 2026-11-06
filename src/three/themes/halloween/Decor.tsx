@@ -2,7 +2,7 @@ import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { nowSec } from '../../fxState';
+import { nowSec } from '../../effects/fxState';
 import { canvasTex } from '../decorKit';
 import type { DecorProps } from '../types';
 import { batTexture, wingGeometry } from './bits';

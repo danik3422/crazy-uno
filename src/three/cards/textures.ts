@@ -1,10 +1,10 @@
 import * as THREE from 'three';
-import type { Card, ThemeId } from '../game/types';
-import { lang } from '../i18n/core';
-import { H, W } from './themes/kit';
-import { THEMES } from './themes';
+import type { Card, ThemeId } from '../../game/types';
+import { lang } from '../../i18n/core';
+import { H, W } from '../themes/kit';
+import { THEMES } from '../themes/index';
 
-export { drawArrowIcon, drawEmoji, type ArrowIcon } from './themes/kit';
+export { drawArrowIcon, drawEmoji, type ArrowIcon } from '../themes/kit';
 
 /** card faces at 2× (512 × 768): sharp on a phone held close, even tilted */
 const TEX_SCALE = 2;

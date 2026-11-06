@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Scene, WebGLRenderer } from 'three';
-import { DEBUG } from './fxState';
+import { DEBUG } from '../effects/fxState';
 
 /**
  * Phones may throw away the GPU context of a page that sat in the background (iOS does this a lot).

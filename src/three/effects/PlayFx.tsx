@@ -1,13 +1,13 @@
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, type RefObject } from 'react';
 import * as THREE from 'three';
-import { HEX } from '../game/content';
-import type { Card } from '../game/types';
-import { drawValue } from '../game/rules';
-import { penaltyTexture } from './emblems';
+import { HEX } from '../../game/content';
+import type { Card } from '../../game/types';
+import { drawValue } from '../../game/rules';
+import { penaltyTexture } from '../cards/emblems';
 import { fxState, nowSec, shake } from './fxState';
-import { glowTexture } from './glowTexture';
-import type { Vec3 } from './layout';
+import { glowTexture } from '../cards/glowTexture';
+import type { Vec3 } from '../layout';
 
 /* ---------- shared motion ---------- */
 

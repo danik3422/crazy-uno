@@ -1,5 +1,5 @@
-import type { Card, Color, State } from '../../game/types';
-import { msgWords } from '../../i18n/msg';
+import type { Card, Color, State } from '../../../game/types';
+import { msgWords } from '../../../i18n/msg';
 
 /**
  * Works out which card effect to show from two snapshots of the game (before and after an update).

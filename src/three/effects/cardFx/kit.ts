@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { CardType, Color } from '../../game/types';
+import type { CardType, Color } from '../../../game/types';
 import { GRID, fxAtlas, type Cell } from './atlas';
 
 /**

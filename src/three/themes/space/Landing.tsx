@@ -2,8 +2,8 @@ import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { HEX } from '../../../game/content';
-import { landingTime } from '../../PlayFx';
-import { nowSec } from '../../fxState';
+import { landingTime } from '../../effects/PlayFx';
+import { nowSec } from '../../effects/fxState';
 import type { LandingProps } from '../types';
 import { glowTex } from './textures';
 

@@ -2,14 +2,14 @@ import { Billboard } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef, type MutableRefObject } from 'react';
 import * as THREE from 'three';
-import { drawAvatar } from '../art/avatarArt';
-import { drawUiIcon } from '../art/uiIcons';
-import { avatarOf, type Avatar } from '../game/avatars';
-import type { Player } from '../game/types';
-import { lang, t as tr, useLang } from '../i18n';
-import { fxState, nowSec } from './fxState';
-import { glowTexture } from './glowTexture';
-import type { Vec3 } from './layout';
+import { drawAvatar } from '../../../art/avatarArt';
+import { drawUiIcon } from '../../../art/uiIcons';
+import { avatarOf, type Avatar } from '../../../game/avatars';
+import type { Player } from '../../../game/types';
+import { lang, t as tr, useLang } from '../../../i18n/index';
+import { fxState, nowSec } from '../../effects/fxState';
+import { glowTexture } from '../../cards/glowTexture';
+import type { Vec3 } from '../../layout';
 
 /*
  * Performance notes. The podium is mounted for the whole round and only shown at the end:

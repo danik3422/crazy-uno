@@ -1,13 +1,13 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import type { Color, ThemeId } from '../game/types';
-import { DEBUG, fxState, nowSec } from './fxState';
-import { landingTime } from './PlayFx';
-import type { View } from './layout';
-import { THEMES } from './themes';
-import { setBrowserTint } from '../ui/backdrop/pageTheme';
-import { isPhone } from '../ui/hooks/phone';
+import type { Color, ThemeId } from '../../game/types';
+import { DEBUG, fxState, nowSec } from '../effects/fxState';
+import { landingTime } from '../effects/PlayFx';
+import type { View } from '../layout';
+import { THEMES } from '../themes/index';
+import { setBrowserTint } from '../../ui/backdrop/pageTheme';
+import { isPhone } from '../../ui/hooks/phone';
 
 /** Arena colours for every theme and current colour (each theme keeps its own in its folder). */
 export const PALETTES = Object.fromEntries(Object.entries(THEMES).map(([id, t]) => [id, t.palette])) as Record<ThemeId, (typeof THEMES)[ThemeId]['palette']>;

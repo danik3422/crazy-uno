@@ -2,10 +2,10 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import type { Card } from '../../game/types';
-import { Mascot } from '../../three/Mascot';
-import { useGlRecovery } from '../../three/useGlRecovery';
-import { cardFaceGeometry } from '../../three/cardShape';
-import { cardTexture } from '../../three/textures';
+import { Mascot } from '../../three/mascot/Mascot';
+import { useGlRecovery } from '../../three/hooks/useGlRecovery';
+import { cardFaceGeometry } from '../../three/cards/cardShape';
+import { cardTexture } from '../../three/cards/textures';
 import './MascotStage.css';
 
 const HERO: Card[] = [

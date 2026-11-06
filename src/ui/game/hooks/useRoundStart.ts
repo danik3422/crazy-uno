@@ -4,7 +4,7 @@ import type { Game } from '../../../game/engine';
 import type { GameView } from '../../../game/view';
 import { DEAL_STEP_MS, dealMs, dealTiming, SHUFFLE_MS, UPRIGHT_GRACE_MS } from '../../../net/protocol';
 import { RemoteGame } from '../../../net/remoteGame';
-import { fxState, nowSec, summonMascot } from '../../../three/fxState';
+import { fxState, nowSec, summonMascot } from '../../../three/effects/fxState';
 import { lastPlace } from '../../../three/layout';
 import { usePhone } from '../../hooks/phone';
 

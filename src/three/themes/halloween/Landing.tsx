@@ -1,8 +1,8 @@
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { landingTime } from '../../PlayFx';
-import { nowSec } from '../../fxState';
+import { landingTime } from '../../effects/PlayFx';
+import { nowSec } from '../../effects/fxState';
 import { canvasTex } from '../decorKit';
 import type { LandingProps } from '../types';
 import { batTexture, wingGeometry } from './bits';

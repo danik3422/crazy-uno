@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { HEX } from '../../game/content';
-import { drawEventIcon, drawFxShape } from '../themes/eventIcons';
-import { drawIcon } from '../themes/icons';
+import { HEX } from '../../../game/content';
+import { drawEventIcon, drawFxShape } from '../../themes/eventIcons';
+import { drawIcon } from '../../themes/icons';
 
 /**
  * One texture with every small shape the card effects use, on an 8×8 grid.
@@ -37,7 +37,7 @@ export const CELL_ID = {
   question: 23,
   bin: 24,
   skull: 25,
-  // random events (three/eventFx)
+  // random events (three/effects/eventFx)
   evMeteor: 26,
   pumpkin: 27,
   bat: 28,
