@@ -7,7 +7,8 @@ import type { GameView } from '../../../game/view';
 import { isPhone } from '../../../ui/hooks/phone';
 import { cardFaceGeometry } from '../../cards/cardShape';
 import { symbolTexture } from '../../cards/emblems';
-import { DEBUG, fxState, nowSec } from '../fxState';
+import { exposeDebug } from '../../../lib/debug';
+import { fxState, nowSec } from '../fxState';
 import { arena, seatPos, spawn, type Vec3, type View } from '../../layout';
 import { landingTime } from '../PlayFx';
 import { cardTexture } from '../../cards/textures';
@@ -74,7 +75,7 @@ export function CardFx({ game, version, view, theme, pile }: Props) {
 
   const actives = useRef<Active[]>([]);
   const prev = useRef<Snap | null>(null);
-  if (DEBUG) (window as unknown as { __cardFx?: Active[] }).__cardFx = actives.current;
+  exposeDebug('__cardFx', actives.current);
 
   useEffect(() => {
     const s = game.s;

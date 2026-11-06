@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Scene, WebGLRenderer } from 'three';
-import { DEBUG } from '../effects/fxState';
+import { exposeDebug } from '../../lib/debug';
 
 /**
  * Phones may throw away the GPU context of a page that sat in the background (iOS does this a lot).
@@ -23,7 +23,8 @@ export function useGlRecovery() {
   const onCreated = useCallback(
     ({ gl, scene }: { gl: WebGLRenderer; scene?: Scene }) => {
       cleanup.current?.();
-      if (DEBUG) Object.assign(window, { __gl: gl, __scene: scene });
+      exposeDebug('__gl', gl);
+      exposeDebug('__scene', scene);
       const el = gl.domElement;
       const onLost = (e: Event) => {
         // tell the browser we want the context back

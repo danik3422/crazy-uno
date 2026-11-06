@@ -12,7 +12,7 @@ export const WINTER = {
 /** fresh snow, a touch of blue */
 export const SNOW = '#f4f8ff';
 export const NIGHT = '#0c1636';
-export const AURORA = [WINTER.red, WINTER.yellow, WINTER.green, WINTER.blue];
+const AURORA = [WINTER.red, WINTER.yellow, WINTER.green, WINTER.blue];
 
 /* ---------- small winter bits ---------- */
 
@@ -48,7 +48,7 @@ export function snowflake(ctx: CanvasRenderingContext2D, x: number, y: number, r
 }
 
 /** Feathery frost growing out of a corner (cx, cy) toward (dx, dy) = ±1. */
-export function frostCorner(ctx: CanvasRenderingContext2D, cx: number, cy: number, dx: number, dy: number, size: number, color: string, seed: number) {
+function frostCorner(ctx: CanvasRenderingContext2D, cx: number, cy: number, dx: number, dy: number, size: number, color: string, seed: number) {
   const rnd = seeded(seed);
   ctx.save();
   ctx.translate(cx, cy);
@@ -77,7 +77,7 @@ export function frostCorner(ctx: CanvasRenderingContext2D, cx: number, cy: numbe
 }
 
 /** A lumpy cap of snow along the top of a box, with a cool shadow and a few icicles hanging from it. */
-export function snowCap(ctx: CanvasRenderingContext2D, x0: number, y0: number, w: number, depth: number, seed: number, icicles = true) {
+function snowCap(ctx: CanvasRenderingContext2D, x0: number, y0: number, w: number, depth: number, seed: number, icicles = true) {
   const rnd = seeded(seed);
   const lumps: [number, number][] = [];
   for (let x = x0; x <= x0 + w + 20; x += 18 + rnd() * 10) lumps.push([x, depth * (0.65 + rnd() * 0.55)]);

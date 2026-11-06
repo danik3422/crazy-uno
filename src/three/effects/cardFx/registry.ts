@@ -16,7 +16,7 @@ import { swap } from './motifs/swap';
 import { chaos, wild, wildDraw, wildRev4 } from './motifs/wild';
 
 /** Which animation each card plays. Number cards only get one under the 7–0 rule (see motifFor). */
-export const MOTIFS: Record<Exclude<CardType, 'num'>, Motif> = {
+const MOTIFS: Record<Exclude<CardType, 'num'>, Motif> = {
   skip,
   rev: reverse,
   draw2: penalty,

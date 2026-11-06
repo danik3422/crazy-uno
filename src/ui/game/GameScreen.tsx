@@ -10,7 +10,7 @@ import { tableEvents } from '../../three/effects/tableEvents';
 import { PartnerHand } from './PartnerHand';
 import { useStatsRecorder } from './hooks/useStatsRecorder';
 import { AchievementToasts } from '../profile/AchievementToasts';
-import { DEBUG } from '../../three/effects/fxState';
+import { exposeDebug } from '../../lib/debug';
 import { useAdaptiveDpr } from '../../three/hooks/useAdaptiveDpr';
 import { useGlRecovery } from '../../three/hooks/useGlRecovery';
 import { RotateGate } from '../components/phone/RotateGate';
@@ -48,7 +48,7 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
   const local = game instanceof Game ? game : null;
   const { glKey, onCreated } = useGlRecovery();
   const resolution = useAdaptiveDpr();
-  if (DEBUG) (window as unknown as { __uno?: GameView }).__uno = game;
+  exposeDebug('__uno', game);
 
   const round = useRoundStart(game, local, version);
   const { locked } = round;
@@ -89,7 +89,7 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online }: Pro
         onCreated={st => {
           onCreated(st);
           // debug builds: the renderer, to read draw calls and triangles per frame
-          if (DEBUG) (window as unknown as { __gl?: unknown }).__gl = st.gl;
+          exposeDebug('__gl', st.gl);
         }}
         shadows
         events={tableEvents}

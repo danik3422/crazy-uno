@@ -77,7 +77,7 @@ const GROUP_DARES = [
 
 export const plLists = { dares: DARES, punish: PUNISH, groupDares: GROUP_DARES };
 
-export const plStrings: Record<keyof typeof ruStrings, Entry> = {
+const plStrings: Record<keyof typeof ruStrings, Entry> = {
   /* ---------- app ---------- */
   'app.title': 'Szalone UNO',
   'app.top': 'SZALONE',

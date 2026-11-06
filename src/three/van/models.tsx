@@ -4,8 +4,8 @@ import * as THREE from 'three';
 
 /* The cast of the knock-out scene: the olive van, the two big guys in uniform, and the player being taken. */
 
-export const VAN_L = 2.7;
-export const VAN_H = 1.2;
+const VAN_L = 2.7;
+const VAN_H = 1.2;
 export const VAN_D = 1.15;
 export const WHEEL_R = 0.24;
 /** the side door's centre along the van (the front is at -x) and its width: wide enough for a big guy */

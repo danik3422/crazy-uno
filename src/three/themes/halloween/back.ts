@@ -4,7 +4,7 @@ import { bat, cornerWeb, drippyText } from './face';
 const PUMPKIN = '#f07a1c';
 
 /** A little glowing jack-o'-lantern centred at (x, y), `s` its half width. */
-export function jackOLantern(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+function jackOLantern(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(s / 40, s / 40);

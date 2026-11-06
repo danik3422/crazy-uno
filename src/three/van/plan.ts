@@ -1,6 +1,6 @@
 import type * as THREE from 'three';
 import type { GameView } from '../../game/view';
-import { DEBUG } from '../effects/fxState';
+import { debugValue } from '../../lib/debug';
 import { arena, spawn, type View } from '../layout';
 import { DOOR_X, VAN_D } from './models';
 
@@ -37,19 +37,19 @@ export function along(r: P2[], dist: number): { p: P2; dir: P2; done: boolean } 
   const last = r.length > 1 ? unit(sub(r[n - 1], r[n - 2])) : ([0, 1] as P2);
   return { p: r[n - 1], dir: last, done: true };
 }
-export const lengthOf = (r: P2[]) => r.slice(1).reduce((s, p, i) => s + Math.hypot(p[0] - r[i][0], p[1] - r[i][1]), 0);
+const lengthOf = (r: P2[]) => r.slice(1).reduce((s, p, i) => s + Math.hypot(p[0] - r[i][0], p[1] - r[i][1]), 0);
 
 // ---- timing (seconds) and speeds (in scene-scale units per second) ----
 export const ARRIVE = 1.6;
 export const DOOR_T = 0.4;
-export const LEAVE = 1.7;
+const LEAVE = 1.7;
 const WALK = 2.5;
 const SNEAK = 1.15;
 const DASH = 3.4;
 const CARRY = 1.9;
 const GRAB = 0.5;
 /** how far away the van comes from and goes to, and how much its road bends away from the table */
-export const DRIVE = 18;
+const DRIVE = 18;
 const BEND = 0.045;
 
 /**
@@ -173,7 +173,7 @@ export function plan(game: GameView, view: View, i: number, at: number, tex: THR
   const seat = spawn.seats[i] ?? [0, 0.6, 0];
   const k = me ? 0.95 : view.portrait ? 1.0 : 1.15;
   // debug: window.__vanVariant forces one
-  const forced = DEBUG ? (window as unknown as { __vanVariant?: Variant }).__vanVariant : undefined;
+  const forced = debugValue<Variant>('__vanVariant');
   const variant = forced && VARIANTS.includes(forced) ? forced : pickVariant(s.round, i, s.players[i]?.out ?? 1);
   const gap = 1.75 * k; // player to the van's side: room for a guy at each end of the stretcher
   // never on the deck or the pile

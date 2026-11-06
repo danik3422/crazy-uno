@@ -58,7 +58,7 @@ export interface EventLook {
   confetti: string[];
 }
 
-export const CLASSIC_LOOK: EventLook = {
+const CLASSIC_LOOK: EventLook = {
   hot: '#ffb23a',
   sparks: ['#ffd04a', '#ff6a2a', '#ffffff'],
   ring: '#fff2a8',

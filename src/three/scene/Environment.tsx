@@ -2,7 +2,8 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import type { Color, ThemeId } from '../../game/types';
-import { DEBUG, fxState, nowSec } from '../effects/fxState';
+import { exposeDebug } from '../../lib/debug';
+import { fxState, nowSec } from '../effects/fxState';
 import { landingTime } from '../effects/PlayFx';
 import type { View } from '../layout';
 import { THEMES } from '../themes/index';
@@ -118,7 +119,7 @@ export function Arena({ color, theme, view, center }: Props) {
   const paintSeq = useRef(fxState.paint.seq);
   const palRef = useRef(pal);
   palRef.current = pal;
-  if (DEBUG) (window as unknown as { __arena?: unknown }).__arena = { uniforms, scene, pal: () => palRef.current };
+  exposeDebug('__arena', { uniforms, scene, pal: () => palRef.current });
 
   /** starts a wave: the new colour (or the same one, as a pulse) spreads from the pile */
   const arm = () => {

@@ -40,7 +40,7 @@ export interface Stats {
   unlocked: Record<string, number>;
 }
 
-export const COMEBACK = 12;
+const COMEBACK = 12;
 
 export const emptyStats = (): Stats => ({
   v: 1, games: 0, wins: 0, streak: 0, bestStreak: 0, cardsPlayed: 0, cardsDrawn: 0, bigDraws: 0, stacks: 0,
@@ -147,7 +147,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'marathon', glyph: 'marathon', tier: 'gold', progress: count(s => s.games, 100) },
 ];
 
-export const isDone = (a: Achievement, s: Stats) => {
+const isDone = (a: Achievement, s: Stats) => {
   const [now, goal] = a.progress(s);
   return now >= goal;
 };

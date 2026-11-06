@@ -70,7 +70,7 @@ const GROUP_DARES = [
 
 export const enLists = { dares: DARES, punish: PUNISH, groupDares: GROUP_DARES };
 
-export const enStrings: Record<keyof typeof ruStrings, Entry> = {
+const enStrings: Record<keyof typeof ruStrings, Entry> = {
   /* ---------- app ---------- */
   'app.title': 'Crazy UNO',
   'app.top': 'CRAZY',

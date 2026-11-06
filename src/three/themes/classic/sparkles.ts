@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 let starTex: THREE.Texture | null = null;
 /** A small four-point star with a soft glow (64 px, made once). */
-export function starTexture() {
+function starTexture() {
   if (starTex) return starTex;
   const cv = document.createElement('canvas');
   cv.width = cv.height = 64;

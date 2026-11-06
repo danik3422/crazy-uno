@@ -10,7 +10,7 @@ export { drawArrowIcon, drawEmoji, type ArrowIcon } from '../themes/kit';
 const TEX_SCALE = 2;
 
 /** Draws a card face (or the back, when card is null) in the given table's style onto a 256×384 canvas. */
-export function drawCard(ctx: CanvasRenderingContext2D, card: Card | null, theme: ThemeId = 'classic') {
+function drawCard(ctx: CanvasRenderingContext2D, card: Card | null, theme: ThemeId = 'classic') {
   ctx.clearRect(0, 0, W, H);
   ctx.save();
   if (card) THEMES[theme].drawFace(ctx, card);

@@ -11,7 +11,8 @@ import { cardFaceGeometry } from '../../cards/cardShape';
 import { CELL_ID } from '../cardFx/atlas';
 import { CardPool, Kit, QuadPool, type Spot } from '../cardFx/kit';
 import { raw, rnd } from '../cardFx/shapes';
-import { BOMB_FALL, DEBUG, METEOR_FALL, fxState, nowSec, shake } from '../fxState';
+import { DEBUG, exposeDebug } from '../../../lib/debug';
+import { BOMB_FALL, METEOR_FALL, fxState, nowSec, shake } from '../fxState';
 import { arena, seatPos, type View } from '../../layout';
 import { THEMES } from '../../themes/index';
 import { eventLook } from './look';
@@ -357,7 +358,7 @@ export function EventFx({ game, view, theme }: Props) {
       let calls = 0;
       for (const o of [kit.glow.mesh, kit.solid.mesh, kit.icons.mesh, boltCore.current, boltGlow.current, coins.current]) if (o.visible) calls++;
       if (bomb.current.visible) calls += 2;
-      (window as unknown as { __eventCalls?: number }).__eventCalls = calls;
+      exposeDebug('__eventCalls', calls);
     }
     light.current.intensity = li;
     if (li > 0) {

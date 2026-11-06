@@ -1,6 +1,7 @@
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef, type RefObject } from 'react';
 import * as THREE from 'three';
+import { exposeDebug } from '../../lib/debug';
 import { sound } from '../../audio/sound';
 import { BOMBER_TIME, BOMB_RELEASE, fxState, nowSec } from '../effects/fxState';
 import { bomberRoute, pickRoute, type Route } from './mascotRoutes';
@@ -295,7 +296,7 @@ export function Mascot({ mode = 'auto', scale = 1, orbit = [3.2, 1.4], portrait 
     // the propeller gets louder the closer the plane is to the camera
     if (mode === 'auto') sound.propeller(active ? 1.4 - st.camera.position.distanceTo(pos) / 16 : 0);
     if (import.meta.env.DEV && mode === 'auto') {
-      (window as unknown as { __mascot: unknown }).__mascot = { active, route: route.current?.name, p: pos.toArray().map(x => +x.toFixed(2)) };
+      exposeDebug('__mascot', { active, route: route.current?.name, p: pos.toArray().map(x => +x.toFixed(2)) });
     }
     if (!active) {
       if (mode === 'auto') stunt.current = null;

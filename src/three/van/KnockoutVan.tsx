@@ -5,7 +5,8 @@ import { avatarUrl } from '../../art/avatarArt';
 import { sound } from '../../audio/sound';
 import { avatarOf } from '../../game/avatars';
 import type { GameView } from '../../game/view';
-import { DEBUG, nowSec } from '../effects/fxState';
+import { debugValue, exposeDebug } from '../../lib/debug';
+import { nowSec } from '../effects/fxState';
 import type { View } from '../layout';
 import { BigGuy, DOOR_W, DOOR_X, Van, VAN_D, Victim, WHEEL_R, limbs, makePrint } from './models';
 import { ARRIVE, DOOR_T, add, along, clamp01, hold, lerp2, plan, road, roadAt, sideOf, smooth, span, type P2, type Run } from './plan';
@@ -102,7 +103,7 @@ export function KnockoutVan({ game, version, view }: { game: GameView; version: 
   useFrame((_, dt) => {
     const now = nowSec();
     // debug: window.__vanT pins the scene at that second (for stills)
-    const pin = DEBUG ? (window as unknown as { __vanT?: number }).__vanT : undefined;
+    const pin = debugValue<number>('__vanT');
     let r = run.current;
     if (r && (typeof pin === 'number' ? pin : now - r.at) > r.tGone) {
       r.tex?.dispose();
@@ -127,7 +128,7 @@ export function KnockoutVan({ game, version, view }: { game: GameView; version: 
     root.current.visible = !!r;
     if (!r) return;
     const t = typeof pin === 'number' ? pin : now - r.at;
-    if (DEBUG) (window as unknown as { __van?: Run }).__van = r;
+    exposeDebug('__van', r);
     const { k, o, variant } = r;
     const pc = r.pounce;
 

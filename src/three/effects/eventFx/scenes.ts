@@ -82,7 +82,7 @@ function mix(a: THREE.Color, b: THREE.Color, k: number) {
  * The angle (for a quad facing the camera) of a direction in the world, as seen on screen.
  * `view` is the camera's matrixWorldInverse.
  */
-export function screenAngle(view: THREE.Matrix4, from: Spot, to: Spot) {
+function screenAngle(view: THREE.Matrix4, from: Spot, to: Spot) {
   tmpV.set(from.x, from.y, from.z).applyMatrix4(view);
   tmpW.set(to.x, to.y, to.z).applyMatrix4(view);
   return Math.atan2(tmpW.y - tmpV.y, tmpW.x - tmpV.x);

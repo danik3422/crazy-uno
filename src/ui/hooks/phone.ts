@@ -33,7 +33,7 @@ export function canFullscreen() {
   return !!(d.fullscreenEnabled || d.webkitFullscreenEnabled) && !!(el.requestFullscreen || el.webkitRequestFullscreen);
 }
 
-export const isFullscreen = () => {
+const isFullscreen = () => {
   if (typeof document === 'undefined') return false;
   const d = document as FsDoc;
   return !!(d.fullscreenElement || d.webkitFullscreenElement);

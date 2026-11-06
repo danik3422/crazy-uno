@@ -5,7 +5,7 @@ import { whirl } from './reverse';
 import { shake } from '../../fxState';
 
 /** While the colour is being picked: four coloured orbs circle the pile. */
-export function charge(k: Kit, a: Active, t: number, out: number) {
+function charge(k: Kit, a: Active, t: number, out: number) {
   // out: 0 while waiting, then 0 → 1 as the orbs dive into the pile
   const r = 1.4 * (1 - easeOut(out)) * Math.min(1, t / 0.25);
   for (let i = 0; i < 4; i++) {

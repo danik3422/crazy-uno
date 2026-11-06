@@ -1,7 +1,7 @@
 import { haptics } from '../../../audio/haptics';
 import type { GameView } from '../../../game/view';
 import { render, useT, type Msg } from '../../../i18n';
-import { crashProbe } from '../../../three/effects/fxState';
+import { crashProbe } from '../../../lib/debug';
 import type { OnlineCtx } from '../onlineCtx';
 import { GameLog } from './GameLog';
 import { MyDock } from './MyDock';

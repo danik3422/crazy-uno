@@ -13,7 +13,7 @@ const PI = Math.PI;
  * Angle of player i around the table (+z is the near edge, angle π/2).
  * Opponents are spread over the far half, left to right in turn order.
  */
-export function seatAngle(g: GameView, i: number) {
+function seatAngle(g: GameView, i: number) {
   const n = g.s.players.length;
   const rel = (i - g.seat() + n) % n;
   if (rel === 0) return PI / 2;

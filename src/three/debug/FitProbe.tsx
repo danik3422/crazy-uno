@@ -1,6 +1,7 @@
 import { useThree } from '@react-three/fiber';
 import { useEffect } from 'react';
 import * as THREE from 'three';
+import { exposeDebug } from '../../lib/debug';
 
 /**
  * Debug only (?debug): `window.__fit()` returns the on-screen rectangle (CSS pixels) of every visible card
@@ -33,8 +34,7 @@ function shown(o: THREE.Object3D) {
 export function FitProbe() {
   const { scene, camera, size } = useThree();
   useEffect(() => {
-    const w = window as unknown as { __fit?: () => FitRect[] };
-    w.__fit = () => {
+    exposeDebug('__fit', (): FitRect[] => {
       camera.updateMatrixWorld();
       const out: FitRect[] = [];
       const rect = (kind: string, pts: THREE.Vector3[], id?: number) => {
@@ -85,8 +85,8 @@ export function FitProbe() {
         }
       });
       return out;
-    };
-    return () => { delete w.__fit; };
+    });
+    return () => exposeDebug('__fit', undefined);
   }, [scene, camera, size]);
   return null;
 }

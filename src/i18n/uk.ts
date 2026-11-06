@@ -74,7 +74,7 @@ const GROUP_DARES = [
 
 export const ukLists = { dares: DARES, punish: PUNISH, groupDares: GROUP_DARES };
 
-export const ukStrings = {
+const ukStrings = {
   /* ---------- app ---------- */
   'app.title': 'Шалене UNO',
   'app.top': 'ШАЛЕНЕ',

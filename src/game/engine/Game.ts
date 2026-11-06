@@ -42,7 +42,7 @@ export interface GameOptions {
 }
 
 /** Time per turn during a blitz event. */
-export const BLITZ_MS = 7_000;
+const BLITZ_MS = 7_000;
 /** An event banner eats a few seconds of the turn: the person moving gets them back. */
 const EVENT_GRACE_MS = 2_500;
 const LOG_LIMIT = 50;

@@ -10,7 +10,7 @@ export const SPOOKY = {
   blue: '#5263e0',
 } as const;
 /** old bone / parchment */
-export const BONE = '#f1e5c8';
+const BONE = '#f1e5c8';
 const NIGHT = '#170c1f';
 
 /* ---------- drips ---------- */

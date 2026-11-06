@@ -21,7 +21,7 @@ export function AvatarImg({ id, name, bot, size = 64, className = '' }: Props) {
  * The drawn portrait on its tile. Painted right away (one picture is cheap), or with `lazy` in idle time
  * (the picker asks for a whole page at once); until then the tile shows its gradient.
  */
-export function AvatarTile({ a, size = 64, className = '', lazy = false }: { a: Avatar; size?: number; className?: string; lazy?: boolean }) {
+function AvatarTile({ a, size = 64, className = '', lazy = false }: { a: Avatar; size?: number; className?: string; lazy?: boolean }) {
   const px = avatarPx(size);
   const [, ready] = useReducer((x: number) => x + 1, 0);
   const cached = peekAvatarUrl(a.id, px);

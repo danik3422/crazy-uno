@@ -6,7 +6,7 @@ import { DeckStack } from './DeckStack';
 import { dealTiming } from '../../net/protocol';
 import { Arena, PALETTES } from './Environment';
 import { EventFx } from '../effects/eventFx/EventFx';
-import { DEBUG, crashProbe } from '../effects/fxState';
+import { DEBUG, crashProbe } from '../../lib/debug';
 import { FitProbe } from '../debug/FitProbe';
 import { arena, computeTargets, deckCenter, deckSpot, type View } from '../layout';
 import { KnockoutVan } from '../van/KnockoutVan';

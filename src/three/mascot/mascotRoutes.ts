@@ -119,7 +119,7 @@ const MAKERS: Record<string, Maker> = {
   }),
 };
 
-export const ROUTE_NAMES = Object.keys(MAKERS);
+const ROUTE_NAMES = Object.keys(MAKERS);
 let lastRoute = '';
 
 /** A fresh random route, never the same one twice in a row. */

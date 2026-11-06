@@ -14,7 +14,7 @@ export interface Banner {
 }
 
 /** how long the card stays (its exit animation ends right then; see EventBanner.css) */
-export const BANNER_MS = 3000;
+const BANNER_MS = 3000;
 
 /**
  * The event card: a ticket that drops in over the middle of the table (clear of the hand, the plates and
