@@ -55,8 +55,6 @@
     overflow: auto;
   }
   .home.tab-profile .home-page { height: 100%; }
-  .home-lang { left: calc(max(6px, env(safe-area-inset-left, 0px)) + 86px); }
-  .home.tab-profile .home-lang, .home.tab-howto .home-lang, .home.tab-about .home-lang { display: none; }
 }
 /* a phone held upright */
 @media (max-width: 760px) and (orientation: portrait) {
@@ -65,8 +63,6 @@
     padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   }
   .home.tab-play { gap: 10px; }
-  .home-lang { top: max(8px, env(safe-area-inset-top, 0px)); }
-  .home.tab-profile .home-lang, .home.tab-howto .home-lang, .home.tab-about .home-lang { display: none; }
   .home.tab-profile, .home.tab-howto, .home.tab-about { padding-top: calc(env(safe-area-inset-top, 0px) + 10px); }
 }
 /* a computer */

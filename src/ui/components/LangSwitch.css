@@ -10,17 +10,10 @@
 .lang-switch button:hover { color: #fff; background: rgba(255, 255, 255, 0.12); }
 .lang-switch button.on { background: #fff; color: #2b1036; }
 .lang-switch button:focus-visible { outline: 2px solid var(--gold, var(--gold-bright)); outline-offset: 1px; }
-/* the home screen: top-right corner of the page */
-.home-lang { position: absolute; top: max(12px, env(safe-area-inset-top, 0px)); right: max(14px, env(safe-area-inset-right, 0px)); z-index: 5; }
 /* inside the in-game sound popover */
 .sound-pop .lang-switch { align-self: stretch; justify-content: space-between; margin-top: 4px; }
 .lang-switch.menu-lang { align-self: center; margin: 2px auto 6px; }
-/* phones on their side: the player card fills the right edge, the hero's top-left corner is free */
+/* phones on their side: smaller buttons */
 @media (max-height: 520px) and (orientation: landscape) {
-  .home-lang { right: auto; left: max(12px, env(safe-area-inset-left, 0px)); top: max(8px, env(safe-area-inset-top, 0px)); }
   .lang-switch button { height: 26px; min-width: 34px; padding: 0 7px; font-size: 11.5px; }
-}
-/* phones upright: one column, the switch sits above it on the right */
-@media (max-width: 600px) and (orientation: portrait) {
-  .home-lang { top: max(8px, env(safe-area-inset-top, 0px)); }
 }

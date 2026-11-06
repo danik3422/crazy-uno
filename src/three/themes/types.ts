@@ -63,5 +63,3 @@ export interface TableTheme {
   /** how the random events look here, over the classic look (see eventFx/look.ts) */
   events?: Partial<EventLook>;
 }
-
-export const CLASSIC_MOTION: CardMotion = { arc: 1, spin: 0, sway: 0, hoverLift: 1, float: 0 };

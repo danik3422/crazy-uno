@@ -201,5 +201,3 @@ export function uiIconUrl(name: UiIconName, px: number) {
   }
   return u;
 }
-
-export const UI_ICONS = Object.keys(ICONS) as UiIconName[];

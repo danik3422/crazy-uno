@@ -597,8 +597,6 @@ const ICONS: Record<string, (ctx: Ctx) => void> = {
 
 const key = (sym: string) => sym.replace(/️/g, '');
 
-export const hasIcon = (sym: string) => key(sym) in ICONS;
-
 /**
  * Draws the icon for `sym` centred at (x, y), filling a `size` × `size` box (the same footprint as the emoji
  * glyph it replaces). Returns false when there is no drawn icon for that symbol.

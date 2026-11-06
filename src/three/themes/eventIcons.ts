@@ -738,7 +738,6 @@ const DRAW: Record<EventId, (ctx: Ctx) => void> = {
 };
 
 export const EVENT_IDS = Object.keys(DRAW) as EventId[];
-export const isEventId = (x: unknown): x is EventId => typeof x === 'string' && x in DRAW;
 
 /** Draws an event's icon centred at (x, y) in a `size` box (like drawIcon for the cards). */
 export function drawEventIcon(ctx: Ctx, id: EventId, x: number, y: number, size: number) {
