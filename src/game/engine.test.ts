@@ -315,7 +315,7 @@ describe('Game engine', () => {
   });
 
   it('uses the table numbers: hand size, bomb time, UNO penalty', () => {
-    let clock = 0;
+    const clock = 0;
     const g = new Game(
       { players: [{ name: 'A', bot: false }, { name: 'B', bot: false }, { name: 'C', bot: true }], rules: { ...DEFAULT_RULES, events: false }, table: { ...DEFAULT_TABLE, handSize: 10, bombSec: 5, unoPenalty: 4 } },
       { rng: seeded(4), now: () => clock },

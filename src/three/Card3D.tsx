@@ -453,7 +453,7 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     if (spinning) y += Math.sin((1 - (fxState.spinUntil - now) / SPIN_TIME) * Math.PI) * 0.7;
     // a scripted hop in progress finishes even through a spin (the spin would snap the card over);
     // a card picked up by the finger or caught by the swirl leaves it and springs on from where it is
-    let f = flight.current;
+    const f = flight.current;
     if (f && !dragging && !chaos) {
       // waiting its turn in a multi-card draw: stays on top of the deck until then
       const p = THREE.MathUtils.clamp((now - f.t0) / f.dur, 0, 1);

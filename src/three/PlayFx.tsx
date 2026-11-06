@@ -134,7 +134,8 @@ export function PlayFx({ top, at }: Props) {
     if (first.current) { first.current = false; return; }
     armed.current = nowSec();
     ringMat.current.color.set(top.color === 'wild' ? '#ffffff' : HEX[top.color]);
-  }, [top.id]); // only when a new card lands on the pile
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when a new card lands on the pile
+  }, [top.id]);
 
   useFrame(() => {
     const now = nowSec();

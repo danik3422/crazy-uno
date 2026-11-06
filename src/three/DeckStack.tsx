@@ -138,6 +138,7 @@ export function DeckStack({ at, center, theme, slideAt, portrait }: { at: Vec3; 
     fxState.deckOffset = [live.x - at[0], live.y, live.z - at[2]];
   };
   // before the first frame, so the top cards never show up at the resting spot for a moment
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- place is rebuilt every render from these
   useLayoutEffect(() => place(nowSec()), [at, center, slideAt, yawMid]);
 
   const painted = useRef(repaint.version);

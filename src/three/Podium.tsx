@@ -297,6 +297,7 @@ function PodiumStep({ step, player, start, active }: { step: Step; player: Playe
   const labelMat = useRef<THREE.MeshBasicMaterial>(null!);
   const tex = useMemo(() => avatarTexture(avatarOf(player.avatar, player.name, player.bot)), [player.avatar, player.name, player.bot]);
   const lng = useLang();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the label is drawn in the current language
   const labelTex = useMemo(() => labelTexture(step.place, player.name), [step.place, player.name, lng]);
 
   useFrame(() => {

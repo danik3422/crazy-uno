@@ -59,6 +59,7 @@ export function ReactionButton({ game, seat }: { game: GameView; seat: number })
     if (wait <= 0) return;
     const id = setInterval(() => setWait(limiter.current.wait()), 250);
     return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one interval while resting, not one per tick
   }, [wait > 0]);
 
   useEffect(() => {

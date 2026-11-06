@@ -53,10 +53,14 @@ export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dea
   // the screen's height in CSS pixels (rounded): a short phone gets bigger cards
   const h = Math.round(size.height / 10) * 10;
   const view: View = useMemo(() => ({ portrait, compact, aspect, h }), [portrait, compact, aspect, h]);
+  // the game changes in place: `version` is what says it did
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   const targets = useMemo(() => computeTargets(game, view), [game, version, view]);
   const s = game.s;
   const A = arena(view);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- version: the game changed in place
   const deck = useMemo(() => deckSpot(game, view), [game, version, view]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- version: the game changed in place
   const deckMid = useMemo(() => deckCenter(game, view), [game, version, view]);
   const cards = [...s.deck, ...s.discard, ...s.players.flatMap(p => p.hand)];
   const top = s.discard[s.discard.length - 1];
@@ -292,6 +296,7 @@ function TurnMarker({ game, view, version }: { game: GameView; view: View; versi
     if (s.cur === seat) return new THREE.Vector3(0, 0.012, A.hand.z - 0.9);
     const w = oppWall(game, s.cur, view);
     return new THREE.Vector3(w.pos[0], 0.012, w.pos[2]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- version: the game changed in place
   }, [version, view]);
   const mine = s.cur === seat;
   useFrame((st, dt) => {
