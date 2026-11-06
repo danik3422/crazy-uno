@@ -817,6 +817,12 @@ export const enStrings: Record<keyof typeof ruStrings, Entry> = {
   'react.oops': 'Oops!',
   'react.hurry': 'Hurry up!',
   'react.gg': 'Good game!',
+  'react.villain': "You villain!",
+  'react.sneaky': "Sneaky!",
+  'react.lucky': "Lucky!",
+  'react.close': "So close!",
+  'react.revenge': "I’ll get you back!",
+  'react.again': "One more round?",
 
   /* ---------- avatars ---------- */
   'avatar.fox': 'Fox',

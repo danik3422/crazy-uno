@@ -142,6 +142,12 @@ const REPLIES: Partial<Record<ReactionId, ReactionId[]>> = {
   hurry: ['think', 'oops'],
   laugh: ['laugh'],
   angry: ['cool', 'laugh'],
+  villain: ['laugh', 'sneaky'],
+  sneaky: ['cool', 'laugh'],
+  lucky: ['cool', 'thanks'],
+  close: ['oops', 'think'],
+  revenge: ['laugh', 'think'],
+  again: ['party', 'again'],
 };
 
 export function useBotReactions(game: GameView, version: number) {
@@ -184,17 +190,28 @@ export function useBotReactions(game: GameView, version: number) {
         lastAt.current.set(seat, now);
         setTimeout(() => reactionBus.push(seat, id), 500 + roll(s.turn, seat, salt) * 700);
       };
-      // a big penalty: a groan
+      // a big penalty: a groan, or a word for whoever did it
+      const GROAN: ReactionId[] = ['angry', 'cry', 'villain', 'revenge'];
       hands.forEach((n, i) => {
-        if (n - (p.hands[i] ?? n) >= 4 && roll(s.turn, i, 1) < 0.6) say(i, roll(s.turn, i, 2) < 0.5 ? 'angry' : 'cry', 3);
+        if (n - (p.hands[i] ?? n) >= 4 && roll(s.turn, i, 1) < 0.6) say(i, GROAN[Math.floor(roll(s.turn, i, 2) * GROAN.length)], 3);
       });
       // a bot just hit someone with a draw card: a laugh now and then
       if (top && top.id !== p.top && DRAW_CARDS.has(top.type)) {
         const by = s.players.findIndex((pl, i) => pl.bot && hands[i] < (p.hands[i] ?? 0));
         if (by >= 0 && roll(s.turn, by, 4) < 0.35) say(by, roll(s.turn, by, 5) < 0.5 ? 'laugh' : 'cool', 6);
       }
-      // a bot won the round
-      if (s.phase === 'over' && p.phase !== 'over' && s.winner !== null) say(s.winner, roll(s.round, s.winner, 7) < 0.5 ? 'party' : 'gg', 8);
+      if (s.phase === 'over' && p.phase !== 'over' && s.winner !== null) {
+        // a bot won the round
+        say(s.winner, roll(s.round, s.winner, 7) < 0.5 ? 'party' : 'gg', 8);
+        // a bot that was one card away: so close; another one wants a rematch
+        const near = s.players.findIndex((pl, i) => pl.bot && i !== s.winner && !pl.out && (p.hands[i] ?? 9) <= 2);
+        if (near >= 0 && roll(s.round, near, 9) < 0.7) say(near, 'close', 10);
+        const other = s.players.findIndex((pl, i) => pl.bot && i !== s.winner && i !== near);
+        if (other >= 0 && roll(s.round, other, 15) < 0.4) {
+          const seat = other;
+          setTimeout(() => say(seat, 'again', 16), 1800);
+        }
+      }
     }
     prev.current = { game, round: s.round, hands, top: top?.id ?? -1, phase: s.phase };
   }, [game, version]);

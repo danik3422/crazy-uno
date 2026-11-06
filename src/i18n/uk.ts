@@ -822,6 +822,12 @@ export const ukStrings = {
   'react.oops': 'Ой!',
   'react.hurry': 'Швидше!',
   'react.gg': 'Гарна гра!',
+  'react.villain': "Ну ти й лиходій!",
+  'react.sneaky': "Хитро!",
+  'react.lucky': "Пощастило!",
+  'react.close': "Майже!",
+  'react.revenge': "Я помщуся!",
+  'react.again': "Ще раунд?",
 
   /* ---------- avatars ---------- */
   'avatar.fox': 'Лисиця',

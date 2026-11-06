@@ -824,6 +824,12 @@ export const plStrings: Record<keyof typeof ruStrings, Entry> = {
   'react.oops': 'Ups!',
   'react.hurry': 'Szybciej!',
   'react.gg': 'Dobra gra!',
+  'react.villain': "Ale z ciebie łotr!",
+  'react.sneaky': "Sprytnie!",
+  'react.lucky': "Farciarz!",
+  'react.close': "Prawie!",
+  'react.revenge': "Zemszczę się!",
+  'react.again': "Jeszcze rundka?",
 
   /* ---------- avatars ---------- */
   'avatar.fox': 'Lis',

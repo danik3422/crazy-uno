@@ -819,6 +819,12 @@ export const ruStrings = {
   'react.oops': 'Упс!',
   'react.hurry': 'Давай быстрее!',
   'react.gg': 'Хорошая игра!',
+  'react.villain': "Ну ты и злодей!",
+  'react.sneaky': "Хитро!",
+  'react.lucky': "Повезло!",
+  'react.close': "Почти!",
+  'react.revenge': "Я отомщу!",
+  'react.again': "Ещё раунд?",
 
   /* ---------- avatars ---------- */
   'avatar.fox': 'Лиса',

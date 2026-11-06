@@ -5,6 +5,7 @@ describe('quick reactions', () => {
   it('knows only its own faces and phrases', () => {
     expect(isReactionId('laugh')).toBe(true);
     expect(isReactionId('gg')).toBe(true);
+    for (const id of ['villain', 'sneaky', 'lucky', 'close', 'revenge', 'again']) expect(isReactionId(id)).toBe(true);
     expect(isReactionId('anything else')).toBe(false);
     expect(isReactionId(3)).toBe(false);
   });

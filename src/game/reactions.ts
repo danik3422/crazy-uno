@@ -4,7 +4,7 @@
  * Shared by the server (it checks ids and rate limits) and the client.
  */
 export const EMOTES = ['laugh', 'love', 'cool', 'wow', 'angry', 'cry', 'think', 'party'] as const;
-export const PHRASES = ['hi', 'nice', 'thanks', 'oops', 'hurry', 'gg'] as const;
+export const PHRASES = ['hi', 'nice', 'thanks', 'oops', 'hurry', 'gg', 'villain', 'sneaky', 'lucky', 'close', 'revenge', 'again'] as const;
 export type EmoteId = (typeof EMOTES)[number];
 export type PhraseId = (typeof PHRASES)[number];
 export type ReactionId = EmoteId | PhraseId;
