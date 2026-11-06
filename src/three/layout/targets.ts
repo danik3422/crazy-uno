@@ -4,7 +4,8 @@ import { dropZone } from '../cards/drag';
 import { placeFan } from './fanTargets';
 import { placeHand, type PlaceCtx } from './handTargets';
 import { seatPos } from './seats';
-import { DECK_SHOWN, DECK_TOP, arena, deckSpot, pileScale, spawn } from './table';
+import { deckSpot } from './deck';
+import { DECK_SHOWN, DECK_TOP, arena, pileScale, spawn } from './table';
 import type { Target, Vec3, View } from './types';
 
 const PI = Math.PI;

@@ -9,7 +9,7 @@ import { debugValue, exposeDebug } from '../../lib/debug';
 import { nowSec } from '../effects/fxState';
 import type { View } from '../layout';
 import { BigGuy, DOOR_W, DOOR_X, Van, VAN_D, Victim, WHEEL_R, limbs, makePrint } from './models';
-import { ARRIVE, DOOR_T, add, along, clamp01, hold, lerp2, plan, road, roadAt, sideOf, smooth, span, type P2, type Run } from './plan';
+import { ARRIVE, DOOR_T, WALK, add, along, clamp01, hold, lerp2, plan, road, roadAt, sideOf, smooth, span, type P2, type Run } from './plan';
 
 /*
  * No Mercy knock-out: an olive van pulls up behind the player, two big guys in uniform come out and take the
@@ -18,7 +18,6 @@ import { ARRIVE, DOOR_T, add, along, clamp01, hold, lerp2, plan, road, roadAt, s
  * at the same time.
  */
 
-const WALK = 2.5;
 const PI = Math.PI;
 /** shortest turn from angle a to b */
 const turn = (a: number, b: number) => Math.atan2(Math.sin(b - a), Math.cos(b - a));

@@ -2,5 +2,6 @@
 export * from './types';
 export * from './camera';
 export * from './table';
+export * from './deck';
 export * from './seats';
 export { computeTargets } from './targets';

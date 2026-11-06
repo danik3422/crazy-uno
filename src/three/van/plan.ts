@@ -43,7 +43,7 @@ const lengthOf = (r: P2[]) => r.slice(1).reduce((s, p, i) => s + Math.hypot(p[0]
 export const ARRIVE = 1.6;
 export const DOOR_T = 0.4;
 const LEAVE = 1.7;
-const WALK = 2.5;
+export const WALK = 2.5;
 const SNEAK = 1.15;
 const DASH = 3.4;
 const CARRY = 1.9;
