@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { sound } from '../../audio/sound';
-import type { Game } from '../../game/engine';
-import type { GameView } from '../../game/view';
-import { DEAL_STEP_MS, dealMs, dealTiming, SHUFFLE_MS, UPRIGHT_GRACE_MS } from '../../net/protocol';
-import { RemoteGame } from '../../net/remoteGame';
-import { fxState, nowSec, summonMascot } from '../../three/fxState';
-import { lastPlace } from '../../three/layout';
-import { usePhone } from '../hooks/phone';
+import { sound } from '../../../audio/sound';
+import type { Game } from '../../../game/engine';
+import type { GameView } from '../../../game/view';
+import { DEAL_STEP_MS, dealMs, dealTiming, SHUFFLE_MS, UPRIGHT_GRACE_MS } from '../../../net/protocol';
+import { RemoteGame } from '../../../net/remoteGame';
+import { fxState, nowSec, summonMascot } from '../../../three/fxState';
+import { lastPlace } from '../../../three/layout';
+import { usePhone } from '../../hooks/phone';
 
 /**
  * loading — this screen (and, online, every screen) is still drawing the table

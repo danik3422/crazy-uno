@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { haptics } from '../../audio/haptics';
-import { type Sfx, sound } from '../../audio/sound';
-import type { Card, CardType } from '../../game/types';
-import type { GameView } from '../../game/view';
+import { haptics } from '../../../audio/haptics';
+import { type Sfx, sound } from '../../../audio/sound';
+import type { Card, CardType } from '../../../game/types';
+import type { GameView } from '../../../game/view';
 
 interface Snapshot {
   game: GameView | null;

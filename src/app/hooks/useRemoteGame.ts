@@ -1,6 +1,6 @@
 import { useRef } from 'react';
-import type { Connection } from '../net/connection';
-import { RemoteGame } from '../net/remoteGame';
+import type { Connection } from '../../net/connection';
+import { RemoteGame } from '../../net/remoteGame';
 
 /**
  * The online game as this client sees it: one RemoteGame per round.

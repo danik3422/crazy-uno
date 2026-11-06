@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react';
-import { presetOf } from '../../game/content';
-import { type ModeId, addRound } from '../../game/stats';
-import type { CardType } from '../../game/types';
-import type { GameView } from '../../game/view';
-import { profile } from '../profile/store';
+import { presetOf } from '../../../game/content';
+import { type ModeId, addRound } from '../../../game/stats';
+import type { CardType } from '../../../game/types';
+import type { GameView } from '../../../game/view';
+import { profile } from '../../profile/store';
 
 const DRAWS = new Set<CardType>(['draw2', 'draw4', 'wild4', 'wildRev4', 'wild6', 'wild10']);
 const BIG_DRAWS = new Set<CardType>(['draw4', 'wild4', 'wildRev4', 'wild6', 'wild10']);

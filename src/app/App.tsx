@@ -10,11 +10,11 @@ import { Home } from '../ui/screens/home/Home';
 import { ConnBadge } from '../ui/components/ConnBadge';
 import { Lobby } from '../ui/screens/lobby/Lobby';
 import { Setup } from '../ui/screens/setup/Setup';
-import { loadLocalSetup, localGameConfig, saveLocalSetup } from './localSetup';
+import { loadLocalSetup, localGameConfig, saveLocalSetup } from './storage/localSetup';
 import { inviteFromUrl, setUrlRoom } from './roomUrl';
-import { clearLocalSave, describeSave, readLocalSave, resumeLocal, writeLocalSave } from './localSave';
-import { useRemoteGame } from './useRemoteGame';
-import { useServerCheck } from './useServerCheck';
+import { clearLocalSave, describeSave, readLocalSave, resumeLocal, writeLocalSave } from './storage/localSave';
+import { useRemoteGame } from './hooks/useRemoteGame';
+import { useServerCheck } from './hooks/useServerCheck';
 import './App.css';
 
 type Screen = 'home' | 'local-setup' | 'local-game' | 'online';

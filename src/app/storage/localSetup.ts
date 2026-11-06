@@ -1,10 +1,10 @@
-import { cleanTable, DEFAULT_RULES, isTheme, PRESETS } from '../game/content';
-import type { Rules } from '../game/types';
-import { randomBot } from '../game/avatars';
-import { botNames, t } from '../i18n/core';
-import type { GameConfig, LocalSetup } from '../game/engine';
-import { seatByTeams, teamsOf } from '../game/teams';
-import { readJson, STORAGE_KEYS, writeJson } from '../lib/storage';
+import { cleanTable, DEFAULT_RULES, isTheme, PRESETS } from '../../game/content';
+import type { Rules } from '../../game/types';
+import { randomBot } from '../../game/avatars';
+import { botNames, t } from '../../i18n/core';
+import type { GameConfig, LocalSetup } from '../../game/engine';
+import { seatByTeams, teamsOf } from '../../game/teams';
+import { readJson, STORAGE_KEYS, writeJson } from '../../lib/storage';
 
 /** First visit: you and two bots (named in the current language), with the default rules. */
 const defaultSetup = (): LocalSetup => {

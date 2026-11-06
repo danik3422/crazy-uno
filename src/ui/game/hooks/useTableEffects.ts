@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { haptics } from '../../audio/haptics';
-import { speech } from '../../audio/speech';
-import { shoutState } from '../../audio/voice';
-import { type Sfx, sound } from '../../audio/sound';
-import type { EventId, FxKind, State } from '../../game/types';
-import type { GameView } from '../../game/view';
-import { BOMB_FALL, BOMB_RELEASE, fxState, METEOR_FALL, nowSec, shake, SPIN_TIME, summonMascot } from '../../three/fxState';
-import { spawn } from '../../three/layout';
-import type { Banner } from './EventBanner';
-import type { Toast } from './hud/Hud';
-import type { Msg } from '../../i18n/msg';
+import { haptics } from '../../../audio/haptics';
+import { speech } from '../../../audio/speech';
+import { shoutState } from '../../../audio/voice';
+import { type Sfx, sound } from '../../../audio/sound';
+import type { EventId, FxKind, State } from '../../../game/types';
+import type { GameView } from '../../../game/view';
+import { BOMB_FALL, BOMB_RELEASE, fxState, METEOR_FALL, nowSec, shake, SPIN_TIME, summonMascot } from '../../../three/fxState';
+import { spawn } from '../../../three/layout';
+import type { Banner } from '../EventBanner';
+import type { Toast } from '../hud/Hud';
+import type { Msg } from '../../../i18n/msg';
 
 const TOAST_MS = 1900;
 const FLASH_MS = 500;

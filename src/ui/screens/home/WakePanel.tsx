@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ServerStatus } from '../../../app/useServerCheck';
+import type { ServerStatus } from '../../../app/hooks/useServerCheck';
 import { useT } from '../../../i18n';
 import './WakePanel.css';
 

@@ -1,5 +1,5 @@
-import { Game, type GameSave } from '../game/engine';
-import { STORAGE_KEYS, readJson, writeJson } from '../lib/storage';
+import { Game, type GameSave } from '../../game/engine';
+import { STORAGE_KEYS, readJson, writeJson } from '../../lib/storage';
 
 /** A local game in progress and the evening's score, kept on the device so a reload does not lose them. */
 interface SaveFile {

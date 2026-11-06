@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { botThinkMs, EVENT_PAUSE_MS } from '../../game/bot';
-import type { Game } from '../../game/engine';
-import { fxState, nowSec } from '../../three/fxState';
+import { botThinkMs, EVENT_PAUSE_MS } from '../../../game/bot';
+import type { Game } from '../../../game/engine';
+import { fxState, nowSec } from '../../../three/fxState';
 
 /**
  * A local game has no server to move it along: this runs its bots

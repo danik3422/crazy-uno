@@ -1,6 +1,6 @@
 import type { GameView } from '../../../game/view';
 import { render } from '../../../i18n';
-import { useLogRoom } from '../useLogRoom';
+import { useLogRoom } from '../hooks/useLogRoom';
 
 /** how many log lines show at most */
 const LINES = 3;

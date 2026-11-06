@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { sound } from '../../audio/sound';
-import type { Game } from '../../game/engine';
-import type { GameView } from '../../game/view';
+import { sound } from '../../../audio/sound';
+import type { Game } from '../../../game/engine';
+import type { GameView } from '../../../game/view';
 
 const CLOCK_TICK_MS = 100;
 /** the last seconds of your own clock tick audibly */

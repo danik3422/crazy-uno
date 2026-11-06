@@ -1,6 +1,6 @@
 /**
  * The player's own record: what they did across all their games on this device, and the achievements it unlocks.
- * Plain data, no screen: the recorder (ui/game/useStatsRecorder) feeds it, the profile screen shows it.
+ * Plain data, no screen: the recorder (ui/game/hooks/useStatsRecorder) feeds it, the profile screen shows it.
  */
 import type { Color } from './types';
 

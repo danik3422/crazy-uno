@@ -1,5 +1,5 @@
 import { useRef, useState, type RefObject } from 'react';
-import type { ServerStatus } from '../../../app/useServerCheck';
+import type { ServerStatus } from '../../../app/hooks/useServerCheck';
 import { useT } from '../../../i18n';
 import { CODE_LEN } from '../../../net/protocol';
 import { AvatarImg, AvatarPicker } from '../../components/AvatarImg';

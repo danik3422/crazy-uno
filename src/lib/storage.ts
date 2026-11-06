@@ -15,7 +15,7 @@ export const STORAGE_KEYS = {
   haptics: 'crazy-uno-haptics',
   /** the player's own record and achievements (game/stats.ts) */
   stats: 'crazy-uno-stats',
-  /** a local game in progress, to carry on after a reload (app/localSave.ts) */
+  /** a local game in progress, to carry on after a reload (app/storage/localSave.ts) */
   localGame: 'crazy-uno-local-game',
 } as const;
 
