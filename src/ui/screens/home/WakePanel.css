@@ -1,0 +1,95 @@
+/* The server is waking up (the free host sleeps after 15 quiet minutes): a progress panel inside the card. */
+.wake {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(111, 180, 255, 0.1);
+  border: 1px solid rgba(111, 180, 255, 0.4);
+  animation: wake-in 0.3s ease-out;
+}
+.wake-head { display: flex; align-items: center; gap: 8px; }
+.wake-head b { flex: 1; font-family: var(--display); font-size: 14.5px; }
+.wake-head em {
+  font-style: normal;
+  font-weight: 800;
+  font-size: 12px;
+  color: #9fd0ff;
+  font-variant-numeric: tabular-nums;
+}
+.wake small { color: rgba(255, 255, 255, 0.78); font-size: 12px; line-height: 1.35; }
+.wake-bar { height: 7px; border-radius: 99px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+.wake-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.5s linear;
+  background: linear-gradient(90deg, #6fb4ff, #9b7dff, #6fb4ff);
+  background-size: 200% 100%;
+  animation: wake-flow 1.6s linear infinite;
+}
+.wake-zz {
+  position: relative;
+  width: 22px;
+  height: 18px;
+  flex: none;
+  color: #9fd0ff;
+  font-family: var(--display);
+  font-weight: 900;
+}
+.wake-zz i {
+  position: absolute;
+  font-style: normal;
+  left: 0;
+  bottom: 0;
+  font-size: 10px;
+  opacity: 0;
+  animation: wake-z 2.1s ease-out infinite;
+}
+.wake-zz i:nth-child(2) { animation-delay: 0.7s; }
+.wake-zz i:nth-child(3) { animation-delay: 1.4s; }
+.wake.ready {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 14px;
+  background: rgba(62, 201, 107, 0.14);
+  border-color: rgba(62, 201, 107, 0.6);
+  color: #b9ffcf;
+}
+.wake-ok {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #3ec96b;
+  color: #fff;
+  font-size: 13px;
+}
+.wake.down { background: rgba(255, 120, 100, 0.1); border-color: rgba(255, 120, 100, 0.45); }
+.wake.down b { font-family: var(--display); font-size: 14.5px; }
+.btn.wake-retry { align-self: flex-start; padding: 6px 14px; min-height: 0; font-size: 13px; }
+/* a phone on its side: everything on one screen */
+@media (orientation: landscape) and (max-height: 520px) {
+  .wake-head b { font-size: 13px; }
+  .wake small {
+    font-size: 11px;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    display: none;
+  }
+  .wake { gap: 5px; padding: 6px 10px 8px; }
+}
+/* reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .wake-bar span, .wake-zz i { animation: none; }
+  .wake-zz i { opacity: 1; }
+}
+@keyframes wake-in {from { opacity: 0; transform: translateY(-4px); }}
+@keyframes wake-flow {to { background-position: -200% 0; }}
+@keyframes wake-z {0% { opacity: 0; transform: translate(0, 0) scale(0.7); } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(12px, -14px) scale(1.25); }}

@@ -1,0 +1,323 @@
+/* The player's card: a big UNO card turned into a menu (name and avatar, online play, one-device play). */
+.player-card::before {
+  content: '';
+  position: absolute;
+  inset: 14% -8%;
+  border-radius: 50%;
+  transform: rotate(24deg);
+  background: radial-gradient(closest-side, rgba(229, 65, 58, 0.22), rgba(229, 65, 58, 0) 100%);
+  pointer-events: none;
+}
+.player-card > * { position: relative; }
+.pc-invite {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, var(--gold-1), var(--gold-2));
+  color: var(--on-gold);
+  font-weight: 700;
+}
+.pc-invite b { font-family: var(--display); font-size: 22px; letter-spacing: 0.12em; }
+.pc-error {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--danger);
+  color: var(--black);
+  font-weight: 600;
+}
+.pc-profile { display: flex; align-items: center; gap: 14px; }
+.pc-ava {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  flex: none;
+  border-radius: 16px;
+  transition: transform 0.15s;
+}
+.pc-ava:hover { transform: rotate(-3deg) scale(1.04); }
+.pc-ava .avatar { border: 5px solid #fff; border-radius: 16px; box-shadow: 0 10px 22px rgba(0, 0, 0, 0.4); }
+.pc-ava.open .avatar { box-shadow: 0 0 0 4px var(--gold), 0 10px 22px rgba(0, 0, 0, 0.4); }
+.pc-ava-edit {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--gold);
+  color: var(--on-gold);
+  font-size: 15px;
+  font-weight: 900;
+  border: 3px solid #1a0a22;
+}
+.pc-who { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+.pc-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.pc-name {
+  width: 100%;
+  min-width: 0;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 20px;
+  color: #fff;
+  padding: 10px 34px 10px 12px;
+  border: 0;
+  border-top: 2px solid rgba(255, 255, 255, 0.55);
+  background: linear-gradient(90deg, #1690d6 0%, #36c2ff 75%, rgba(54, 194, 255, 0.35) 100%);
+  clip-path: polygon(0 0, 100% 0, 95% 100%, 0 100%);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.pc-name::placeholder { color: rgba(255, 255, 255, 0.7); }
+.pc-name:focus-visible {
+  outline: none;
+  background: linear-gradient(90deg, #ff9d00 0%, var(--gold-bright) 75%, rgba(255, 216, 74, 0.4) 100%);
+  color: var(--on-gold);
+  text-shadow: none;
+}
+.pc-name:focus-visible::placeholder { color: rgba(58, 29, 0, 0.55); }
+.pc-name.nudge { animation: nope 0.35s 2; }
+.btn.pc-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 19px;
+  padding-block: 17px;
+  width: 100%;
+  white-space: normal;
+  text-wrap: balance;
+  line-height: 1.15;
+  min-width: 0;
+}
+.pc-main-icon { font-size: 22px; line-height: 1; }
+.pc-join { display: flex; flex-direction: column; gap: 8px; }
+.pc-online {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.pc-online-head { display: flex; align-items: center; gap: 8px; }
+.pc-online-head b { flex: 1; font-family: var(--display); font-size: 15px; letter-spacing: 0.01em; }
+.pc-up {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #b9ffcf;
+  background: rgba(62, 201, 107, 0.14);
+  border: 1px solid rgba(62, 201, 107, 0.45);
+}
+.pc-up i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #3ec96b;
+  box-shadow: 0 0 0 3px rgba(62, 201, 107, 0.25);
+  animation: up-pulse 2s ease-in-out infinite;
+}
+.pc-join-row { display: flex; flex-direction: column; gap: 8px; }
+.pc-join .btn { width: 100%; }
+.pc-link {
+  background: none;
+  border: 0;
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 2px;
+  font-weight: 600;
+  align-self: center;
+}
+.pc-link:disabled { opacity: 0.5; }
+.pc-note { margin: 0; color: var(--muted); }
+.pc-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+}
+.pc-divider::before, .pc-divider::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.btn.pc-local {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  align-items: center;
+  text-align: left;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--line);
+  font-weight: 700;
+  white-space: normal;
+}
+.btn.pc-local span { grid-row: 1 / 3; font-size: 24px; }
+.pc-local-ic { display: inline-grid; place-items: center; line-height: 0; }
+.btn.pc-main .pc-local-ic .ui-ico { width: 24px; height: 24px; }
+.btn.pc-local small { color: var(--muted); font-weight: 500; font-size: 12px; }
+.btn.pc-local:hover { background: rgba(255, 255, 255, 0.14); }
+.player-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 22px 20px;
+  background: linear-gradient(170deg, #2b1036 0%, #1a0a22 55%, #12061a 100%);
+  border: 7px solid var(--edge);
+  border-radius: 28px;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.15), 0 30px 60px rgba(0, 0, 0, 0.45), 0 0 80px rgba(255, 196, 60, 0.18);
+  transform: rotate(1.2deg);
+  animation: card-in 0.6s cubic-bezier(.2, 1.3, .4, 1);
+  overflow: hidden;
+  animation-duration: 0.45s;
+}
+.pc-resume {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px 10px 10px;
+  border-radius: 16px;
+  cursor: pointer;
+  text-align: left;
+  border: 2px solid rgba(62, 201, 107, 0.75);
+  background: linear-gradient(180deg, rgba(62, 201, 107, 0.22), rgba(62, 201, 107, 0.08));
+  color: #fff;
+  font: inherit;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  animation: wake-in 0.3s ease-out;
+  transition: transform 0.12s, background 0.15s;
+}
+.pc-resume:hover { background: linear-gradient(180deg, rgba(62, 201, 107, 0.32), rgba(62, 201, 107, 0.12)); }
+.pc-resume:active { transform: translateY(1px); }
+.pc-resume-ic {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #3ec96b;
+  color: #fff;
+  font-size: 15px;
+  box-shadow: 0 3px 0 #1d7a3c;
+  padding-left: 3px;
+}
+.pc-resume-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.pc-resume-txt b { font-family: var(--display); font-size: 15px; }
+.pc-resume-txt small { color: rgba(255, 255, 255, 0.8); font-size: 12px; font-weight: 600; }
+/* narrow screens: one column */
+@media (max-width: 900px) {
+  .pc-name { font-size: 17px; }
+  .pc-ava .avatar { width: 76px !important; height: 76px !important; }
+  .player-card {
+    transform: none;
+    padding: 18px 16px;
+    border-width: 6px;
+    max-width: 520px;
+    width: 100%;
+    justify-self: center;
+  }
+}
+/* small screens */
+@media (max-width: 760px) {
+  .pc-name { font-size: 15px; }
+}
+/* a phone on its side: everything on one screen */
+@media (orientation: landscape) and (max-height: 520px) {
+  .pc-profile { gap: 10px; }
+  .pc-ava-edit { width: 22px; height: 22px; font-size: 11px; border-width: 2px; right: -5px; bottom: -5px; }
+  .pc-who { gap: 3px; }
+  .pc-main-icon { font-size: 18px; }
+  .pc-join { gap: 5px; }
+  .pc-divider { font-size: 10px; }
+  .btn.pc-local span { font-size: 20px; }
+  .btn.pc-local .ui-ico { width: 22px; height: 22px; }
+  .btn.pc-local small { font-size: 11px; }
+  .pc-invite { padding: 6px 12px; }
+  .pc-invite b { font-size: 18px; }
+  .pc-error { padding: 6px 12px; font-size: 13px; }
+  .player-card {
+    border-width: 4px;
+    border-radius: 22px;
+    transform: none;
+    max-width: none;
+    width: 100%;
+    gap: clamp(6px, 2.1vh, 12px);
+    padding: clamp(10px, 3vh, 16px) clamp(12px, 3.2vh, 18px);
+  }
+  .pc-ava .avatar {
+    border-width: 3px;
+    border-radius: 12px;
+    width: clamp(42px, 12vh, 58px) !important;
+    height: clamp(42px, 12vh, 58px) !important;
+  }
+  .pc-name { padding: 6px 30px 6px 10px; font-size: clamp(15px, 4.1vh, 18px); padding-block: clamp(5px, 1.6vh, 9px); }
+  .pc-label { font-size: clamp(10px, 2.6vh, 11.5px); }
+  .btn.pc-main, .pc-join .btn { font-size: clamp(15px, 4vh, 17px); padding-block: clamp(8px, 2.6vh, 13px); }
+  .btn.pc-local { padding: 7px 12px; border-radius: 12px; padding-block: clamp(6px, 2vh, 10px); }
+  .player-card:has(.wake) { gap: clamp(4px, 1.5vh, 8px); padding-block: clamp(8px, 2.4vh, 12px); }
+  .player-card:has(.wake) .pc-join .pc-label { display: none; }
+  .pc-resume { padding: 6px 10px 6px 7px; gap: 9px; border-radius: 12px; }
+  .pc-resume-ic { width: 28px; height: 28px; font-size: 12px; }
+  .pc-resume-txt b { font-size: 13px; }
+  .pc-resume-txt small { font-size: 10.5px; }
+  .player-card:has(.pc-resume) { gap: clamp(4px, 1.5vh, 8px); padding-block: clamp(8px, 2.4vh, 12px); }
+  .player-card:has(.pc-resume) .pc-join .pc-label { display: none; }
+}
+/* a phone held upright */
+@media (max-width: 760px) and (orientation: portrait) {
+  .player-card { gap: 10px; padding: 14px 14px; }
+  .pc-ava .avatar { width: 62px !important; height: 62px !important; }
+}
+/* a small phone held upright (iPhone SE and the like) */
+@media (max-width: 760px) and (orientation: portrait) and (max-height: 740px) {
+  .player-card { gap: 8px; padding: 12px; }
+  .pc-ava .avatar { width: 52px !important; height: 52px !important; }
+  .btn.pc-main, .pc-join .btn { padding-block: 10px; }
+}
+/* a wide computer screen */
+@media (min-width: 901px) and (min-height: 521px) {
+  .player-card { gap: 16px; padding: 24px 26px 22px; }
+  .pc-join-row:not(.invited) { flex-direction: row; align-items: stretch; gap: 10px; }
+  .btn.pc-join-btn {
+    width: auto;
+    flex: none;
+    padding-inline: 22px;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+  }
+}
+/* any phone */
+@media (max-width: 760px), (max-height: 520px) {
+  .pc-online { padding: 0; border: 0; background: none; border-radius: 0; gap: inherit; }
+  .pc-online-head { display: none; }
+}
+@keyframes up-pulse {50% { box-shadow: 0 0 0 5px rgba(62, 201, 107, 0.08); }}
+@keyframes card-in {from { transform: rotate(12deg) translateY(60px) scale(0.9); opacity: 0.35; }}
+/* narrow screens: one column */
+@media (max-width: 900px) {
+  @keyframes card-in {from { transform: translateY(40px); opacity: 0.35; }}
+}

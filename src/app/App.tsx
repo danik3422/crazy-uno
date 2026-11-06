@@ -6,7 +6,7 @@ import { Connection, errorLeavesRoom, savedAvatar, savedName } from '../net/conn
 import { CardLoader } from '../ui/components/CardLoader';
 import { ErrorBoundary } from '../ui/components/ErrorBoundary';
 import { GameScreen } from '../ui/game/GameScreen';
-import { Home } from '../ui/screens/Home';
+import { Home } from '../ui/screens/home/Home';
 import { ConnBadge, Lobby } from '../ui/screens/Lobby';
 import { Setup } from '../ui/screens/Setup';
 import { loadLocalSetup, localGameConfig, saveLocalSetup } from './localSetup';

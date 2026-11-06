@@ -1,0 +1,117 @@
+/* The tab bar: a pill at the top on a computer, a bar at the bottom of an upright phone, a rail down the left of a phone on its side. */
+.home-nav {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 999px;
+  background: rgba(20, 6, 30, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3);
+  top: max(14px, env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+}
+.home-nav > button, .home-nav .lm-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px 8px 12px;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  background: none;
+  color: rgba(255, 255, 255, 0.8);
+  font: inherit;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 14px;
+  white-space: nowrap;
+  transition: background 0.2s, color 0.2s, transform 0.12s;
+}
+.home-nav > button:hover, .home-nav .lm-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+.home-nav > button:active, .home-nav .lm-btn:active { transform: scale(0.96); }
+.home-nav > button.on {
+  color: var(--on-gold);
+  background: linear-gradient(180deg, var(--gold-1), var(--gold-2) 55%, var(--gold-3));
+  box-shadow: 0 3px 0 var(--gold-edge);
+}
+.hn-ico { display: grid; place-items: center; }
+.hn-count {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--gold);
+}
+.home-nav > button.on .hn-count { background: rgba(58, 29, 0, 0.18); color: var(--on-gold); }
+.home-nav .lm-btn { font-size: 13px; }
+.home-nav .lm-btn .lm-label { display: none; }
+.home-nav .lm-btn.on { color: #fff; background: rgba(255, 255, 255, 0.14); }
+.home-nav .lm-code { letter-spacing: 0.05em; }
+/* a phone held upright */
+@media (max-width: 760px) and (orientation: portrait) {
+  .home-nav {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    transform: none;
+    border-radius: 22px 22px 0 0;
+    justify-content: space-around;
+    gap: 0;
+    padding: 6px 8px max(8px, env(safe-area-inset-bottom, 0px));
+    background: rgba(20, 6, 30, 0.88);
+    border: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.16);
+  }
+  .home-nav > button, .home-nav .lm-btn {
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 4px;
+    border-radius: 16px;
+    font-size: 11.5px;
+  }
+  /* the language keeps its own size in the bar */
+  .home-nav .lm-btn { font-size: 13px; }
+  .home-nav > button.on { box-shadow: none; }
+  .hn-count { position: absolute; top: 2px; left: calc(50% + 8px); font-size: 9.5px; padding: 0 5px; }
+  .home-nav .lm-btn .lm-code { display: none; }
+  .home-nav .lm-btn .lm-label { display: inline; }
+  .home-nav .lm-pop { top: auto; bottom: calc(100% + 12px); transform-origin: bottom right; }
+}
+/* a phone on its side: everything on one screen */
+@media (orientation: landscape) and (max-height: 520px) {
+  .home-nav {
+    position: fixed;
+    top: 50%;
+    left: max(6px, env(safe-area-inset-left, 0px));
+    transform: translateY(-50%);
+    flex-direction: column;
+    border-radius: 22px;
+    padding: 5px;
+  }
+  .home-nav > button, .home-nav .lm-btn {
+    flex-direction: column;
+    gap: 1px;
+    padding: 7px 6px;
+    border-radius: 16px;
+    font-size: 10px;
+    width: 66px;
+  }
+  .home-nav > button.on { box-shadow: 0 2px 0 var(--gold-edge); }
+  .hn-count { font-size: 9px; padding: 0 5px; }
+  .home-nav .lm-pop { top: auto; bottom: 0; right: auto; left: calc(100% + 10px); transform-origin: bottom left; }
+  .home-nav .lm-btn { font-size: 11px; }
+}
+/* installed on an iPhone home screen: iOS paints the strip by the home indicator with the page background, so the bar's colour runs to the bottom */
+@media (display-mode: standalone) and (max-width: 760px) and (orientation: portrait), (display-mode: fullscreen) and (max-width: 760px) and (orientation: portrait) {
+  .home-nav { padding-bottom: 8px; background: #1a0826; }
+}

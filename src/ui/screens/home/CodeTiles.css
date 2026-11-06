@@ -1,0 +1,66 @@
+/* The four room-code inputs: letters sized from the row width (4 tiles, 3 gaps), so they always fit. */
+.code-tiles-in {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  cursor: text;
+  container-type: inline-size;
+}
+.ct.filled { border-color: #fff; box-shadow: 0 5px 0 rgba(0, 0, 0, 0.35); transform: translateY(-2px); }
+.ct.filled.t0 { background: var(--red); }
+.ct.filled.t1 { background: var(--yellow); }
+.ct.filled.t2 { background: var(--green); }
+.ct.filled.t3 { background: var(--blue); }
+.ct.caret { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(255, 208, 74, 0.35); }
+.ct.caret:not(.filled)::after {
+  content: '';
+  width: 3px;
+  height: 40%;
+  background: var(--gold);
+  animation: blink 1s steps(1) infinite;
+}
+.ct-input { position: absolute; inset: 0; opacity: 0; font-size: 16px; width: 100%; cursor: text; }
+.ct {
+  aspect-ratio: 2 / 2.6;
+  max-width: 100%;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-weight: 900;
+  color: #fff;
+  line-height: 1;
+  border: 4px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s, background 0.15s, border-color 0.15s;
+  font-size: calc((100cqw - 30px) / 4 * 0.46);
+}
+/* narrow screens: one column */
+@media (max-width: 900px) {
+  .ct { aspect-ratio: 1 / 1.15; }
+}
+/* a phone on its side: everything on one screen */
+@media (orientation: landscape) and (max-height: 520px) {
+  .code-tiles-in { gap: 8px; }
+  .ct { border-width: 3px; border-radius: 10px; aspect-ratio: 1.55 / 1; font-size: calc((100cqw - 24px) / 4 * 0.38); }
+}
+/* a phone held upright */
+@media (max-width: 760px) and (orientation: portrait) {
+  .ct { aspect-ratio: 1.5 / 1; }
+}
+/* a small phone held upright (iPhone SE and the like) */
+@media (max-width: 760px) and (orientation: portrait) and (max-height: 740px) {
+  .ct { aspect-ratio: 1.8 / 1; }
+}
+/* a wide computer screen */
+@media (min-width: 901px) and (min-height: 521px) {
+  .pc-join-row:not(.invited) .code-tiles-in { flex: 1; min-width: 0; gap: 8px; }
+  .pc-join-row:not(.invited) .ct {
+    aspect-ratio: 1 / 1.08;
+    border-width: 3px;
+    font-size: calc((100cqw - 24px) / 4 * 0.5);
+  }
+  .pc-join-row.invited .ct { aspect-ratio: 1.8 / 1; font-size: calc((100cqw - 30px) / 4 * 0.34); }
+}
+@keyframes blink {50% { opacity: 0; }}
