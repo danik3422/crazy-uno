@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_RULES, DEFAULT_TABLE, EVENTS } from './content';
-import { Game } from './engine';
+import { Game } from './engine/Game';
 import type { EventId, Rules } from './types';
 
 function seeded(seed: number) {

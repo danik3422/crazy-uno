@@ -1,7 +1,7 @@
 import { PerformanceMonitor } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useCallback, useSyncExternalStore } from 'react';
-import { Game } from '../../game/engine';
+import { Game } from '../../game/engine/Game';
 import { useT } from '../../i18n';
 import type { GameView } from '../../game/view';
 import type { RemoteGame } from '../../net/remoteGame';

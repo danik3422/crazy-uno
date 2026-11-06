@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { randomBot } from './avatars';
 import { DEFAULT_RULES, DEFAULT_TABLE } from './content';
 import { botNames, render } from '../i18n/core';
-import { Game } from './engine';
+import { Game } from './engine/Game';
 import { seatByTeams, teamsOf, teamsProblem } from './teams';
 
 describe('teams', () => {

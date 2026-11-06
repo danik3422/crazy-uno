@@ -1,14 +1,16 @@
-import { Observable } from '../lib/observable';
-import { BOT_SKILL, botCatchers, botDecision, pickBotCard, pickBotJump, type BotJump } from './bot';
-import { cardMsg, msg, type Msg } from '../i18n/msg';
-import { COLORS, DARE_COUNT, DEFAULT_TABLE, effectiveTable, MERCY_LIMIT, PUNISH_COUNT, TABLE_CHOICES } from './content';
-import { eventDue, fireEvent, flipCoin, type EventTools } from './events';
-import { buildDeck } from './deck';
-import { pick, randomIndex, seededRng, shuffle, type Rng } from './random';
-import { activeSeats, canJumpIn, canPlayCard, drawValue, isCatchable, nextSeat, playableCard, sameTeam } from './rules';
-import { teamsOf, teamsProblem } from './teams';
-import type { Card, Choice, Color, EventId, Fx, FxKind, Player, Rules, State, Table, ThemeId } from './types';
-import type { Params, StrKey } from '../i18n/types';
+import { Observable } from '../../lib/observable';
+import { BOT_SKILL, botCatchers, botDecision, pickBotCard, pickBotJump, type BotJump } from '../bot';
+import { cardMsg, msg, type Msg } from '../../i18n/msg';
+import { COLORS, DARE_COUNT, DEFAULT_TABLE, effectiveTable, MERCY_LIMIT, PUNISH_COUNT, TABLE_CHOICES } from '../content';
+import { eventDue, fireEvent, flipCoin, type EventTools } from '../events';
+import { applyCardEffect, type EffectTools } from './cardEffects';
+import { thinkAhead } from './lookahead';
+import { buildDeck } from '../deck';
+import { pick, randomIndex, shuffle, type Rng } from '../random';
+import { activeSeats, canJumpIn, canPlayCard, drawValue, isCatchable, nextSeat, playableCard, sameTeam } from '../rules';
+import { teamsOf, teamsProblem } from '../teams';
+import type { Card, Choice, Color, EventId, Fx, FxKind, Player, Rules, State, Table, ThemeId } from '../types';
+import type { Params, StrKey } from '../../i18n/types';
 
 export interface GameConfig {
   /** in seat order; `team` counts only in the teams format (see seatByTeams) */
@@ -44,10 +46,6 @@ export const BLITZ_MS = 7_000;
 /** An event banner eats a few seconds of the turn: the person moving gets them back. */
 const EVENT_GRACE_MS = 2_500;
 const LOG_LIMIT = 50;
-/** How many imagined games a hard bot plays out for each move it considers. */
-const HARD_ROLLOUTS = 100;
-/** An imagined game stops after this many steps (it almost always ends long before). */
-const ROLLOUT_STEPS = 500;
 const FX_LIMIT = 20;
 
 /**
@@ -810,67 +808,18 @@ export class Game extends Observable {
     this.play(card.id);
   }
 
-  /* ================= hard bots: thinking ahead ================= */
+  /* ================= hard bots: thinking ahead (see engine/lookahead) ================= */
 
-  /**
-   * Tries each of `moves` in many imagined games and returns the index of the one that wins most often.
-   * The bot only uses what it could know at a real table: its own hand, the pile and how many cards
-   * everyone holds. The cards it cannot see are dealt at random for every imagined game,
-   * and everyone then plays on like a normal bot.
-   */
   private thinkAhead(moves: ((g: Game) => void)[]): number {
-    const me = this.s.cur;
-    const wins = moves.map(() => 0);
-    for (let k = 0; k < HARD_ROLLOUTS; k++) {
-      // the same imagined deal for every move, so they are compared on equal terms
-      const seed = this.rng();
-      moves.forEach((move, i) => {
-        const g = this.imagine(seededRng(seed));
-        move(g);
-        wins[i] += g.playOut(me);
-      });
-    }
-    let best = 0;
-    wins.forEach((w, i) => { if (w > wins[best]) best = i; });
-    return best;
-  }
-
-  /** A copy of the game as the current player sees it, with every hidden card dealt at random. */
-  private imagine(rng: Rng): Game {
-    const s = structuredClone(this.s);
-    const me = s.cur;
-    const hidden = shuffle([...s.deck, ...s.players.flatMap((p, i) => (i === me ? [] : p.hand))], rng);
-    s.players.forEach((p, i) => {
-      p.bot = true;
-      if (i === me) return;
-      // someone who drew on a colour gets none of it in the imagined deal (as long as there is enough else to give)
-      const lacks = this.knownLacks(i);
-      const size = p.hand.length;
-      const hand: Card[] = [];
-      for (let k = hidden.length - 1; k >= 0 && hand.length < size; k--) {
-        const c = hidden[k];
-        if (c.color === 'wild' || !lacks.has(c.color)) hand.push(...hidden.splice(k, 1));
-      }
-      while (hand.length < size && hidden.length) hand.push(hidden.pop()!);
-      p.hand = hand;
-    });
-    s.deck = hidden;
-    s.log = [];
-    s.fx = [];
-    // no surprises and no clocks in the imagination, and everyone in it plays like a normal bot
-    s.rules = { ...s.rules, events: false };
-    s.table = { ...s.table, botLevel: 'normal' };
-    s.unoCatch = null;
-    s.endsAt = null;
-    return new Game({ players: [], rules: s.rules, online: true }, { rng, now: () => 0, restore: s });
-  }
-
-  /** Plays an imagined game to the end: 1 if `me` (or my team) wins, 0 if not. */
-  private playOut(me: number): number {
-    const s = this.s;
-    for (let k = 0; k < ROLLOUT_STEPS && s.phase !== 'over'; k++) this.botAct(true);
-    if (s.phase !== 'over' || s.winner === null) return 0.5;
-    return s.winner === me || this.sameTeam(s.winner, me) ? 1 : 0;
+    return thinkAhead(
+      {
+        s: this.s,
+        rng: this.rng,
+        knownLacks: seat => this.knownLacks(seat),
+        spawn: (state, rng) => new Game({ players: [], rules: state.rules, online: true }, { rng, now: () => 0, restore: state }),
+      },
+      moves,
+    );
   }
 
   /* ================= turn flow ================= */
@@ -1001,118 +950,28 @@ export class Game extends Observable {
     this.s.phase = 'choose';
   }
 
-  /** Applies the card just played. Cards that need a decision stop at `ask` and continue in `resolveChoice`. */
+  /** Applies the card just played (see engine/cardEffects). */
   private runEffect() {
-    const s = this.s;
-    const e = s.effect!;
-    const card = e.card;
-    const p = this.cp();
-    // players still in the game (No Mercy knocks some out): with two left, a reverse works like a skip
-    const n = activeSeats(s).length;
-    const nextName = s.players[this.nextIdx()].name;
-    switch (card.type) {
-      case 'num':
-        if (s.rules.sevenZero && card.value === 7) return this.ask({ kind: 'player', title: msg('choice.seven'), mode: 'swap' });
-        if (s.rules.sevenZero && card.value === 0) {
-          this.rotateHands();
-          this.say('log.zero');
-          this.fx('flip');
-        }
-        break;
-      case 'skip':
-        e.steps = 2;
-        this.say('log.skip', { who: nextName });
-        break;
-      case 'rev':
-        this.reverse();
-        // with two players a reverse works like a skip
-        if (n === 2) e.steps = 2;
-        this.say('log.rev');
-        break;
-      case 'draw2':
-      case 'draw4':
-        this.addPending(card);
-        if (s.pending > drawValue(card)) this.say('log.stack', { n: s.pending });
-        break;
-      case 'wild6':
-      case 'wild10':
-        return this.ask({ kind: 'color', title: msg('choice.wildN', { n: drawValue(card) }) });
-      case 'wildRev4':
-        // reverse first: the +4 goes to whoever moves next in the new direction. With two players the official
-        // rule is that it skips the other player and YOU draw 4 (unless you stack it back at them)
-        this.reverse();
-        if (n === 2) e.steps = 2;
-        this.say('log.wildRev4');
-        return this.ask({ kind: 'color', title: msg('choice.wildRev4') });
-      case 'skipAll':
-        // everyone else is skipped: round the table and back to you
-        e.steps = activeSeats(s).length;
-        this.say('log.skipAll', { who: p.name });
-        break;
-      case 'discardAll': {
-        const col = card.color as Color;
-        const out = p.hand.filter(c => c.color === col);
-        p.hand = p.hand.filter(c => c.color !== col);
-        s.discard.splice(s.discard.length - 1, 0, ...out);
-        this.say('log.discardAll', { who: p.name, color: col, n: out.length });
-        break;
-      }
-      case 'roulette':
-        s.rouletteNext = true;
-        this.say('log.roulette', { who: nextName });
-        this.fx('toast', msg('log.roulette', { who: nextName }));
-        break;
-      case 'wild':
-        return this.ask({ kind: 'color', title: msg('choice.wild') });
-      case 'wild4':
-        return this.ask({ kind: 'color', title: msg('choice.wildN', { n: 4 }) });
-      case 'swap':
-        return this.ask({ kind: 'player', title: msg('choice.swap'), mode: 'swap' });
-      case 'gift':
-        return this.ask({ kind: 'card', title: msg('choice.gift') });
-      case 'bomb':
-        s.bombNext = true;
-        this.say('log.bomb', { who: p.name, to: nextName });
-        this.fx('toast', msg('fx.bomb', { to: nextName }));
-        break;
-      case 'dare':
-        if (s.rules.dares) {
-          s.dareNext = true;
-          this.say('log.dare', { who: nextName });
-        }
-        break;
-      case 'rain':
-        s.players.forEach(o => { if (o !== p && !o.out) this.give(o, 1); });
-        this.say('log.rain');
-        this.fx('toast', msg('fx.rain'));
-        break;
-      case 'mirror':
-        this.reverse();
-        if (s.pending > 0) {
-          this.say('log.mirror', { n: s.pending });
-          this.fx('toast', msg('fx.mirror', { n: s.pending }));
-        } else {
-          if (n === 2) e.steps = 2;
-          this.say('log.mirrorRev');
-        }
-        break;
-      case 'chaos': {
-        const all = shuffle(s.players.flatMap(x => x.hand), this.rng);
-        s.players.forEach(x => { x.hand = []; });
-        let i = s.cur;
-        while (all.length) {
-          i = this.nextIdx(i);
-          s.players[i].hand.push(all.pop()!);
-        }
-        this.say('log.chaos');
-        this.fx('chaos', msg('fx.chaos'));
-        if (this.emptyHand() >= 0) break;
-        return this.ask({ kind: 'color', title: msg('choice.chaos') });
-      }
-      case 'dump':
-        return this.ask({ kind: 'color', title: msg('choice.dump'), mode: 'dump' });
-    }
-    this.finishEffect();
+    applyCardEffect(this.effectTools);
+  }
+
+  /** What a card's effect may touch: the state plus a few of the engine's moves. */
+  private get effectTools(): EffectTools {
+    return {
+      s: this.s,
+      rng: this.rng,
+      current: () => this.cp(),
+      nextIdx: from => this.nextIdx(from),
+      ask: choice => this.ask(choice),
+      finish: () => this.finishEffect(),
+      reverse: () => this.reverse(),
+      addPending: card => this.addPending(card),
+      rotateHands: () => this.rotateHands(),
+      give: (p, n) => this.give(p, n),
+      emptyHand: () => this.emptyHand(),
+      say: (k, p) => this.say(k, p),
+      fx: (kind, text, extra) => this.fx(kind, text, extra),
+    };
   }
 
   private finishEffect() {

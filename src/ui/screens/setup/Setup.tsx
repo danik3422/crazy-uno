@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { avatarOf, randomBot } from '../../../game/avatars';
 import { DEFAULT_TABLE } from '../../../game/content';
 import { MAX_PLAYERS } from '../../../net/protocol';
-import type { LocalSetup } from '../../../game/engine';
+import type { LocalSetup } from '../../../game/engine/Game';
 import { teamsOf, teamsProblem } from '../../../game/teams';
 import { render, useT } from '../../../i18n';
 import { usePageTheme } from '../../backdrop/pageTheme';

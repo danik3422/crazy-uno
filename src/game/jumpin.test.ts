@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_TABLE, PRESETS } from './content';
-import { Game } from './engine';
+import { Game } from './engine/Game';
 import { canJumpIn } from './rules';
 import type { BotLevel, Card, CardType, Rules } from './types';
 

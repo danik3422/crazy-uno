@@ -2,7 +2,7 @@ import { cleanTable, DEFAULT_RULES, isTheme, PRESETS } from '../../game/content'
 import type { Rules } from '../../game/types';
 import { randomBot } from '../../game/avatars';
 import { botNames, t } from '../../i18n/core';
-import type { GameConfig, LocalSetup } from '../../game/engine';
+import type { GameConfig, LocalSetup } from '../../game/engine/Game';
 import { seatByTeams, teamsOf } from '../../game/teams';
 import { readJson, STORAGE_KEYS, writeJson } from '../../lib/storage';
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { botDecision, countColors } from './bot';
 import { DEFAULT_RULES, PRESETS } from './content';
 import { buildDeck } from './deck';
-import { Game } from './engine';
+import { Game } from './engine/Game';
 import { canPlayCard, isCatchable, nextSeat, playableCard } from './rules';
 import type { Card, Table } from './types';
 

@@ -12,7 +12,7 @@ import type { BotLevel, Card, Choice, Color, State } from './types';
  * - normal: sensible, with a little randomness (the autopilot always plays like this);
  * - hard: before each move plays it out in many imagined games and picks what wins most often
  *   (so it hits whoever is about to win, keeps wild cards when that pays off, and so on),
- *   and almost never forgets «UNO!». See `thinkAhead` in the engine.
+ *   and almost never forgets «UNO!». See `thinkAhead` in game/engine/lookahead.ts.
  */
 
 /** The table-talk side of each level: UNO calls, catching others, challenging a +4. */
@@ -70,7 +70,7 @@ export function countColors(hand: Card[]): Record<Color, number> {
 
 /**
  * Picks which of the playable `options` the current player lays: at random for an easy bot, by rule of thumb otherwise.
- * (A hard bot weighs its options by playing them out, see `thinkAhead` in the engine; this is its fallback.)
+ * (A hard bot weighs its options by playing them out, see game/engine/lookahead.ts; this is its fallback.)
  */
 export function pickBotCard(s: State, options: Card[], rng: Rng, level: BotLevel = 'normal'): Card {
   if (level === 'easy') return options[Math.floor(rng() * options.length)];

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PRESETS } from '../../../game/content';
-import { Game } from '../../../game/engine';
+import { Game } from '../../../game/engine/Game';
 import type { Card, CardType, Rules } from '../../../game/types';
 import { detect, snap, type PlayTrigger, type ResolveTrigger } from './detect';
 

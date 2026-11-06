@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { botThinkMs, EVENT_PAUSE_MS } from '../../../game/bot';
-import type { Game } from '../../../game/engine';
+import type { Game } from '../../../game/engine/Game';
 import { fxState, nowSec } from '../../../three/effects/fxState';
 
 /**

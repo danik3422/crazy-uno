@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_RULES, PRESETS } from './content';
-import { Game, type GameSave } from './engine';
+import { Game, type GameSave } from './engine/Game';
 
 function seeded(seed: number) {
   return () => {

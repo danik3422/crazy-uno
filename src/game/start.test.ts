@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PRESETS } from './content';
-import { Game } from './engine';
+import { Game } from './engine/Game';
 import type { CardType, Rules } from './types';
 
 function seeded(seed: number) {

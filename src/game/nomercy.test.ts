@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MERCY_LIMIT, PRESETS } from './content';
 import { buildDeck } from './deck';
-import { Game } from './engine';
+import { Game } from './engine/Game';
 import { canPlayCard } from './rules';
 import type { Card, CardType, Color } from './types';
 

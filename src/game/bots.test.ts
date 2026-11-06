@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BOT_SKILL } from './bot';
 import { DEFAULT_TABLE, PRESETS } from './content';
-import { Game } from './engine';
+import { Game } from './engine/Game';
 import type { BotLevel, Rules } from './types';
 
 function seeded(seed: number) {

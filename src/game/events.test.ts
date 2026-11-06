@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_RULES } from './content';
-import { Game } from './engine';
+import { Game } from './engine/Game';
 import { eventDue } from './events';
 
 const never = () => 0.999;

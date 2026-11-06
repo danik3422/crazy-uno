@@ -1,5 +1,5 @@
 import { teamName } from '../../../game/content';
-import type { LocalSetup } from '../../../game/engine';
+import type { LocalSetup } from '../../../game/engine/Game';
 import type { TeamId } from '../../../game/teams';
 import { useT } from '../../../i18n';
 import { AvatarImg } from '../../components/AvatarImg';

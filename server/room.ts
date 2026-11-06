@@ -6,7 +6,7 @@ import { msg as text } from '../src/i18n/msg';
 import { isLang } from '../src/i18n/types';
 import { EVENT_PAUSE_MS, botThinkMs } from '../src/game/bot';
 import { DEFAULT_RULES, DEFAULT_TABLE, RULES, cleanTable, isTheme } from '../src/game/content';
-import { Game } from '../src/game/engine';
+import { Game } from '../src/game/engine/Game';
 import { isTeamId, seatByTeams, teamsOf, teamsProblem, type TeamId } from '../src/game/teams';
 import type { Card, Rules, Table, ThemeId } from '../src/game/types';
 import {

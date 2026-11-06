@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { sound } from '../../../audio/sound';
-import type { Game } from '../../../game/engine';
+import type { Game } from '../../../game/engine/Game';
 import type { GameView } from '../../../game/view';
 
 const CLOCK_TICK_MS = 100;

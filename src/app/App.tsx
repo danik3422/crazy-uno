@@ -1,7 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { randomHumanAvatar } from '../game/avatars';
 import { render, t, useLang, type Msg } from '../i18n';
-import { Game, type LocalSetup } from '../game/engine';
+import { Game, type LocalSetup } from '../game/engine/Game';
 import { Connection, errorLeavesRoom, savedAvatar, savedName } from '../net/connection';
 import { CardLoader } from '../ui/components/CardLoader';
 import { ErrorBoundary } from '../ui/components/ErrorBoundary';

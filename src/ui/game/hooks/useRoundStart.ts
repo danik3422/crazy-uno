@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { sound } from '../../../audio/sound';
-import type { Game } from '../../../game/engine';
+import type { Game } from '../../../game/engine/Game';
 import type { GameView } from '../../../game/view';
 import { DEAL_STEP_MS, dealMs, dealTiming, SHUFFLE_MS, UPRIGHT_GRACE_MS } from '../../../net/protocol';
 import { RemoteGame } from '../../../net/remoteGame';

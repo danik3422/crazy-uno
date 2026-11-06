@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DARE_COUNT, GROUP_DARE_COUNT, PUNISH_COUNT } from '../game/content';
-import { Game } from '../game/engine';
+import { Game } from '../game/engine/Game';
 import { DEFAULT_RULES } from '../game/content';
 import { langFrom, PACKS, render, tr } from './core';
 import { enLists } from './en';
