@@ -83,10 +83,12 @@
   .box.sheet .btn.big { font-size: 15px; padding: 12px 18px; }
 }
 @media (orientation: landscape) and (max-height: 520px) {
-  .corner-btns { top: calc(6px + env(safe-area-inset-top, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); gap: 6px; }
-  /* overlays: short and scrollable, never taller than the screen */
-  .ov { padding: max(8px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); }
   .box { padding: 14px 18px; gap: 10px; border-radius: 18px; max-height: calc(100dvh - 16px); }
+  .box.sheet { max-width: 560px; padding: 10px 14px; gap: 6px; }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .corner-btns { top: calc(6px + env(safe-area-inset-top, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); gap: 6px; }
+  .ov { padding: max(8px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); }
   .box h2 { font-size: 18px; }
   .box h2.huge { font-size: 26px; }
   .box p { font-size: 14px; }
@@ -95,19 +97,12 @@
   .colors { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .colors button { height: 60px; }
   .dare { font-size: 15px !important; padding: 10px 12px; }
-  .box.sheet { max-width: 560px; padding: 10px 14px; gap: 6px; }
   .box.sheet h2 { font-size: 16px; }
   .box.sheet .score div { font-size: 12px; padding: 2px 8px; }
-}
-@media (orientation: landscape) and (max-height: 520px) {
-  /* the results: a card on the right, the podium stays in view on the left */
   .ov.sheet-ov { place-items: center end; align-items: center; background: linear-gradient(to left, rgba(10, 0, 20, 0.55), transparent 60%); }
   .box.sheet { width: min(48%, 420px); max-height: calc(100dvh - 16px); }
   .box.sheet .score { gap: 4px; }
   .box.sheet .row { flex-wrap: wrap; justify-content: center; }
-}
-@media (orientation: landscape) and (max-height: 520px) {
-  /* the card reference uses the width: three columns, less scrolling */
   .box:has(.legend) { max-width: min(780px, 100%); }
   .box .legend { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
   .box .legend img { width: 36px; height: 54px; }

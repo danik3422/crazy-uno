@@ -52,14 +52,6 @@
 @media (prefers-reduced-motion: reduce) {
   .uno-call, .catch-zone .uno-call, .uno-oval::after, .uno-rings i { animation: none !important; }
 }
-@media (max-width: 560px) {
-  .uno-call-zone { right: 12px; bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
-  .uno-oval, .uno-rings { width: 118px; height: 72px; }
-  .uno-rings { top: 36px; }
-  .uno-word { font-size: 31px; }
-  .uno-call.wide .uno-oval, .uno-call.wide .uno-rings { width: 152px; }
-  .uno-call.wide .uno-word { font-size: 23px; }
-}
 .catch-zone {
   /* over the middle of the table, clear of the hand */
   position: absolute; left: 0; right: 0; top: 44%;
@@ -68,13 +60,17 @@
   z-index: 3;
 }
 @media (max-width: 560px) {
+  .uno-call-zone { right: 12px; bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+  .uno-oval, .uno-rings { width: 118px; height: 72px; }
+  .uno-rings { top: 36px; }
+  .uno-word { font-size: 31px; }
+  .uno-call.wide .uno-oval, .uno-call.wide .uno-rings { width: 152px; }
+  .uno-call.wide .uno-word { font-size: 23px; }
   .catch-zone { top: 38%; }
-}
-@media (orientation: landscape) and (max-height: 520px) {
-  .catch-zone { top: 34%; }
 }
 /* phone on its side: the UNO! button sits above the action buttons, clear of the hand */
 @media (orientation: landscape) and (max-height: 520px) {
+  .catch-zone { top: 34%; }
   .uno-call-zone { right: max(10px, env(safe-area-inset-right, 0px)); bottom: calc(118px + env(safe-area-inset-bottom, 0px)); }
   .uno-oval, .uno-rings { width: 104px; height: 64px; }
   .uno-oval { border-width: 4px; }
