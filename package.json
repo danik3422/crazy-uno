@@ -2,6 +2,15 @@
   "name": "crazy-uno",
   "private": true,
   "version": "2.0.0",
+  "description": "Crazy UNO: a free 3D card game for the browser with bots, online rooms and crazy modes. A fan project, not affiliated with Mattel, Inc.",
+  "license": "MIT",
+  "author": "Danylo Syloats (https://danylodev.com/)",
+  "homepage": "https://danylodev.com/projects/crazy-uno/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danik3422/crazy-uno.git"
+  },
+  "bugs": "https://github.com/danik3422/crazy-uno/issues",
   "type": "module",
   "scripts": {
     "dev": "tsx watch --clear-screen=false server/index.ts --dev",
