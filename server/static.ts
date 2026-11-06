@@ -6,7 +6,7 @@ import zlib, { brotliCompressSync, gzipSync } from 'node:zlib';
 import { normalizeCode } from '../src/net/protocol';
 import { langFrom, tr } from '../src/i18n/core';
 import type { Lang } from '../src/i18n/types';
-import type { Room } from './room';
+import type { Room } from './room/Room';
 
 export interface StaticSiteOptions {
   /** directory with the built client (dist/) */

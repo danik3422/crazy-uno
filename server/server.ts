@@ -3,7 +3,7 @@ import { msg as text } from '../src/i18n/msg';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { CODE_ALPHABET, CODE_LEN, normalizeCode, type ClientMsg, type ServerMsg } from '../src/net/protocol';
 import { DEFAULT_LIMITS, Limits, type LimitOptions } from './limits';
-import { Room, type Member, type RoomOptions } from './room';
+import { Room, type Member, type RoomOptions } from './room/Room';
 import { createStaticSite } from './static';
 
 export interface ServerOptions {

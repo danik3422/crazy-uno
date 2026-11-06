@@ -1,18 +1,19 @@
 import { randomUUID } from 'node:crypto';
-import { isAvatarId, randomBot } from '../src/game/avatars';
-import { ReactionLimiter, isReactionId } from '../src/game/reactions';
-import { PACKS } from '../src/i18n/core';
-import { msg as text } from '../src/i18n/msg';
-import { isLang } from '../src/i18n/types';
-import { EVENT_PAUSE_MS, botThinkMs } from '../src/game/bot';
-import { DEFAULT_RULES, DEFAULT_TABLE, RULES, cleanTable, isTheme } from '../src/game/content';
-import { Game } from '../src/game/engine/Game';
-import { isTeamId, seatByTeams, teamsOf, teamsProblem, type TeamId } from '../src/game/teams';
-import type { Card, Rules, Table, ThemeId } from '../src/game/types';
+import { isAvatarId, randomBot } from '../../src/game/avatars';
+import { ReactionLimiter, isReactionId } from '../../src/game/reactions';
+import { PACKS } from '../../src/i18n/core';
+import { msg as text } from '../../src/i18n/msg';
+import { isLang } from '../../src/i18n/types';
+import { EVENT_PAUSE_MS, botThinkMs } from '../../src/game/bot';
+import { DEFAULT_RULES, DEFAULT_TABLE, RULES, cleanTable, isTheme } from '../../src/game/content';
+import { Game } from '../../src/game/engine/Game';
+import { buildPlayerView, type AliasBook } from './playerView';
+import { isTeamId, seatByTeams, teamsOf, teamsProblem, type TeamId } from '../../src/game/teams';
+import type { Rules, Table, ThemeId } from '../../src/game/types';
 import {
   MAX_MEMBERS, MAX_PLAYERS, PROTOCOL_VERSION, REMATCH_COUNTDOWN_MS, SHUFFLE_MS, WARMUP_MAX_MS, cleanName, dealMs,
   type Action, type ClientMsg, type ErrorCode, type PlayerView, type RoomInfo, type ServerMsg,
-} from '../src/net/protocol';
+} from '../../src/net/protocol';
 
 /** The bit of a WebSocket the room needs; lets tests use fakes. */
 export interface Sock {
@@ -81,13 +82,6 @@ interface RematchVote {
  * A card gets a fresh random number whenever it leaves the viewer's sight, so a card you gave away
  * (swap, gift, zero, carousel) cannot be told apart from the others in its new owner's hand.
  */
-interface AliasBook {
-  game: Game;
-  alias: Map<number, number>;
-  used: Set<number>;
-  seen: Set<number>;
-}
-
 /** Authoritative state of one game room: lobby, seats, the engine and all timers. */
 export class Room {
   members: Member[] = [];
@@ -606,77 +600,26 @@ export class Room {
     return b;
   }
 
-  /** The game as `m` may see it: their own hand face up, everyone else's as opaque placeholders. */
+  /** The game as `m` may see it: their own hand face up, everyone else's as opaque placeholders (see playerView). */
   view(m: Member | null): PlayerView | null {
     const g = this.game;
     if (!g) return null;
-    const s = g.s;
-    const you = m ? this.seats.indexOf(m.id) : -1;
-    const over = s.phase === 'over';
-    const book = m ? this.aliasBook(m, g) : null;
-    const dealing = this.warming();
-    const seenNow = new Set<number>();
-    // a card this viewer can see: if it was hidden from them a moment ago, tell them where it was
-    const show = (c: Card): Card => {
-      seenNow.add(c.id);
-      const was = book && !book.seen.has(c.id) ? book.alias.get(c.id) : undefined;
-      return was === undefined ? c : { ...c, fromId: was };
-    };
-    const hide = (c: Card): Card => {
-      let id = book?.alias.get(c.id);
-      let fromId: number | undefined;
-      if (book && (id === undefined || book.seen.has(c.id))) {
-        // newly out of sight: a fresh random number; if they just saw it, it flies from where they saw it
-        if (book.seen.has(c.id)) fromId = c.id;
-        do id = 10_000_000 + Math.floor(Math.random() * 89_999_999); while (book.used.has(id));
-        book.used.add(id);
-        book.alias.set(c.id, id);
-      }
-      // the deal order is only needed for the opening animation; afterwards it would identify cards
-      return { id: id ?? -1, color: 'wild', type: 'num', value: 0, hidden: true, dealIdx: dealing ? c.dealIdx : undefined, fromId };
-    };
-    const discard = s.discard.slice(-40).map(show);
-    const players = s.players.map((p, i) => {
-      const mem = this.member(this.seats[i]);
-      return {
-        name: p.name,
-        bot: p.bot,
-        avatar: p.avatar,
-        member: this.seats[i],
-        // a person who dropped out: a bot is playing their seat until they come back
-        offline: !!mem && !mem.bot && !mem.sock,
-        // No Mercy: knocked out, and in what order (the seat is skipped; the van comes for them on every screen)
-        out: p.out,
-        // hidden hands are sorted by their opaque numbers, so the order tells nothing either
-        // a teammate's hand is open too (2 vs 2 and up, as in the mobile game)
-        hand: i === you || over || (you >= 0 && !!s.teams && s.teams[i] === s.teams[you]) ? p.hand.map(show) : p.hand.map(hide).sort((a, b) => a.id - b.id),
-      };
-    });
-    if (book) book.seen = seenNow;
-    const mine = you === s.cur;
-    return {
-      you: you >= 0 ? you : null,
-      deckCount: s.deck.length,
+    return buildPlayerView(g, {
+      you: m ? this.seats.indexOf(m.id) : -1,
+      book: m ? this.aliasBook(m, g) : null,
+      dealing: this.warming(),
+      seats: this.seats,
+      isOffline: seat => {
+        const mem = this.member(this.seats[seat]);
+        return !!mem && !mem.bot && !mem.sock;
+      },
       warmup: {
         waiting: this.notReady().map(id => this.seats.indexOf(id)).filter(i => i >= 0),
         turning: this.turning().map(id => this.seats.indexOf(id)).filter(i => i >= 0),
         dealAt: this.warm?.dealAt ?? null,
         dealEnd: this.warm?.dealEnd ?? null,
       },
-      state: {
-        ...s,
-        players,
-        deck: [],
-        discard,
-        effect: null,
-        choice: mine ? s.choice : null,
-        lastDrawn: mine ? s.lastDrawn : null,
-        fx: s.fx.slice(-12),
-        // whether the +4 was a bluff is only revealed by challenging it
-        challenge: s.challenge ? { ...s.challenge, guilty: false } : null,
-        log: s.log.slice(-20),
-      },
-    };
+    });
   }
 
   /* ---------- sending ---------- */
