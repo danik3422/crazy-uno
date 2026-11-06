@@ -127,7 +127,7 @@ export function FullscreenIcon() {
 
 function ShareIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden style={{ verticalAlign: '-2px' }}>
+    <svg className="share-ic" viewBox="0 0 24 24" width="15" height="15" aria-hidden>
       <path d="M12 3v12M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );

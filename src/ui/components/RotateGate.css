@@ -42,3 +42,5 @@ html.gate-on, html.gate-on body { background: #2a0c52; }
 .rotate-gate { top: 0; left: 0; right: 0; bottom: auto; height: 100lvh; min-height: 100%; box-shadow: 0 25vmax 0 0 #2a0c52; }
 @keyframes rg-turn { 0%, 18% { transform: rotate(0deg); } 50%, 82% { transform: rotate(90deg); } 100% { transform: rotate(0deg); } }
 @keyframes rg-arrow { 0%, 12% { opacity: 1; } 40%, 85% { opacity: 0; } 100% { opacity: 1; } }
+/* the share icon inside the iPhone hint sits on the text's baseline */
+.share-ic { vertical-align: -2px; }

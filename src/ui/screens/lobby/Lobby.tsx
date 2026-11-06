@@ -8,7 +8,7 @@ import { ConnBadge } from '../../components/ConnBadge';
 import { LangMenu } from '../../components/LangMenu';
 import { PhoneTip } from '../../components/RotateGate';
 import { SwipeBack } from '../../components/SwipeBack';
-import { usePageTheme } from '../../hooks/pageTheme';
+import { usePageTheme } from '../../backdrop/pageTheme';
 import { RulesPanel } from '../../settings/RulesPanel';
 import { TablePanel } from '../../settings/TablePanel';
 import { ThemePicker } from '../../settings/ThemePicker';

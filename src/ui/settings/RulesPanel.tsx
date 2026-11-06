@@ -3,7 +3,7 @@ import { presetOf, PRESETS, RULE_GROUPS, RULES } from '../../game/content';
 import { useT } from '../../i18n';
 import type { Rules } from '../../game/types';
 import { ModeIcon } from './ModeIcon';
-import './settings.css';
+import './panels.css';
 import './RulesPanel.css';
 
 interface Props {

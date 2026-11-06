@@ -4,7 +4,7 @@ import { teamsProblem } from '../../game/teams';
 import { render, t, useT } from '../../i18n';
 import type { Table } from '../../game/types';
 import { ModeIcon } from './ModeIcon';
-import './settings.css';
+import './panels.css';
 import './TablePanel.css';
 
 interface Props {

@@ -16,7 +16,7 @@ import { enterFullscreen, SMALL_SCREEN, useMedia } from '../hooks/phone';
 import { RulesPanel } from '../settings/RulesPanel';
 import { TablePanel } from '../settings/TablePanel';
 import { ThemePicker } from '../settings/ThemePicker';
-import { usePageTheme } from '../hooks/pageTheme';
+import { usePageTheme } from '../backdrop/pageTheme';
 import './Setup.css';
 
 interface Props {
@@ -138,7 +138,7 @@ export function Setup({ cfg, setCfg, onStart, onBack }: Props) {
         <section className="panel">
           <h2>{t('setup.rules')}</h2>
           <RulesPanel rules={cfg.rules} onChange={rules => setCfg(c => ({ ...c, rules }))} />
-          <h2 style={{ marginTop: 8 }}>{t('setup.format')}</h2>
+          <h2 className="after-rules">{t('setup.format')}</h2>
           <TablePanel table={table} teams={teams} onChange={tb => setCfg(c => ({ ...c, table: tb }))} />
         </section>
       </div>

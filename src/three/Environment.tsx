@@ -6,7 +6,7 @@ import { DEBUG, fxState, nowSec } from './fxState';
 import { landingTime } from './PlayFx';
 import type { View } from './layout';
 import { THEMES } from './themes';
-import { setBrowserTint } from '../ui/hooks/pageTheme';
+import { setBrowserTint } from '../ui/backdrop/pageTheme';
 import { isPhone } from '../ui/hooks/phone';
 
 /** Arena colours for every theme and current colour (each theme keeps its own in its folder). */
