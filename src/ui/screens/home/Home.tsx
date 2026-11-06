@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Profile } from '../../profile/Profile';
-import { About } from '../About';
-import { HowTo } from '../HowTo';
+import { About } from '../about/About';
+import { HowTo } from '../howto/HowTo';
 import { HomeFooter } from './HomeFooter';
 import { HomeHero } from './HomeHero';
 import { HomeNav, type HomeTab } from './HomeNav';

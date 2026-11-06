@@ -1,5 +1,5 @@
-import { useT } from '../../i18n';
-import './HowTo.css';
+import { useT } from '../../../i18n';
+import '../howto/HowTo.css';
 import './About.css';
 
 export const AUTHOR = 'Danylo Syloats';

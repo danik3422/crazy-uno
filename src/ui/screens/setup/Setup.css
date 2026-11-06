@@ -1,0 +1,65 @@
+/* Setting up a game on one device: the hero on top, the panels in two columns (one on a phone). */
+:where(.setup-page) > * { width: 100%; max-width: 980px; }
+.setup { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px; align-items: start; }
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.panel h2 {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0;
+  color: var(--gold);
+}
+.panel h2.after-rules { margin-top: 8px; }
+.setup-page {
+  min-height: 100%;
+  background-attachment: fixed;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  align-items: center;
+  background: transparent;
+  padding-top: max(20px, env(safe-area-inset-top, 0px));
+}
+.page-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  align-self: stretch;
+  width: 100%;
+  max-width: 1100px;
+  margin-inline: auto;
+}
+.page-top .btn.back { align-self: center; }
+/* small screens */
+@media (max-width: 760px) {
+  .setup { grid-template-columns: minmax(0, 1fr); }
+  .setup-page { gap: 14px; padding-block: 12px 32px; padding-top: max(20px, env(safe-area-inset-top, 0px)); }
+  .setup-page .hero { gap: 6px; padding-top: 0; }
+  .setup-page .hero .sub { font-size: 13.5px; max-width: 36ch; }
+  .panel { padding: 16px 14px; border-radius: 20px; }
+  .setup-page .mascot-stage { height: 150px; margin-bottom: -10px; }
+  .setup-page .hero .logo { font-size: 30px; }
+}
+/* a phone on its side: everything on one screen */
+@media (orientation: landscape) and (max-height: 520px) {
+  :where(.setup-page) > * { max-width: 680px; }
+  .setup { grid-template-columns: minmax(0, 1fr); }
+  .setup-page .hero .fan, .setup-page .hero .mascot-stage { display: none; }
+  .setup-page .hero .logo { font-size: 30px; }
+  .setup-page .hero .sub { display: none; }
+}

@@ -1,7 +1,7 @@
-import { PRESETS } from '../../game/content';
-import { useT } from '../../i18n';
-import { EventLegend, Legend } from '../components/Legend';
-import { ModeIcon } from '../settings/ModeIcon';
+import { PRESETS } from '../../../game/content';
+import { useT } from '../../../i18n';
+import { EventLegend, Legend } from '../../components/Legend';
+import { ModeIcon } from '../../settings/ModeIcon';
 import './HowTo.css';
 
 /** "How to play" (a tab of the home screen): the four modes, what every special card does, and the random events. */

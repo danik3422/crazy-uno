@@ -1,5 +1,5 @@
 import { useT } from '../../../i18n';
-import { AUTHOR, PORTFOLIO, REPO } from '../About';
+import { AUTHOR, PORTFOLIO, REPO } from '../about/About';
 import './HomeFooter.css';
 
 /** Who made it, the code and the trademark note; shown on a computer (a phone has the "About" tab for this). */

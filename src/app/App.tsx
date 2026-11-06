@@ -9,7 +9,7 @@ import { GameScreen } from '../ui/game/GameScreen';
 import { Home } from '../ui/screens/home/Home';
 import { ConnBadge } from '../ui/components/ConnBadge';
 import { Lobby } from '../ui/screens/lobby/Lobby';
-import { Setup } from '../ui/screens/Setup';
+import { Setup } from '../ui/screens/setup/Setup';
 import { loadLocalSetup, localGameConfig, saveLocalSetup } from './localSetup';
 import { inviteFromUrl, setUrlRoom } from './roomUrl';
 import { clearLocalSave, describeSave, readLocalSave, resumeLocal, writeLocalSave } from './localSave';
