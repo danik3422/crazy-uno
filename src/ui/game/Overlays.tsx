@@ -25,9 +25,11 @@ interface Props {
   online?: OnlineCtx;
   /** round start: no prompts until the cards are dealt */
   locked?: boolean;
+  /** the round is over and its finale may play (see useFinale) */
+  finale: boolean;
 }
 
-export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props) {
+export function Overlays({ game, score, onAgain, onMenu, online, locked, finale }: Props) {
   const t = useT();
   const s = game.s;
   const p = game.cp();
@@ -42,11 +44,11 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked }: Props
 
   // let the confetti and revealed hands play for a moment before the results card
   useEffect(() => {
-    if (s.phase !== 'over') { setShowEnd(false); return; }
+    if (!finale) { setShowEnd(false); return; }
     // give the podium time to rise and the players to land first
     const t = setTimeout(() => setShowEnd(true), 3600);
     return () => clearTimeout(t);
-  }, [s.phase, game]);
+  }, [finale, game]);
 
   let modal: ReactNode = null;
   if (locked) {

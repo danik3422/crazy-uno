@@ -1088,6 +1088,13 @@ export class Game extends Observable {
     s.pendingType = card.type === 'draw2' ? 'draw2' : 'wild4';
   }
 
+  /** Debug (the console, the dev server): knock out one bot (or every bot) still in the game, as 25 cards would. */
+  debugKnockOut(which: 'one' | 'all') {
+    const bots = this.s.players.filter(p => p.bot && !p.out);
+    for (const p of which === 'all' ? bots : bots.slice(0, 1)) if (this.s.phase !== 'over') this.knockOut(p);
+    this.emitChange();
+  }
+
   /** The mercy rule: too many cards and you are out. Their cards are set aside until the deck runs out. */
   private knockOut(p: Player) {
     const s = this.s;

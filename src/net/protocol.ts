@@ -132,6 +132,8 @@ export type ClientMsg =
   | { t: 'dealNow' }
   /** a quick reaction (a drawn face or a set phrase) over your plate */
   | { t: 'react'; id: ReactionId }
+  /** dev server only (npm run dev): knock bots out, to see the van scene online */
+  | { t: 'debug'; knockout: 'one' | 'all' }
   | { t: 'ping' };
 
 export type ErrorCode = 'no-room' | 'full' | 'bad-request' | 'not-host' | 'kicked' | 'replaced' | 'too-few' | 'slow-down';

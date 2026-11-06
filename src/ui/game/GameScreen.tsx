@@ -23,6 +23,7 @@ import { useCountdowns } from './hooks/useCountdowns';
 import { useKeyboardPlay } from './hooks/useKeyboardPlay';
 import { useLocalBots } from './hooks/useLocalBots';
 import { useRoundStart } from './hooks/useRoundStart';
+import { useFinale } from './hooks/useFinale';
 import { useTableEffects } from './hooks/useTableEffects';
 import { useTableSounds } from './hooks/useTableSounds';
 import { useBotReactions, useReactionSound } from './Reactions';
@@ -75,7 +76,9 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online, coach
   // your own record: stats and achievements
   useStatsRecorder(game, version);
   useReactionSound();
-  const effects = useTableEffects(game, version, onOver);
+  // the podium and the results (held back while a knock-out van is still on screen)
+  const finale = useFinale(game);
+  const effects = useTableEffects(game, version, finale, onOver);
   useLocalBots(local, version, locked);
   const { bombLeft, roundLeft } = useCountdowns(game, local);
 
@@ -112,6 +115,7 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online, coach
           />
         )}
         <GameScene
+          finale={finale}
           key={s.round}
           game={game}
           version={version}
@@ -132,7 +136,7 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online, coach
       )}
       {effects.flash !== null && <div key={`flash-${effects.flash}`} className={`flash th-${s.theme ?? 'classic'}`} />}
       {banner && <EventBanner key={`event-${banner.id}`} banner={banner} theme={s.theme ?? 'classic'} onDone={() => effects.dismissBanner(banner.id)} />}
-      <Overlays game={game} version={version} score={score} onAgain={onAgain} onMenu={onMenu} online={online} locked={locked} />
+      <Overlays game={game} version={version} finale={finale} score={score} onAgain={onAgain} onMenu={onMenu} online={online} locked={locked} />
       {coach && !round.curtain && <Coach game={game} version={version} locked={locked} />}
       <RotateGate waiting={round.stage === 'loading'} />
       {round.curtain && (

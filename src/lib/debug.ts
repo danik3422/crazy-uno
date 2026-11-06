@@ -6,6 +6,7 @@
  *   window.__fit()      on-screen card rectangles window.__van     the knock-out scene being played
  *   window.__vanT = 3.5 pins that scene at 3.5 s  window.__vanVariant = 'flop'  forces how the next player is taken
  *   window.__crash = 'hud' | '3d'  that part throws on its next render (to see the crash card)
+ *   window.__knock('all' | 'one')  knocks bots out (online: on the dev server only)
  */
 
 export const DEBUG = import.meta.env.DEV || (typeof location !== 'undefined' && /[?&]debug\b/.test(location.search));

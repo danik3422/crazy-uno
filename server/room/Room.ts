@@ -48,6 +48,8 @@ export interface RoomOptions {
   groupMs?: number;
   /** countdown between "everyone is ready" and the next round */
   rematchMs?: number;
+  /** the dev server: debug commands are accepted */
+  debug?: boolean;
 }
 
 type Timer = ReturnType<typeof setTimeout>;
@@ -122,7 +124,7 @@ export class Room {
   private catchFor: unknown = null;
 
   constructor(public code: string, opts: RoomOptions = {}) {
-    this.opts = { botSpeed: 1, offlineAutoMs: 12_000, idleAutoMs: 75_000, dealScale: 1, groupMs: 25_000, rematchMs: REMATCH_COUNTDOWN_MS, ...opts };
+    this.opts = { botSpeed: 1, offlineAutoMs: 12_000, idleAutoMs: 75_000, dealScale: 1, groupMs: 25_000, rematchMs: REMATCH_COUNTDOWN_MS, debug: false, ...opts };
   }
 
   /* ---------- membership ---------- */
@@ -267,6 +269,13 @@ export class Room {
 
   /* ---------- messages ---------- */
 
+  /** Dev server only: knock out one bot (or every bot) still in the game, the way 25 cards would. */
+  private debug(knockout: 'one' | 'all') {
+    const g = this.game;
+    if (!this.opts.debug || !g) return;
+    g.debugKnockOut(knockout);
+  }
+
   handle(m: Member, msg: ClientMsg) {
     this.touch();
     const host = m.id === this.hostId;
@@ -351,6 +360,8 @@ export class Room {
         return this.flush();
       case 'react':
         return this.react(m, msg.id);
+      case 'debug':
+        return this.debug(msg.knockout);
       case 'join':
       case 'create':
       case 'ping':

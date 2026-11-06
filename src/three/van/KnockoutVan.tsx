@@ -9,6 +9,7 @@ import type { GameView } from '../../game/view';
 import { debugValue, exposeDebug } from '../../lib/debug';
 import { nowSec } from '../effects/fxState';
 import type { View } from '../layout';
+import { vanBusy } from './vanBusy';
 import { BigGuy, DOOR_W, DOOR_X, Van, VAN_D, Victim, WHEEL_R, limbs, makePrint } from './models';
 import { ARRIVE, DOOR_T, WALK, add, along, clamp01, hold, lerp2, plan, road, roadAt, sideOf, smooth, span, type P2, type Run } from './plan';
 
@@ -72,7 +73,10 @@ export function KnockoutVan({ game, version, view }: { game: GameView; version: 
   const sfx = useRef(0);
   const engineOn = useRef(false);
   // leaving the table mid-scene: the engine stops too
-  useEffect(() => () => sound.engine(0, 0), []);
+  useEffect(() => () => {
+    sound.engine(0, 0);
+    vanBusy.set(false);
+  }, []);
   const yaw = useRef([0, 0]);
   const loader = useMemo(() => new THREE.TextureLoader(), []);
   const ctx = useRef({ game, view });
@@ -100,6 +104,7 @@ export function KnockoutVan({ game, version, view }: { game: GameView; version: 
         tex = null;
       }
       queue.current.push({ seat: i, tex, bg: av.bg[0] });
+      vanBusy.set(true);
     });
   }, [game, version, loader]);
 
@@ -130,6 +135,7 @@ export function KnockoutVan({ game, version, view }: { game: GameView; version: 
     }
     root.current.visible = !!r;
     if (!r) {
+      vanBusy.set(false);
       if (engineOn.current) {
         sound.engine(0, 0);
         engineOn.current = false;

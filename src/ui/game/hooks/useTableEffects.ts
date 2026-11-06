@@ -45,7 +45,7 @@ function viewerWon(s: State, viewer: number | null): boolean {
  * screen shake and flashes, and the 3D effects (meteor, lightning, the bomber plane…).
  * Also keeps the evening's score for local games via `onOver`.
  */
-export function useTableEffects(game: GameView, version: number, onOver?: (winner: string) => void) {
+export function useTableEffects(game: GameView, version: number, finale: boolean, onOver?: (winner: string) => void) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [banner, setBanner] = useState<Banner | null>(null);
   // the white flash (lightning, meteor) is shown for half a second and then removed for good
@@ -69,6 +69,8 @@ export function useTableEffects(game: GameView, version: number, onOver?: (winne
 
   const lastFx = useRef<{ game: GameView | null; id: number }>({ game: null, id: 0 });
   const scored = useRef<GameView | null>(null);
+  // the round's end, held back while a knock-out van is still on screen (see useFinale)
+  const won = useRef<{ text: Msg | undefined } | null>(null);
   useEffect(() => {
     const s = game.s;
     if (lastFx.current.game !== game) lastFx.current = { game, id: game.fxBaseline };
@@ -103,11 +105,8 @@ export function useTableEffects(game: GameView, version: number, onOver?: (winne
           sound.play('whoosh');
           break;
         case 'win':
-          sound.play(viewerWon(s, game.viewer()) ? 'win' : 'lose');
-          if (viewerWon(s, game.viewer())) haptics.play('win');
-          fxState.winAt = nowSec();
-          summonMascot('loop', 0.8);
-          break;
+          won.current = { text: f.text };
+          continue; // played with the finale (below)
         case 'event':
           fxState.eventAt = nowSec();
           fxState.event = { at: nowSec(), id: f.event ?? null, target: f.target ?? s.cur, seq: fxState.event.seq + 1 };
@@ -165,6 +164,19 @@ export function useTableEffects(game: GameView, version: number, onOver?: (winne
       });
     }
   }, [game, version, toast, onOver]);
+
+  // the finale: fanfare, the mascot's victory loop and the winner's toast
+  useEffect(() => {
+    if (!finale || !won.current) return;
+    const text = won.current.text;
+    won.current = null;
+    const s = game.s;
+    sound.play(viewerWon(s, game.viewer()) ? 'win' : 'lose');
+    if (viewerWon(s, game.viewer())) haptics.play('win');
+    fxState.winAt = nowSec();
+    summonMascot('loop', 0.8);
+    if (text) toast(text);
+  }, [finale, game, toast]);
 
   return {
     toasts,

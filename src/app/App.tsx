@@ -16,6 +16,7 @@ import { clearLocalSave, describeSave, readLocalSave, resumeLocal, writeLocalSav
 import { useRemoteGame } from './hooks/useRemoteGame';
 import { useServerCheck } from './hooks/useServerCheck';
 import { tutorialSetup, type TutorialMode } from '../ui/tutorial/tutorial';
+import { exposeDebug } from '../lib/debug';
 import './App.css';
 
 type Screen = 'home' | 'local-setup' | 'local-game' | 'online';
@@ -132,6 +133,14 @@ export default function App() {
     setLocal(new Game(localGameConfig(tut, 1)));
     setScreen('local-game');
   };
+
+  // debug: window.__knock('all' | 'one') knocks bots out, here or (on the dev server) in the online room
+  useEffect(() => {
+    exposeDebug('__knock', (which: 'one' | 'all' = 'all') => {
+      if (screen === 'online') conn.send({ t: 'debug', knockout: which });
+      else local?.debugKnockOut(which);
+    });
+  }, [screen, conn, local]);
 
   const onLocalOver = useCallback((winner: string) => setLocalScore(sc => ({ ...sc, [winner]: (sc[winner] ?? 0) + 1 })), []);
 

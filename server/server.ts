@@ -123,7 +123,7 @@ export async function createUnoServer(opts: ServerOptions) {
     const create = (msg: Extract<ClientMsg, { t: 'create' }>) => {
       if (rooms.size >= MAX_ROOMS) return send({ t: 'error', code: 'full', msg: text('err.serverFull') });
       if (!limits.rooms.take(ip)) return send({ t: 'error', code: 'slow-down', msg: text('err.slowRooms') });
-      const r = new Room(newCode(), opts.room);
+      const r = new Room(newCode(), { ...opts.room, debug: !!opts.dev });
       rooms.set(r.code, r);
       enter(r, String(msg.name ?? ''), undefined, msg.avatar);
     };

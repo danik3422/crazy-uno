@@ -37,9 +37,11 @@ interface Props {
   onReady?: () => void;
   /** the table is still loading or the cards are being dealt: no turn clock yet */
   dealing?: boolean;
+  /** the round's finale plays: podium, confetti, the camera's lap (held back while a knock-out van is on screen) */
+  finale?: boolean;
 }
 
-export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dealing = false }: Props) {
+export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dealing = false, finale = false }: Props) {
   crashProbe('3d');
   const size = useThree(s => s.size);
   const portrait = size.width / size.height < 0.9;
@@ -68,7 +70,7 @@ export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dea
 
   return (
     <>
-      <CameraRig view={view} finale={s.phase === 'over'} focus={A.discard} />
+      <CameraRig view={view} finale={finale} focus={A.discard} />
       <ReadySignal onReady={onReady} />
       {DEBUG && <FitProbe />}
       <ambientLight intensity={0.75} />
@@ -94,7 +96,7 @@ export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dea
       <DeckStack at={deck} center={deckMid} theme={theme} portrait={portrait} slideAt={dealTiming(s.players.length, s.table?.handSize ?? 7).slideMs / 1000} />
       <DeckHit active={canDraw} onClick={onDeck} pending={s.pending} at={deck} />
       {/* during the finale the podium shows everyone, so the seat plates step aside */}
-      {s.phase !== 'over' && <PlayerPlates game={game} view={view} dealing={dealing} />}
+      {!finale && <PlayerPlates game={game} view={view} dealing={dealing} />}
       {top && <PlayFx top={top} at={A.discard} />}
       {top && Landing && <Landing top={top} at={A.discard} lite={lite} />}
       <StackFx pending={s.pending} top={top} at={A.discard} />
@@ -106,9 +108,9 @@ export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dea
       <Mascot scale={portrait ? 0.6 : 0.72} portrait={portrait} />
       <KnockoutVan game={game} version={version} view={view} />
       {/* mounted all round (hidden) so their shaders are ready: the finale must not stall */}
-      <Confetti active={s.phase === 'over'} />
+      <Confetti active={finale} />
       <Podium
-        active={s.phase === 'over' && s.winner !== null}
+        active={finale && s.winner !== null}
         players={s.players}
         winner={s.winner}
         teams={s.teams}
