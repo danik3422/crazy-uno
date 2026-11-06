@@ -22,7 +22,7 @@
   animation: uno-shine 2.4s 0.6s ease-in-out infinite;
 }
 .uno-word {
-  font-family: var(--display); font-weight: 900; font-size: 40px; line-height: 1; letter-spacing: 0.01em; color: #ffd84a;
+  font-family: var(--display); font-weight: 900; font-size: 40px; line-height: 1; letter-spacing: 0.01em; color: var(--gold-bright);
   -webkit-text-stroke: 2.5px #2a0805; paint-order: stroke fill;
   text-shadow: 0 4px 0 #2a0805, 0 6px 10px rgba(0, 0, 0, 0.35); transform: skewX(-6deg) translateY(-2px);
 }
@@ -37,7 +37,7 @@
 .uno-call:hover .uno-oval { transform: rotate(-10deg) scale(1.06); box-shadow: 0 0 0 3px #2a0805, 0 7px 0 #5e0703, 0 18px 32px rgba(0, 0, 0, 0.5), 0 0 46px rgba(255, 120, 60, 0.75); }
 .uno-call:active .uno-oval { transform: rotate(-10deg) translateY(4px) scale(0.98); box-shadow: 0 0 0 3px #2a0805, 0 3px 0 #5e0703, 0 8px 16px rgba(0, 0, 0, 0.45); }
 .uno-call:focus-visible { outline: none; }
-.uno-call:focus-visible .uno-oval { box-shadow: 0 0 0 3px #2a0805, 0 0 0 7px #ffd84a, 0 7px 0 #5e0703; }
+.uno-call:focus-visible .uno-oval { box-shadow: 0 0 0 3px #2a0805, 0 0 0 7px var(--gold-bright), 0 7px 0 #5e0703; }
 /* "Caught!": the same logo badge, a little wider for the longer word */
 .uno-call.wide .uno-oval, .uno-call.wide .uno-rings { width: 190px; }
 .uno-call.wide .uno-word { font-size: 28px; letter-spacing: -0.01em; }

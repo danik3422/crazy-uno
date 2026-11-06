@@ -1,5 +1,8 @@
 import { createRoot } from 'react-dom/client';
-import './styles/base.css';
+import './styles/tokens.css';
+import './styles/global.css';
+import './styles/buttons.css';
+import './styles/utilities.css';
 import App from './app/App';
 import { ErrorBoundary } from './ui/components/ErrorBoundary';
 import { applyDocument, onLangChange } from './i18n/core';

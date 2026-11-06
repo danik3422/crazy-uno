@@ -13,7 +13,7 @@
   --frame: linear-gradient(160deg, #fff6c2 0%, #ffd04a 28%, #c98a10 55%, #ffe58a 78%, #b0700a 100%);
   --stub: radial-gradient(circle at 50% 48%, #fff7d0 0%, #ffd04a 42%, #e88a12 100%);
   --perf: rgba(255, 226, 140, 0.9);
-  --title: #ffd84a;
+  --title: var(--gold-bright);
   --title-shadow: 0 2px 0 #7a2a00, 0 3px 0 #4a1400, 0 6px 14px rgba(0, 0, 0, 0.45);
   --sub: #fff3dc;
   --tag-bg: linear-gradient(#fff2b0, #ffc93a);

@@ -157,7 +157,7 @@ const SCENES: Record<ThemeId, string> = {
 
 /**
  * Dresses the whole page (the fixed backdrop behind every menu) in a table theme while a screen is shown:
- * the colours come from `body.page-<theme>` in base.css, the living scene from SCENES above.
+ * the colours come from `.page-<theme>` in styles/tokens.css, the living scene from SCENES above.
  * A new pick crossfades the whole page into the new look where the browser can.
  */
 export function usePageTheme(theme: ThemeId) {

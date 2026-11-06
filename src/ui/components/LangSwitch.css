@@ -9,7 +9,7 @@
 }
 .lang-switch button:hover { color: #fff; background: rgba(255, 255, 255, 0.12); }
 .lang-switch button.on { background: #fff; color: #2b1036; }
-.lang-switch button:focus-visible { outline: 2px solid var(--gold, #ffd84a); outline-offset: 1px; }
+.lang-switch button:focus-visible { outline: 2px solid var(--gold, var(--gold-bright)); outline-offset: 1px; }
 /* the home screen: top-right corner of the page */
 .home-lang { position: absolute; top: max(12px, env(safe-area-inset-top, 0px)); right: max(14px, env(safe-area-inset-right, 0px)); z-index: 5; }
 /* inside the in-game sound popover */

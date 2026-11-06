@@ -28,10 +28,10 @@
 .phone-tip .pt-text b { font-family: var(--display); font-weight: 600; font-size: 13px; line-height: 1.25; }
 .phone-tip .pt-text small { font-size: 11.5px; line-height: 1.3; color: rgba(255, 240, 230, 0.72); }
 .phone-tip .pt-btn {
-  width: 40px; height: 40px; border-radius: 12px; border: 0; display: grid; place-items: center; cursor: pointer; color: #3a1d00;
-  background: linear-gradient(180deg, #fff09a, #ffc61a 55%, #f59a00); box-shadow: 0 3px 0 #a85d00;
+  width: 40px; height: 40px; border-radius: 12px; border: 0; display: grid; place-items: center; cursor: pointer; color: var(--on-gold);
+  background: linear-gradient(180deg, var(--gold-1), var(--gold-2) 55%, var(--gold-3)); box-shadow: 0 3px 0 var(--gold-edge);
 }
-.phone-tip .pt-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #a85d00; }
+.phone-tip .pt-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--gold-edge); }
 .phone-tip .pt-close { width: 28px; height: 28px; border-radius: 50%; border: 0; display: grid; place-items: center; cursor: pointer; background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.8); }
 @media (prefers-reduced-motion: reduce) {
   .phone-tip .pt-icon { animation: none; }

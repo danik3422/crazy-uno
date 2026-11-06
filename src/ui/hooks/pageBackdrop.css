@@ -26,7 +26,7 @@
 /* ---------- neon: a synthwave sunset over a running grid ---------- */
 .pb-neon .pb-sun {
   left: 50%; top: 80%; width: 40vmin; height: 40vmin; margin: -40vmin 0 0 -20vmin; border-radius: 50%;
-  background: linear-gradient(to bottom, #ffd84a 0%, #ff7a3a 45%, #ff2e88 100%);
+  background: linear-gradient(to bottom, var(--gold-bright) 0%, #ff7a3a 45%, #ff2e88 100%);
   mask-image: linear-gradient(to bottom, #000 0 50%, transparent 50% 54%, #000 54% 62%, transparent 62% 67%, #000 67% 74%, transparent 74% 80%, #000 80% 86%, transparent 86% 93%, #000 93%);
   -webkit-mask-image: linear-gradient(to bottom, #000 0 50%, transparent 50% 54%, #000 54% 62%, transparent 62% 67%, #000 67% 74%, transparent 74% 80%, #000 80% 86%, transparent 86% 93%, #000 93%);
   box-shadow: 0 0 80px rgba(255, 46, 136, 0.5);

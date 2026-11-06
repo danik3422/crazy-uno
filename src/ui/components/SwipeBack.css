@@ -5,4 +5,4 @@
   background: #1c0a24; color: #fff;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4); transition: background 0.15s, color 0.15s;
 }
-.swipe-back.ready { background: linear-gradient(180deg, #fff09a, #ffc61a); color: #3a1d00; }
+.swipe-back.ready { background: linear-gradient(180deg, var(--gold-1), var(--gold-2)); color: var(--on-gold); }

@@ -11,7 +11,7 @@
 .prof-who h1 { margin: 0; font-family: var(--display); font-weight: 900; font-size: clamp(20px, 3.6vw, 28px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .prof-sub { display: flex; flex-wrap: wrap; gap: 8px; }
 .prof-pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 11px 3px 6px; border-radius: 999px; font-weight: 800; font-size: 12.5px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.18); }
-.prof-pill.gold { color: #3a1d00; background: linear-gradient(180deg, #fff09a, #ffc61a 55%, #f59a00); border-color: #fff; }
+.prof-pill.gold { color: var(--on-gold); background: linear-gradient(180deg, var(--gold-1), var(--gold-2) 55%, var(--gold-3)); border-color: #fff; }
 .prof-pill .badge { margin: -4px 0; }
 .prof-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; margin-left: 4px; }
 /* the three numbers that matter most, big */
@@ -48,7 +48,7 @@
 .ach.done { background: rgba(255, 216, 74, 0.09); border-color: rgba(255, 216, 74, 0.35); }
 .ach-name { font-family: var(--display); font-weight: 800; font-size: 12px; line-height: 1.15; min-height: 2.3em; display: flex; align-items: center; }
 .ach:not(.done) .ach-name { color: rgba(255, 255, 255, 0.7); }
-.ach-ok { position: absolute; top: 6px; right: 6px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 900; color: #3a1d00; background: var(--gold); border: 2px solid #fff; }
+.ach-ok { position: absolute; top: 6px; right: 6px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 900; color: var(--on-gold); background: var(--gold); border: 2px solid #fff; }
 .ach-mini { width: 70%; height: 5px; border-radius: 99px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
 .ach-mini span { display: block; height: 100%; background: linear-gradient(90deg, #6fb4ff, #2463cc); border-radius: inherit; }
 .badge.locked { filter: grayscale(1) brightness(0.65); opacity: 0.75; }

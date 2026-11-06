@@ -137,7 +137,7 @@
 
 /* ---- each table dresses its buttons in its own style ---- */
 /* classic: glossy game-show gold, red for a penalty */
-.hud.th-classic .btn.act.primary { background: linear-gradient(180deg, #fff3a8, #ffc61a 52%, #f29200); color: #3a1d00; border-color: rgba(255, 255, 255, 0.5); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.7), 0 4px 0 #a85d00, 0 8px 18px rgba(245, 154, 0, 0.35); }
+.hud.th-classic .btn.act.primary { background: linear-gradient(180deg, #fff3a8, var(--gold-2) 52%, #f29200); color: var(--on-gold); border-color: rgba(255, 255, 255, 0.5); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.7), 0 4px 0 var(--gold-edge), 0 8px 18px rgba(245, 154, 0, 0.35); }
 .hud.th-classic .btn.act.danger { background: linear-gradient(180deg, #ff8f7f, #ec3420 55%, #c41a10); color: #fff; border-color: rgba(255, 255, 255, 0.45); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.5), 0 4px 0 #7a0a04, 0 8px 18px rgba(236, 52, 32, 0.4); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
 .hud.th-classic .btn.act:active { box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.5), 0 1px 0 #7a4400; }
 /* neon: dark glass with a glowing tube round it */
@@ -186,7 +186,7 @@
   background: rgba(20, 8, 30, 0.88); color: #fff; border: 1px solid rgba(255, 216, 74, 0.6); backdrop-filter: blur(10px);
   font-size: 15px; padding: 10px 18px; border-radius: 16px; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
 }
-.toast.big { background: linear-gradient(180deg, #fff09a, #ffc61a 55%, #f59a00); color: #3a1d00; border-color: transparent; box-shadow: 0 5px 0 #a85d00, 0 16px 34px rgba(0, 0, 0, 0.35); }
+.toast.big { background: linear-gradient(180deg, var(--gold-1), var(--gold-2) 55%, var(--gold-3)); color: var(--on-gold); border-color: transparent; box-shadow: 0 5px 0 var(--gold-edge), 0 16px 34px rgba(0, 0, 0, 0.35); }
 /* lying on its side on a phone: a short screen, so everything gets compact and keeps out of the middle */
 @media (orientation: landscape) and (max-height: 520px) {
   .hud-top { top: calc(6px + env(safe-area-inset-top, 0px)); left: max(8px, env(safe-area-inset-left, 0px)); }
@@ -264,7 +264,7 @@
 .me-turn-tag {
   position: absolute; right: 14px; top: 0; transform: translateY(-62%); z-index: 2; pointer-events: none;
   padding: 3px 10px; border-radius: 999px; font-family: var(--display); font-weight: 900; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
-  color: #3a1d00; background: linear-gradient(180deg, #fff09a, #ffc61a 55%, #f59a00); border: 2px solid #fff;
+  color: var(--on-gold); background: linear-gradient(180deg, var(--gold-1), var(--gold-2) 55%, var(--gold-3)); border: 2px solid #fff;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35); animation: turn-tag-in 0.35s cubic-bezier(0.2, 1.5, 0.4, 1);
 }
 /* the face of whoever is moving, inside "X is moving…" */
