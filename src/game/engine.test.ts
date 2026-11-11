@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_RULES, DEFAULT_TABLE, EVENTS } from './content';
 import { Game } from './engine/Game';
-import type { EventId, Rules } from './types';
+import type { Card, Color, EventId, Rules } from './types';
 
 function seeded(seed: number) {
   return () => {
@@ -124,6 +124,97 @@ describe('Game engine', () => {
     while (g.s.cur === before && g.s.phase !== 'over') g.botAct();
     expect(g.s.cur).not.toBe(victim);
     expect(g.s.skipNext).toEqual([]);
+  });
+
+  describe('lightning does not let the struck player dodge what is aimed at them', () => {
+    /** Three bots, no random events; the current player gets a card of `type` that fits the pile. */
+    function setup(type: Card['type']) {
+      const g = new Game({ players: [{ name: 'A', bot: true }, { name: 'B', bot: true }, { name: 'C', bot: true }], rules: { ...DEFAULT_RULES, events: false } }, { rng: seeded(5) });
+      const s = g.s;
+      expect(s.phase).toBe('play');
+      const card = s.deck.splice(s.deck.findIndex(c => c.type === type), 1)[0];
+      s.players[s.cur].hand.push(card);
+      s.color = card.color as Color;
+      const victim = g.nextIdx();
+      s.skipNext.push(victim);
+      return { g, s, card, victim, after: g.nextIdx(victim) };
+    }
+
+    it('the struck player takes the waiting +2 and loses the turn; the next player draws nothing', () => {
+      const { g, s, card, victim, after } = setup('draw2');
+      const total = g.totalCards();
+      const hands = s.players.map(p => p.hand.length);
+      expect(g.play(card.id)).toBe(true);
+      expect(s.players[victim].hand.length).toBe(hands[victim] + 2);
+      expect(s.players[after].hand.length).toBe(hands[after]);
+      expect(s.cur).toBe(after);
+      expect(s.phase).toBe('play');
+      expect(s.pending).toBe(0);
+      expect(s.pendingType).toBeNull();
+      expect(s.skipNext).toEqual([]);
+      expect(g.totalCards()).toBe(total);
+    });
+
+    it('the colour roulette is still spun by the struck player, and that is their lost turn', () => {
+      const { g, s, card, victim, after } = setup('num');
+      s.rouletteNext = true;
+      const before = s.players[victim].hand.length;
+      g.play(card.id);
+      expect(s.cur).toBe(victim);
+      expect(s.phase).toBe('choose');
+      expect(s.choice).toMatchObject({ kind: 'color', mode: 'roulette' });
+      // the strike is spent on this turn, not saved for the next one
+      expect(s.skipNext).toEqual([]);
+      g.resolveChoice('red');
+      expect(s.players[victim].hand.length).toBeGreaterThan(before);
+      expect(s.cur).toBe(after);
+      expect(s.rouletteNext).toBe(false);
+    });
+  });
+
+  it('plays a stand-in for a person who dropped out at the normal level, not the bots\' hard one', () => {
+    /** One move by the first player of the same fresh game; whether they thought ahead (as a hard bot does). */
+    const thinks = (standIn: boolean) => {
+      const g = new Game(
+        { players: [{ name: 'A', bot: true }, { name: 'B', bot: true }], rules: { ...DEFAULT_RULES, events: false }, table: { ...DEFAULT_TABLE, botLevel: 'hard' } },
+        { rng: seeded(9) },
+      );
+      expect(g.s.phase).toBe('play');
+      expect(g.cp().hand.filter(c => g.playable(c)).length).toBeGreaterThan(1);
+      g.cp().standIn = standIn;
+      const think = vi.spyOn(g as unknown as { thinkAhead: () => number }, 'thinkAhead');
+      g.botAct();
+      return think.mock.calls.length > 0;
+    };
+    expect(thinks(false)).toBe(true);
+    expect(thinks(true)).toBe(false);
+  });
+
+  it('settles a two-step decision (a gift: which card, then to whom) when the turn clock runs out', () => {
+    let clock = 0;
+    const g = new Game(
+      { players: [{ name: 'A', bot: false }, { name: 'B', bot: true }, { name: 'C', bot: true }], rules: { ...DEFAULT_RULES, events: false, timer: true } },
+      { rng: seeded(7), now: () => clock },
+    );
+    const s = g.s;
+    for (let i = 0; i < 200 && !(s.cur === 0 && s.phase === 'play'); i++) {
+      if (g.cp().bot) g.botAct();
+      else if (s.phase === 'choose') g.resolveChoice('red');
+      else g.draw();
+    }
+    expect(s.cur).toBe(0);
+    expect(s.turnDeadline).not.toBeNull();
+    const me = s.players[0];
+    me.hand.push({ id: 99_999, color: s.color, type: 'gift' });
+    const n = me.hand.length;
+    g.play(99_999);
+    expect(s.choice?.kind).toBe('card');
+    clock = s.turnDeadline! + 1;
+    g.timeoutTurn();
+    // the gift went out in full and the turn moved on; nothing is left waiting without a clock
+    expect(me.hand.length).toBe(n - 2);
+    expect(s.choice).toBeNull();
+    expect(s.cur).not.toBe(0);
   });
 
   it('lets "UNO!" be called only with two cards and one of them playable', () => {

@@ -106,7 +106,9 @@ export class Connection extends Observable {
   }
 
   join(code: string) {
-    const token = this.session?.code === code ? this.session.token : undefined;
+    // the seat token of this room; after a kick, the old one (the server knows it and says no)
+    const kicked = readJson<Session>(STORAGE_KEYS.kicked);
+    const token = this.session?.code === code ? this.session.token : kicked?.code === code ? kicked.token : undefined;
     this.send({ t: 'join', code, name: this.name, avatar: this.avatar, token });
   }
 
@@ -240,6 +242,7 @@ export class Connection extends Observable {
         break;
       case 'error':
         this.error = { code: m.code, msg: m.msg, at: Date.now() };
+        if (m.code === 'kicked' && this.session) writeJson(STORAGE_KEYS.kicked, this.session);
         if (errorLeavesRoom(m.code, !!this.room)) this.forget();
         break;
       case 'react':

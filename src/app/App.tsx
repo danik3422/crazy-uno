@@ -1,11 +1,10 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { randomHumanAvatar } from '../game/avatars';
 import { render, t, useLang, type Msg } from '../i18n';
 import { Game, type LocalSetup } from '../game/engine/Game';
 import { Connection, errorLeavesRoom, savedAvatar, savedName } from '../net/connection';
 import { CardLoader } from '../ui/components/CardLoader';
 import { ErrorBoundary } from '../ui/components/ErrorBoundary';
-import { GameScreen } from '../ui/game/GameScreen';
 import { Home } from '../ui/screens/home/Home';
 import { ConnBadge } from '../ui/components/ConnBadge';
 import { Lobby } from '../ui/screens/lobby/Lobby';
@@ -17,9 +16,23 @@ import { useRemoteGame } from './hooks/useRemoteGame';
 import { useServerCheck } from './hooks/useServerCheck';
 import { tutorialSetup, type TutorialMode } from '../ui/tutorial/tutorial';
 import { exposeDebug } from '../lib/debug';
+import { lazyFile } from '../lib/lazyFile';
 import './App.css';
 
 type Screen = 'home' | 'local-setup' | 'local-game' | 'online';
+
+/** The 3D table and everything on it (three.js): loaded apart from the menus, so they open faster. */
+const loadGameScreen = () => import('../ui/game/GameScreen').then(m => ({ default: m.GameScreen }));
+const GameScreen = lazyFile(loadGameScreen);
+
+/** While the table's files are still coming in. */
+function TableLoading() {
+  return (
+    <div className="loading-screen">
+      <CardLoader title={t('load.title')} sub={t('home.shuffling')} />
+    </div>
+  );
+}
 
 /**
  * The app shell: which screen is showing, the player's name and avatar,
@@ -44,6 +57,16 @@ export default function App() {
   // the tutorial: its own setup, hints on for the first round, never saved to resume
   const [tutorial, setTutorial] = useState<{ setup: LocalSetup; coach: boolean } | null>(null);
   useEffect(() => saveLocalSetup(setup), [setup]);
+  // the table's files come in once the menu is up and the browser is idle, so starting a game is instant
+  useEffect(() => {
+    const preload = () => void loadGameScreen().catch(() => undefined);
+    if (typeof requestIdleCallback === 'function') {
+      const id = requestIdleCallback(preload, { timeout: 4000 });
+      return () => cancelIdleCallback(id);
+    }
+    const id = window.setTimeout(preload, 1500);
+    return () => window.clearTimeout(id);
+  }, []);
 
   const setName = (n: string) => {
     setNameState(n);
@@ -271,5 +294,9 @@ export default function App() {
   };
 
   // a crash anywhere in the screen shows a calm card instead of a blank page (see ErrorBoundary)
-  return <ErrorBoundary key={screen} onMenu={toMenu}>{view()}</ErrorBoundary>;
+  return (
+    <ErrorBoundary key={screen} onMenu={toMenu}>
+      <Suspense fallback={<TableLoading />}>{view()}</Suspense>
+    </ErrorBoundary>
+  );
 }

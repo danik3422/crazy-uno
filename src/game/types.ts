@@ -31,6 +31,8 @@ export interface Player {
   member?: string;
   /** online only: the player's connection dropped (autopilot may be playing) */
   offline?: boolean;
+  /** online, server side: `bot` is on only because the person dropped out; the autopilot plays at the normal level */
+  standIn?: boolean;
   /** No Mercy: knocked out for holding too many cards; the number says in what order (1 = first out) */
   out?: number;
 }

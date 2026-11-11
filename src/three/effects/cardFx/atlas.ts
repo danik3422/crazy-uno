@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { CELL_ID } from './cells';
 import { HEX } from '../../../game/content';
 import { drawEventIcon, drawFxShape } from '../../themes/eventIcons';
 import { drawIcon } from '../../themes/icons';
@@ -10,45 +11,7 @@ import { drawIcon } from '../../themes/icons';
 export const GRID = 8;
 const CELL = 128;
 
-export const CELL_ID = {
-  glow: 0,
-  ring: 1,
-  spark: 2,
-  dot: 3,
-  arrow: 4,
-  streak: 5,
-  splat: 6,
-  shock: 7,
-  barrier: 8,
-  drop: 9,
-  shard: 10,
-  swirl: 11,
-  wheel: 12,
-  pointer: 13,
-  cardGlow: 14,
-  plus: 15,
-  gift: 16,
-  bomb: 17,
-  mask: 18,
-  broom: 19,
-  cloud: 20,
-  tornado: 21,
-  fire: 22,
-  question: 23,
-  bin: 24,
-  skull: 25,
-  // random events (three/effects/eventFx)
-  evMeteor: 26,
-  pumpkin: 27,
-  bat: 28,
-  star: 29,
-  coin: 30,
-  dart: 31,
-  bolt: 32,
-  snowball: 33,
-  flake: 34,
-} as const;
-export type Cell = (typeof CELL_ID)[keyof typeof CELL_ID];
+export { CELL_ID, type Cell } from './cells';
 
 /** order of the colour wheel's segments, clockwise from the top (the wheel's angle 0) */
 export const WHEEL_ORDER = ['red', 'yellow', 'green', 'blue'] as const;

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { HEX, SPECIAL } from '../../game/content';
 import type { Card, Color } from '../../game/types';
-import { drawArrowIcon, drawEmoji } from './textures';
+import { drawArrowIcon, drawEmoji } from '../themes/kit';
 
 /**
  * The big emblems that pop up over the pile: a glossy round badge in the card's colour

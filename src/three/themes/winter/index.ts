@@ -1,10 +1,8 @@
-import { CELL_ID } from '../../effects/cardFx/atlas';
+import { CELL_ID } from '../../effects/cardFx/cells';
 import type { TableTheme } from '../types';
 import { drawBack } from './back';
-import { Decor } from './Decor';
 import { drawFace } from './face';
 import { floor } from './floor';
-import { Landing } from './Landing';
 import { palette } from './palette';
 
 export const theme: TableTheme = {
@@ -17,8 +15,6 @@ export const theme: TableTheme = {
   glow: '#bff4ff',
   // cards skate: a low, gliding arc with a slight side-to-side sway, and hands that float a little
   motion: { arc: 0.72, spin: 0.06, sway: 0.3, hoverLift: 1.18, float: 0.028 },
-  Decor,
-  Landing,
   // events: a giant snowball, an ice-blue strike with ice shards, snowflakes instead of stars
   events: {
     hot: '#bff4ff',

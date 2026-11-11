@@ -7,6 +7,7 @@ import { fxState, nowSec } from '../effects/fxState';
 import { landingTime } from '../effects/PlayFx';
 import type { View } from '../layout';
 import { THEMES } from '../themes/index';
+import { SCENES } from '../themes/scenes';
 import { setBrowserTint } from '../../ui/backdrop/pageTheme';
 import { isPhone } from '../../ui/hooks/phone';
 
@@ -93,7 +94,7 @@ export function Arena({ color, theme, view, center }: Props) {
   const T = THEMES[theme];
   const pal = T.palette[color];
   const fragment = useMemo(() => fragFor(T.floor), [T]);
-  const Decor = T.Decor;
+  const Decor = SCENES[theme].Decor;
   // created once; colours and mode follow the props inside useFrame
   const uniforms = useMemo(
     () => ({

@@ -2,10 +2,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import { COLORS, PRESETS } from '../src/game/content';
 import { canJumpIn, playableCard } from '../src/game/rules';
+import { seededRng } from '../src/game/random';
 import type { Action, ClientMsg, PlayerView, RoomInfo, ServerMsg } from '../src/net/protocol';
 import { createUnoServer } from './server';
 
 let app: Awaited<ReturnType<typeof createUnoServer>>;
+/** the scripted players' choices (calling UNO, which card to jump in with): seeded, not Math.random */
+const rnd = seededRng(0.4242);
 
 beforeAll(async () => {
   app = await createUnoServer({ port: 0, rateLimit: 1e6, limits: { connections: 1e6, rooms: 1e6, badJoins: 1e6 }, room: { botSpeed: 0, offlineAutoMs: 60, idleAutoMs: 10_000, dealScale: 0.02, groupMs: 50, rematchMs: 40 } });
@@ -102,7 +105,7 @@ class TestClient {
       case 'play': {
         const c = me.hand.find(x => playableCard(s, x));
         if (c) {
-          if (me.hand.length === 2 && Math.random() < 0.5) this.act({ a: 'uno' });
+          if (me.hand.length === 2 && rnd() < 0.5) this.act({ a: 'uno' });
           return this.act({ a: 'play', id: c.id });
         }
         return this.act(s.drawn && s.pending === 0 ? { a: 'pass' } : { a: 'draw' });
@@ -289,10 +292,10 @@ describe('online rooms', () => {
           c.act({ a: 'jump', id: good.id, top: top.id });
           // the same card again, as if a second tap raced the first: the top has changed by then
           c.act({ a: 'jump', id: good.id, top: top.id });
-        } else if (me.hand.length && Math.random() < 0.3) {
+        } else if (me.hand.length && rnd() < 0.3) {
           // not identical, a stale top, or nonsense: all refused
           badSent++;
-          const any = me.hand[Math.floor(Math.random() * me.hand.length)];
+          const any = me.hand[Math.floor(rnd() * me.hand.length)];
           c.act({ a: 'jump', id: any.id, top: top.id });
           c.act({ a: 'jump', id: any.id, top: -5 });
           c.act({ a: 'jump', id: 'x' as unknown as number, top: top.id });
@@ -403,6 +406,112 @@ describe('online rooms', () => {
     (room as unknown as { flush: () => void }).flush();
     await host.until(() => host.view!.state.phase === 'group');
     await host.until(() => host.view!.state.phase !== 'group', 3000);
+    host.close();
+    guest.close();
+  });
+
+  it('never gives one connection a second seat in the same room', async () => {
+    const [host] = await openRoom(['Хост']);
+    host.auto = false;
+    const roomUpdates = () => host.room!.members.length;
+    // the same socket asks to join its own room again (no token, then with it)
+    host.send({ t: 'join', code: host.code, name: 'Хост' });
+    host.send({ t: 'join', code: host.code, name: 'Хост', token: host.token });
+    host.send({ t: 'ping' });
+    await new Promise(r => setTimeout(r, 100));
+    expect(roomUpdates()).toBe(1);
+    const room = app.rooms.get(host.code)!;
+    expect(room.members).toHaveLength(1);
+    // and once it closes, nobody is left "connected": the room can be cleaned up
+    host.close();
+    await new Promise(r => setTimeout(r, 100));
+    expect(room.connectedHumans()).toHaveLength(0);
+  });
+
+  it('does not let a kicked player walk straight back in with their seat token', async () => {
+    const [host, guest] = await openRoom(['Хост', 'Гость']);
+    host.auto = guest.auto = false;
+    const token = guest.token;
+    host.send({ t: 'kick', id: guest.room!.you });
+    await guest.until(() => guest.errors.includes('kicked'));
+    await host.until(() => host.room!.members.length === 1);
+
+    const back = new TestClient('Гость');
+    back.auto = false;
+    await back.connect();
+    back.send({ t: 'join', code: host.code, name: 'Гость', token });
+    await back.until(() => back.errors.includes('kicked'));
+    expect(host.room!.members).toHaveLength(1);
+    [host, guest, back].forEach(c => c.close());
+  });
+
+  it('puts a bot in at once for someone who dropped out before the next round, and forgets the votes of those who left', async () => {
+    const [host, guest, third] = await openRoom(['Хост', 'Гость', 'Третий']);
+    host.send({ t: 'start' });
+    await host.until(() => over(host), 30_000);
+    await guest.until(() => over(guest));
+    await third.until(() => over(third));
+    host.auto = guest.auto = third.auto = false;
+
+    // the third one votes, then leaves: that vote must not count any more
+    third.send({ t: 'again' });
+    await host.until(() => host.room!.rematch?.ready.length === 1);
+    third.send({ t: 'leave' });
+    await host.until(() => host.room!.members.length === 2 && !host.room!.rematch?.ready.length);
+
+    // the guest's connection drops; the host alone starts the next round
+    const guestSeat = host.room!.members.find(m => m.name === 'Гость')!.id;
+    guest.close();
+    await host.until(() => host.room!.members.find(m => m.id === guestSeat)?.connected === false);
+    host.send({ t: 'again' });
+    await host.until(() => host.view?.state.round === 2);
+    const seat = host.view!.state.players.findIndex(p => p.member === guestSeat);
+    // a stand-in right away, not a 12-second wait on every turn of theirs
+    expect(host.view!.state.players[seat].bot).toBe(true);
+    expect(host.view!.state.players[seat].offline).toBe(true);
+    host.close();
+  });
+
+  it('does not fan out repeated profile and team messages to the whole room', async () => {
+    const [host, guest] = await openRoom(['Хост', 'Гость']);
+    host.auto = guest.auto = false;
+    let updates = 0;
+    host.ws.on('message', raw => { if (JSON.parse(String(raw)).t === 'room') updates++; });
+    for (let i = 0; i < 50; i++) guest.send({ t: 'profile', name: 'Гость' });
+    for (let i = 0; i < 50; i++) guest.send({ t: 'team', id: guest.room!.you, team: 0 });
+    // and a flood of real changes is cut off after a few
+    for (let i = 0; i < 50; i++) guest.send({ t: 'profile', name: `Гость${i}` });
+    guest.send({ t: 'ping' });
+    await guest.until(() => true);
+    await new Promise(r => setTimeout(r, 150));
+    // the first team pick is a real change, the rest are repeats; then at most the window's worth of renames
+    expect(updates).toBeLessThanOrEqual(13);
+    expect(updates).toBeGreaterThan(0);
+    host.close();
+    guest.close();
+  });
+
+  it('runs the turn clock while a player picks a colour, as in a local game', async () => {
+    const [host, guest] = await openRoom(['Хост', 'Гость']);
+    host.auto = guest.auto = false;
+    host.send({ t: 'start' });
+    await host.until(() => !!host.view && host.view.warmup.dealEnd !== null);
+    await new Promise(r => setTimeout(r, 200));
+    const room = app.rooms.get(host.code)!;
+    const g = room.game!;
+    const s = g.s;
+    // whoever moves now lays a Wild and then just sits there
+    s.rules.timer = true;
+    if (s.phase === 'choose') g.resolveChoice('red');
+    const seat = s.cur;
+    const wild = s.deck.splice(s.deck.findIndex(c => c.type === 'wild'), 1)[0];
+    s.players[seat].hand.push(wild);
+    g.play(wild.id);
+    expect(s.phase).toBe('choose');
+    s.turnDeadline = Date.now() + 100;
+    (room as unknown as { flush: () => void }).flush();
+    // the clock picks the colour for them; without it the room would wait for the idle timeout (10 s here)
+    await host.until(() => host.view!.state.phase === 'play' && host.view!.state.cur !== seat, 3000);
     host.close();
     guest.close();
   });

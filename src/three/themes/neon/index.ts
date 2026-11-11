@@ -1,10 +1,8 @@
-import { CELL_ID } from '../../effects/cardFx/atlas';
+import { CELL_ID } from '../../effects/cardFx/cells';
 import type { TableTheme } from '../types';
 import { drawBack } from './back';
-import { Decor } from './Decor';
 import { neonFace } from './face';
 import { floor } from './floor';
-import { Landing } from './Landing';
 import { palette } from './palette';
 
 export const theme: TableTheme = {
@@ -17,8 +15,6 @@ export const theme: TableTheme = {
   glow: '#ff3df0',
   // snappy: low, fast arcs with a quick whirl and a slight glitchy side-step; hovered cards pop high
   motion: { arc: 0.6, spin: 1, sway: 0.12, hoverLift: 1.35, float: 0.02 },
-  Decor,
-  Landing,
   // events: a laser strike instead of a meteor, magenta bolts, neon light trails racing round
   events: {
     hot: '#ff4fd8',

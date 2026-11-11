@@ -15,6 +15,7 @@ import { PlayFx, StackFx } from '../effects/PlayFx';
 import { CardFx } from '../effects/cardFx/CardFx';
 import { Podium } from '../players/podium/Podium';
 import { THEMES } from '../themes';
+import { SCENES } from '../themes/scenes';
 import { isPhone } from '../../ui/hooks/phone';
 import { CameraRig } from './CameraRig';
 import { DirectionArrows } from './DirectionArrows';
@@ -64,7 +65,7 @@ export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dea
   const cards = [...s.deck, ...s.discard, ...s.players.flatMap(p => p.hand)];
   const top = s.discard[s.discard.length - 1];
   const theme = s.theme ?? 'classic';
-  const Landing = THEMES[theme].Landing;
+  const Landing = SCENES[theme].Landing;
   const lite = isPhone();
   useLayoutEffect(() => setPlayableGlow(THEMES[theme].glow), [theme]);
 

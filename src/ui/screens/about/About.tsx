@@ -14,7 +14,7 @@ export function About() {
   return (
     <div className="howto about">
       <section className="ht-card">
-        <h2>Crazy UNO</h2>
+        <h2>{t('app.title')}</h2>
         <p className="ab-text">{t('about.lead')}</p>
         <div className="ab-links">
           <a className="ab-link" href={PORTFOLIO} target="_blank" rel="noopener noreferrer">

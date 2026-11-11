@@ -2,7 +2,7 @@ import { COLORS, EVENTS, NO_MERCY_TYPES, SPECIAL, WILD_TYPES } from '../../game/
 import { buildDeck } from '../../game/deck';
 import type { Card, CardType, EventId, Rules, ThemeId } from '../../game/types';
 import { useEffect, useMemo } from 'react';
-import { cardImage, warmCardImages } from '../../three/cards/textures';
+import { cardImage, warmCardImages } from '../../three/cards/cardArt';
 import { EventIcon } from './EventIcon';
 import './Legend.css';
 

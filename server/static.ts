@@ -13,8 +13,10 @@ export interface StaticSiteOptions {
   dir: string;
   /** behind a proxy: take the original protocol from X-Forwarded-Proto */
   trustProxy: boolean;
-  /** open rooms, so an invite link can say who is calling you */
-  rooms: Map<string, Room>;
+  /** the open room with this code, so an invite link can say who is calling you (rate-limited by the caller) */
+  findRoom: (code: string, req: http.IncomingMessage) => Room | undefined;
+  /** the site's public address (https://example.com); without it previews use the request's Host */
+  publicUrl?: string;
 }
 
 /** The built page, compressed once per variant. */
@@ -31,8 +33,8 @@ const FILES: Record<string, string> = {
   '/icon-192.png': 'image/png',
   '/icon-512.png': 'image/png',
   '/apple-touch-icon.png': 'image/png',
-  '/manifest.webmanifest': 'application/manifest+json',
 };
+const MANIFEST = '/manifest.webmanifest';
 const SPLASH = /^\/splash\/splash-\d+x\d+\.jpg$/;
 /** the game's files, named by their content (index-3f9a1c.js): they never change, so browsers keep them for good */
 const ASSET = /^\/assets\/[\w.-]+\.(js|css|woff2?|png|jpg|svg|webp|mp3|json)$/;
@@ -49,7 +51,40 @@ const escapeHtml = (v: string) =>
 
 /** Replaces the content of `<meta property|name="prop" content="…">`. */
 const setMeta = (html: string, prop: string, value: string) =>
-  html.replace(new RegExp(`(<meta (?:property|name)="${prop}" content=")[^"]*(")`), `$1${escapeHtml(value)}$2`);
+  // a function, not a replacement string: "$&" or "$`" in a player's name must stay plain text
+  html.replace(new RegExp(`(<meta (?:property|name)="${prop}" content=")[^"]*(")`), (_, open: string, close: string) => open + escapeHtml(value) + close);
+
+/**
+ * What the page may load and run. Scripts: only the game's own files and the inline scripts of the built page
+ * (allowed by their hash, so an injected one would not run). Styles may be inline (React sets style attributes);
+ * fonts come from Google Fonts; card pictures are data URLs; the game talks to its own server over WebSocket.
+ */
+function contentPolicy(html: string) {
+  const inline = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)]
+    .map(m => `'sha256-${createHash('sha256').update(m[1]).digest('base64')}'`);
+  return [
+    "default-src 'self'",
+    `script-src 'self' ${inline.join(' ')}`.trim(),
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob:",
+    // 'self' covers ws: on the same host in current browsers; older Safari needs it spelled out
+    "connect-src 'self' ws: wss:",
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'self'",
+  ].join('; ');
+}
+
+/** Headers every response of the site carries. */
+const SECURITY_HEADERS: http.OutgoingHttpHeaders = {
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'same-origin',
+  'permissions-policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+};
 
 /** The page's language from Accept-Language (uk → Ukrainian, ru / be → Russian, pl → Polish, else English). */
 const langOf = (req: http.IncomingMessage): Lang =>
@@ -60,29 +95,45 @@ const langOf = (req: http.IncomingMessage): Lang =>
  * Page variants differ only in their link-preview tags: absolute URLs for this host,
  * and for invite links (?room=CODE) who is calling you to which room.
  */
-export function createStaticSite({ dir, trustProxy, rooms }: StaticSiteOptions) {
+export function createStaticSite({ dir, trustProxy, findRoom, publicUrl }: StaticSiteOptions) {
+  const fixedOrigin = publicUrl ? new URL(publicUrl).origin : null;
+  const isHttps = (req: http.IncomingMessage) =>
+    trustProxy && String(req.headers['x-forwarded-proto'] ?? '').split(',')[0].trim() === 'https';
+
   let template: Promise<string | null> | null = null;
+  /** the page's policy, from its own inline scripts (every page variant has the same ones) */
+  let csp = '';
   const loadTemplate = () =>
-    (template ??= readFile(path.join(dir, 'index.html'), 'utf8').catch(() => {
-      template = null;
-      return null;
-    }));
+    (template ??= readFile(path.join(dir, 'index.html'), 'utf8').then(
+      html => {
+        csp = contentPolicy(html);
+        return html;
+      },
+      () => {
+        template = null;
+        return null;
+      },
+    ));
 
   const pages = new Map<string, Page>();
   const loadPage = async (req: http.IncomingMessage, url: URL): Promise<Page | null> => {
     const tpl = await loadTemplate();
     if (!tpl) return null;
-    const proto = trustProxy ? String(req.headers['x-forwarded-proto'] ?? 'http').split(',')[0].trim() : 'http';
     const host = String(req.headers.host ?? 'localhost').replace(/[^\w.:-]/g, '').slice(0, 100);
-    const origin = `${proto === 'https' ? 'https' : 'http'}://${host}`;
+    const origin = fixedOrigin ?? `${isHttps(req) ? 'https' : 'http'}://${host}`;
     const code = normalizeCode(url.searchParams.get('room') ?? '');
-    const room = code ? rooms.get(code) : undefined;
+    const room = code ? findRoom(code, req) : undefined;
     const hostName = room?.members.find(m => m.id === room.hostId)?.name;
     const seated = room?.members.filter(m => !m.spectator).length ?? 0;
     const lang = langOf(req);
     const key = `${origin}|${lang}|${room ? `${code}|${hostName}|${seated}` : ''}`;
     const hit = pages.get(key);
-    if (hit) return hit;
+    if (hit) {
+      // most recently used goes last, so the oldest is the first to go when the cache is full
+      pages.delete(key);
+      pages.set(key, hit);
+      return hit;
+    }
 
     let html = tpl;
     // link previews and the first paint in the reader's language (the app itself may switch later)
@@ -109,7 +160,7 @@ export function createStaticSite({ dir, trustProxy, rooms }: StaticSiteOptions) 
       br: brotliCompressSync(raw, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: room ? 5 : 10 } }),
       etag: `"${createHash('sha1').update(raw).digest('base64url').slice(0, 16)}"`,
     };
-    if (pages.size > PAGE_CACHE_LIMIT) pages.clear();
+    if (pages.size >= PAGE_CACHE_LIMIT) pages.delete(pages.keys().next().value!);
     pages.set(key, page);
     return page;
   };
@@ -119,6 +170,21 @@ export function createStaticSite({ dir, trustProxy, rooms }: StaticSiteOptions) 
     let f = files.get(name);
     if (!f) files.set(name, (f = readFile(path.join(dir, name.slice(1))).catch(() => null)));
     return f;
+  };
+
+  /** The install manifest, with the app's name in the reader's language (the file itself is in English). */
+  const manifests = new Map<Lang, Promise<Buffer | null>>();
+  const loadManifest = (lang: Lang) => {
+    let m = manifests.get(lang);
+    if (!m) {
+      m = loadFile(MANIFEST).then(file => {
+        if (!file) return null;
+        const title = tr(lang, 'app.title');
+        return Buffer.from(JSON.stringify({ ...JSON.parse(String(file)), name: title, short_name: title, description: tr(lang, 'og.desc'), lang }));
+      }).catch(() => null);
+      manifests.set(lang, m);
+    }
+    return m;
   };
 
   /** A game file, read and compressed once. */
@@ -155,10 +221,10 @@ export function createStaticSite({ dir, trustProxy, rooms }: StaticSiteOptions) 
       const packed = COMPRESS.has(ext);
       const [body, enc] = packed && /\bbr\b/.test(accept) ? [a.br, 'br'] : packed && /\bgzip\b/.test(accept) ? [a.gz, 'gzip'] : [a.raw, null];
       const headers: http.OutgoingHttpHeaders = {
+        ...SECURITY_HEADERS,
         'content-type': ASSET_TYPES[ext],
         'content-length': body.length,
         'cache-control': 'public, max-age=31536000, immutable',
-        'x-content-type-options': 'nosniff',
       };
       if (packed) headers.vary = 'Accept-Encoding';
       if (enc) headers['content-encoding'] = enc;
@@ -170,7 +236,20 @@ export function createStaticSite({ dir, trustProxy, rooms }: StaticSiteOptions) 
     if (url.pathname === '/sw.js') {
       const file = await loadFile('/sw.js');
       if (!file) return void res.writeHead(404).end();
-      res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'content-length': file.length, 'cache-control': 'no-cache' });
+      res.writeHead(200, { ...SECURITY_HEADERS, 'content-type': 'text/javascript; charset=utf-8', 'content-length': file.length, 'cache-control': 'no-cache' });
+      res.end(head ? undefined : file);
+      return;
+    }
+    if (url.pathname === MANIFEST) {
+      const file = await loadManifest(langOf(req));
+      if (!file) return void res.writeHead(404).end();
+      res.writeHead(200, {
+        ...SECURITY_HEADERS,
+        'content-type': 'application/manifest+json',
+        'content-length': file.length,
+        'cache-control': 'public, max-age=86400',
+        vary: 'Accept-Language',
+      });
       res.end(head ? undefined : file);
       return;
     }
@@ -178,7 +257,7 @@ export function createStaticSite({ dir, trustProxy, rooms }: StaticSiteOptions) 
     if (type) {
       const file = await loadFile(url.pathname);
       if (!file) return void res.writeHead(404).end();
-      res.writeHead(200, { 'content-type': type, 'content-length': file.length, 'cache-control': 'public, max-age=86400' });
+      res.writeHead(200, { ...SECURITY_HEADERS, 'content-type': type, 'content-length': file.length, 'cache-control': 'public, max-age=86400' });
       res.end(head ? undefined : file);
       return;
     }
@@ -193,13 +272,17 @@ export function createStaticSite({ dir, trustProxy, rooms }: StaticSiteOptions) 
     // always send the smallest the browser accepts
     const [body, enc] = /\bbr\b/.test(accept) ? [page.br, 'br'] : /\bgzip\b/.test(accept) ? [page.gz, 'gzip'] : [page.raw, null];
     const headers: http.OutgoingHttpHeaders = {
+      ...SECURITY_HEADERS,
       'content-type': 'text/html; charset=utf-8',
       'cache-control': 'no-cache',
       etag: page.etag,
       vary: 'Accept-Encoding, Accept-Language',
-      'x-content-type-options': 'nosniff',
-      'referrer-policy': 'same-origin',
+      // the game is not meant to run inside someone else's page (clickjacking)
+      'x-frame-options': 'SAMEORIGIN',
+      'content-security-policy': csp,
     };
+    // over HTTPS, browsers should never fall back to plain HTTP for this site
+    if (isHttps(req)) headers['strict-transport-security'] = 'max-age=15552000';
     if (req.headers['if-none-match'] === page.etag) {
       res.writeHead(304, headers).end();
       return;

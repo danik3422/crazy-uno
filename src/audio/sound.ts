@@ -80,7 +80,7 @@ class SoundEngine extends Observable {
   /** end times of the sounds playing now, for the voice limit */
   private voices: number[] = [];
   private lastPlayed = new Map<SfxId, number>();
-  private prop: { osc: OscillatorNode; gain: GainNode; level: number } | null = null;
+  private prop: { osc: OscillatorNode; lfo: OscillatorNode; gain: GainNode; level: number } | null = null;
   private motor: { oscs: OscillatorNode[]; chop: OscillatorNode; lp: BiquadFilterNode; gain: GainNode; level: number; rev: number } | null = null;
 
   constructor() {
@@ -204,7 +204,8 @@ class SoundEngine extends Observable {
     if (!ctx || ctx.state !== 'running') return;
     const target = this.prefs.sfx ? Math.max(0, Math.min(1, level)) * 0.12 : 0;
     if (!this.prop) {
-      if (target <= 0) return;
+      // starts only once it is audible: hovering around zero must not build and stop an engine every frame
+      if (target <= 0.004) return;
       // a buzzy saw, chopped by a fast LFO, through a lowpass: sounds like a little engine
       const osc = ctx.createOscillator();
       osc.type = 'sawtooth';
@@ -224,7 +225,18 @@ class SoundEngine extends Observable {
       osc.connect(chop).connect(lp).connect(gain).connect(this.sfxBus);
       osc.start();
       lfo.start();
-      this.prop = { osc, gain, level: 0 };
+      // once stopped, the whole little engine is unplugged so nothing keeps running in the audio thread
+      osc.onended = () => [osc, lfo, lfoDepth, chop, lp, gain].forEach(n => n.disconnect());
+      this.prop = { osc, lfo, gain, level: 0 };
+    }
+    if (target === 0) {
+      // silent: let it fade out, then stop it (a new one starts when the plane comes back)
+      this.prop.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.12);
+      const end = ctx.currentTime + 1;
+      this.prop.osc.stop(end);
+      this.prop.lfo.stop(end);
+      this.prop = null;
+      return;
     }
     if (Math.abs(target - this.prop.level) < 0.004) return;
     this.prop.level = target;

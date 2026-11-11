@@ -2,7 +2,9 @@ import http from 'node:http';
 import { msg as text } from '../src/i18n/msg';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { CODE_ALPHABET, CODE_LEN, normalizeCode, type ClientMsg, type ServerMsg } from '../src/net/protocol';
+import { clientIp, parseHops, type ProxyTrust } from './clientIp';
 import { DEFAULT_LIMITS, Limits, type LimitOptions } from './limits';
+import { secureInt } from './rng';
 import { Room, type Member, type RoomOptions } from './room/Room';
 import { createStaticSite } from './static';
 
@@ -16,8 +18,15 @@ export interface ServerOptions {
   /** messages a socket may send per second (burst up to twice that) */
   rateLimit?: number;
   limits?: Partial<LimitOptions>;
-  /** behind a proxy (Render, Fly, nginx): take the client address from X-Forwarded-For */
-  trustProxy?: boolean;
+  /**
+   * behind proxies (Render, Fly, nginx): how many of them append to X-Forwarded-For (true = 1).
+   * Default: the TRUST_PROXY environment variable. See clientIp.ts.
+   */
+  trustProxy?: boolean | number;
+  /** a header the edge proxy always sets to the client's address (CLIENT_IP_HEADER, e.g. cf-connecting-ip) */
+  clientIpHeader?: string;
+  /** the site's public address for link previews (PUBLIC_URL); without it the request's Host is used */
+  publicUrl?: string;
 }
 
 const MAX_ROOMS = 2000;
@@ -35,14 +44,33 @@ type Client = WebSocket & { alive?: boolean; ip?: string };
 export async function createUnoServer(opts: ServerOptions) {
   const rooms = new Map<string, Room>();
   const limits = new Limits({ ...DEFAULT_LIMITS, ...opts.limits });
-  const trustProxy = opts.trustProxy ?? process.env.TRUST_PROXY === '1';
-  const site = opts.staticDir ? createStaticSite({ dir: opts.staticDir, trustProxy, rooms }) : null;
+  const proxy: ProxyTrust = {
+    hops: typeof opts.trustProxy === 'number' ? opts.trustProxy : opts.trustProxy === undefined ? parseHops(process.env.TRUST_PROXY) : opts.trustProxy ? 1 : 0,
+    header: opts.clientIpHeader ?? (process.env.CLIENT_IP_HEADER || undefined),
+  };
+  const ipOf = (req: http.IncomingMessage) => clientIp(req, proxy);
+  const site = opts.staticDir
+    ? createStaticSite({
+        dir: opts.staticDir,
+        trustProxy: proxy.hops > 0,
+        // Render sets RENDER_EXTERNAL_URL by itself; PUBLIC_URL wins (a custom domain)
+        publicUrl: opts.publicUrl ?? (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || undefined),
+        // an invite preview tells whether a room exists, so it is limited exactly like joining
+        findRoom: (code, req) => { const r = lookUp(code, ipOf(req)); return r === 'slow-down' ? undefined : r; },
+      })
+    : null;
   let vite: { middlewares: http.RequestListener; close(): Promise<void> } | null = null;
 
-  const clientIp = (req: http.IncomingMessage) => {
-    const fwd = trustProxy ? String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim() : '';
-    return fwd || req.socket.remoteAddress || '?';
-  };
+  /**
+   * The room with this code, for someone at `ip`. Wrong codes are counted, and once there were too many
+   * the answer is "no room" even for a real one: otherwise each further guess would still tell which codes exist.
+   */
+  function lookUp(code: string, ip: string): Room | undefined | 'slow-down' {
+    if (limits.badJoins.blocked(ip)) return 'slow-down';
+    const r = rooms.get(code);
+    if (!r) limits.badJoins.take(ip);
+    return r;
+  }
 
   /* ---------- HTTP ---------- */
 
@@ -72,7 +100,7 @@ export async function createUnoServer(opts: ServerOptions) {
   server.on('upgrade', (req, socket, head) => {
     const { pathname } = new URL(req.url ?? '/', 'http://x');
     if (pathname !== '/ws') return; // Vite's HMR socket handles its own upgrades
-    const ip = clientIp(req);
+    const ip = ipOf(req);
     if (!limits.open(ip)) {
       socket.write('HTTP/1.1 429 Too Many Requests\r\nConnection: close\r\n\r\n');
       socket.destroy();
@@ -92,7 +120,7 @@ export async function createUnoServer(opts: ServerOptions) {
   const newCode = () => {
     for (;;) {
       let c = '';
-      for (let i = 0; i < CODE_LEN; i++) c += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
+      for (let i = 0; i < CODE_LEN; i++) c += CODE_ALPHABET[secureInt(0, CODE_ALPHABET.length)];
       if (!rooms.has(c)) return c;
     }
   };
@@ -111,9 +139,11 @@ export async function createUnoServer(opts: ServerOptions) {
 
     const enter = (r: Room, name: string, token?: string, avatar?: unknown) => {
       if (room && room !== r) room.disconnect(ws);
+      // already in this room: the same seat again, never a second one for the same connection
+      if (room === r && member && member.sock === ws) token = member.token;
       const res = r.join(name, ws, token, typeof avatar === 'string' ? avatar : undefined);
       if (typeof res === 'string') {
-        send({ t: 'error', code: res, msg: text(res === 'full' ? 'err.full' : 'err.joinFailed') });
+        send({ t: 'error', code: res, msg: text(res === 'full' ? 'err.full' : res === 'kicked' ? 'err.kicked' : 'err.joinFailed') });
         return;
       }
       room = r;
@@ -129,13 +159,15 @@ export async function createUnoServer(opts: ServerOptions) {
     };
 
     const join = (msg: Extract<ClientMsg, { t: 'join' }>) => {
-      const r = rooms.get(normalizeCode(String(msg.code ?? '')));
-      if (!r) {
-        // wrong codes are counted, so codes cannot be guessed by trying them all
-        if (!limits.badJoins.take(ip)) return send({ t: 'error', code: 'slow-down', msg: text('err.slowJoins') });
-        return send({ t: 'error', code: 'no-room', msg: text('err.noRoom') });
-      }
-      enter(r, String(msg.name ?? ''), typeof msg.token === 'string' ? msg.token : undefined, msg.avatar);
+      const code = normalizeCode(String(msg.code ?? ''));
+      const token = typeof msg.token === 'string' ? msg.token : undefined;
+      // someone coming back to their seat proves it with a token nobody can guess, so no limit applies;
+      // everyone else: wrong codes are counted, so codes cannot be guessed by trying them all
+      const own = token ? rooms.get(code) : undefined;
+      const r = own?.hasSeat(token!) ? own : lookUp(code, ip);
+      if (r === 'slow-down') return send({ t: 'error', code: 'slow-down', msg: text('err.slowJoins') });
+      if (!r) return send({ t: 'error', code: 'no-room', msg: text('err.noRoom') });
+      enter(r, String(msg.name ?? ''), token, msg.avatar);
     };
 
     ws.on('message', raw => {

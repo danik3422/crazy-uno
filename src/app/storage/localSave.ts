@@ -13,7 +13,9 @@ const MAX_AGE_MS = 3 * 24 * 60 * 60_000;
 export function readLocalSave(): SaveFile | null {
   const f = readJson<SaveFile>(STORAGE_KEYS.localGame);
   const g = f?.game;
-  if (!g || g.v !== 1 || !g.s || !Array.isArray(g.s.players) || g.s.phase === 'over' || Date.now() - g.savedAt > MAX_AGE_MS) return null;
+  if (!g || g.v !== 1 || !g.s || !Array.isArray(g.s.players) || g.s.phase === 'over') return null;
+  // written so that a missing or broken timestamp (NaN) counts as too old, not as fresh
+  if (!(Date.now() - g.savedAt <= MAX_AGE_MS)) return null;
   return { game: g, score: f.score && typeof f.score === 'object' ? f.score : {} };
 }
 

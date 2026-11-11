@@ -1,4 +1,5 @@
 import { exposeDebug } from '../../lib/debug';
+import { reducedMotion } from '../../lib/motion';
 import type { EventId } from '../../game/types';
 
 /**
@@ -67,6 +68,8 @@ export function summonMascot(mode: MascotMode = 'fly', delay = 0, target = 0, se
 export const nowSec = () => performance.now() / 1000;
 
 export function shake(amp: number, dur: number) {
+  // a shaking camera is exactly what "reduce motion" asks to avoid; the effects themselves still play
+  if (reducedMotion()) return;
   fxState.shakeAmp = amp;
   fxState.shakeUntil = nowSec() + dur;
 }

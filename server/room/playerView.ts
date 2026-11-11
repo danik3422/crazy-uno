@@ -1,4 +1,5 @@
 import type { Game } from '../../src/game/engine/Game';
+import { secureInt } from '../rng';
 import type { Card } from '../../src/game/types';
 import type { PlayerView } from '../../src/net/protocol';
 
@@ -43,7 +44,8 @@ export function buildPlayerView(g: Game, { you, book, dealing, seats, isOffline,
     if (book && (id === undefined || book.seen.has(c.id))) {
       // newly out of sight: a fresh random number; if they just saw it, it flies from where they saw it
       if (book.seen.has(c.id)) fromId = c.id;
-      do id = 10_000_000 + Math.floor(Math.random() * 89_999_999); while (book.used.has(id));
+      // from the system's secure generator: these numbers are seen by players, so they must say nothing about the game's
+      do id = secureInt(10_000_000, 99_999_999); while (book.used.has(id));
       book.used.add(id);
       book.alias.set(c.id, id);
     }

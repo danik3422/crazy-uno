@@ -423,12 +423,7 @@ export class Game extends Observable {
     s.bombDeadline = null;
     s.challenge = null;
     if (s.pending > 0) {
-      const n = this.takePending();
-      this.say('log.drawPenalty', { who: p.name, n });
-      if (n >= 6) this.fx('toast', msg('fx.bigDraw', { n }));
-      this.fx('shake');
-      // the message comes first: in No Mercy the draw itself may knock them out and even end the round
-      this.give(p, n);
+      this.drawPenalty(p);
       this.advance();
       this.emitChange();
       return;
@@ -688,6 +683,7 @@ export class Game extends Observable {
     const s = this.s;
     if (s.phase === 'over') return;
     const p = this.cp();
+    if (s.phase === 'choose') return this.settleChoice();
     if (s.phase !== 'play') {
       this.botAct(true);
       return;
@@ -709,6 +705,20 @@ export class Game extends Observable {
     }
     this.advance();
     this.emitChange();
+  }
+
+  /**
+   * Makes the open decision of the current turn for the player, to the end: some take two steps
+   * (a gift: which card, then to whom), and the second one would otherwise wait with no clock running.
+   */
+  private settleChoice() {
+    const s = this.s;
+    const turn = s.turn;
+    for (let i = 0; i < 4 && s.phase === 'choose' && s.turn === turn; i++) {
+      const v = this.version;
+      this.botAct(true);
+      if (this.version === v) break;
+    }
   }
 
   /** Plays the rest of the current person's turn as a bot would. */
@@ -738,8 +748,8 @@ export class Game extends Observable {
     const p = this.cp();
     const bomb = s.timerKind === 'bomb';
     s.timerKind = null;
-    const n = (bomb ? 3 : 2) + this.takePending();
-    this.give(p, n);
+    // what they really got: the deck and the pile may run dry
+    const n = this.give(p, (bomb ? 3 : 2) + this.takePending()).length;
     if (bomb) {
       this.say('log.bombBoom', { who: p.name, n });
       this.fx('boom', msg('fx.boom'));
@@ -777,7 +787,7 @@ export class Game extends Observable {
     const p = this.cp();
     if (!p.bot && !force) return;
     // the autopilot standing in for a person always plays sensibly, whatever the bots' level
-    const level = p.bot ? s.table.botLevel : 'normal';
+    const level = p.bot && !p.standIn ? s.table.botLevel : 'normal';
     const skill = BOT_SKILL[level];
     if (s.phase === 'handover') return this.confirmHandover();
     if (s.phase === 'dare') return this.resolveDare(true);
@@ -851,7 +861,12 @@ export class Game extends Observable {
     if (struck >= 0) {
       s.skipNext.splice(struck, 1);
       this.say('log.struck', { who: p.name });
-      return this.advance();
+      // the strike costs them the turn, not what was aimed at them. A colour roulette takes up the whole turn
+      // anyway, so they spin it as usual (that is the lost turn); a waiting +2/+4 they take without answering
+      if (!s.rouletteNext) {
+        if (s.pending > 0) this.drawPenalty(p);
+        return this.advance();
+      }
     }
     if (!p.bot) {
       const sharedScreen = this.humans().length > 1 && !this.online;
@@ -934,8 +949,7 @@ export class Game extends Observable {
     }
     // bots have no clock: they panic now and then instead
     if (this.rng() < 0.3) {
-      const n = 3 + this.takePending();
-      this.give(p, n);
+      const n = this.give(p, 3 + this.takePending()).length;
       this.say('log.botPanic', { who: p.name, n });
       this.fx('boom', msg('fx.botPanic', { who: p.name }));
       this.advance();
@@ -1182,6 +1196,23 @@ export class Game extends Observable {
 
   private reverse() {
     this.s.dir = this.s.dir === 1 ? -1 : 1;
+  }
+
+  /** `p` draws the whole waiting penalty (+2/+4 stack). */
+  private drawPenalty(p: Player) {
+    // no more than there are cards left to draw, so the message tells what really happens
+    const n = Math.min(this.takePending(), this.drawable());
+    this.say('log.drawPenalty', { who: p.name, n });
+    if (n >= 6) this.fx('toast', msg('fx.bigDraw', { n }));
+    this.fx('shake');
+    // the message comes first: in No Mercy the draw itself may knock them out and even end the round
+    this.give(p, n);
+  }
+
+  /** How many cards can still be drawn: the deck, then the pile under its top card and any hands set aside. */
+  private drawable(): number {
+    const s = this.s;
+    return s.deck.length + Math.max(0, s.discard.length - 1) + this.aside.length;
   }
 
   /** Clears the waiting penalty and returns its size. */

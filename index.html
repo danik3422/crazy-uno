@@ -106,17 +106,18 @@
       (function () {
         var l = null;
         try { l = localStorage.getItem('crazy-uno-lang'); } catch (e) {}
-        if (l !== 'ru' && l !== 'en' && l !== 'pl') {
+        if (l !== 'ru' && l !== 'en' && l !== 'pl' && l !== 'uk') {
           l = 'en';
           var list = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''];
           for (var i = 0; i < list.length; i++) {
             var c = String(list[i]).toLowerCase().split(/[-_]/)[0];
-            if (c === 'ru' || c === 'uk' || c === 'be') { l = 'ru'; break; }
+            if (c === 'uk') { l = 'uk'; break; }
+            if (c === 'ru' || c === 'be') { l = 'ru'; break; }
             if (c === 'pl') { l = 'pl'; break; }
             if (c === 'en') break;
           }
         }
-        var top = { en: 'CRAZY', ru: '\u0411\u0415\u0417\u0423\u041c\u041d\u041e\u0415', pl: 'SZALONE' }[l];
+        var top = { en: 'CRAZY', ru: '\u0411\u0415\u0417\u0423\u041c\u041d\u041e\u0415', uk: '\u0428\u0410\u041b\u0415\u041d\u0415', pl: 'SZALONE' }[l];
         document.documentElement.lang = l;
         document.title = top.charAt(0) + top.slice(1).toLowerCase() + ' UNO';
         document.getElementById('sp-top').textContent = top;

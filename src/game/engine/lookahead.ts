@@ -6,6 +6,14 @@ import type { Game } from './Game';
 const HARD_ROLLOUTS = 100;
 /** An imagined game stops after this many steps (it almost always ends long before). */
 const ROLLOUT_STEPS = 500;
+/**
+ * All imagined games of one decision together take at most this many steps. Long games (No Mercy, big tables)
+ * with many cards to choose from would otherwise take half a second, and online that holds up every room on the
+ * server. Counted in steps, not milliseconds, so a seeded game plays the same on any machine.
+ */
+const STEP_BUDGET = 20_000;
+/** However long the games, every move gets at least this many tries. */
+const MIN_ROLLOUTS = 12;
 
 /** What thinking ahead needs from the game it thinks about. */
 export interface LookaheadTools {
@@ -26,13 +34,17 @@ export interface LookaheadTools {
 export function thinkAhead(t: LookaheadTools, moves: ((g: Game) => void)[]): number {
   const me = t.s.cur;
   const wins = moves.map(() => 0);
-  for (let k = 0; k < HARD_ROLLOUTS; k++) {
+  let steps = 0;
+  // whole rounds only (every move tried on the same deals), so the comparison stays fair when the budget runs out
+  for (let k = 0; k < HARD_ROLLOUTS && (k < MIN_ROLLOUTS || steps < STEP_BUDGET); k++) {
     // the same imagined deal for every move, so they are compared on equal terms
     const seed = t.rng();
     moves.forEach((move, i) => {
       const g = imagine(t, seededRng(seed));
       move(g);
-      wins[i] += playOut(g, me);
+      const r = playOut(g, me);
+      wins[i] += r.score;
+      steps += r.steps;
     });
   }
   let best = 0;
@@ -70,10 +82,11 @@ function imagine(t: LookaheadTools, rng: Rng): Game {
   return t.spawn(s, rng);
 }
 
-/** Plays an imagined game to the end: 1 if `me` (or my team) wins, 0 if not. */
-function playOut(g: Game, me: number): number {
+/** Plays an imagined game to the end. Score: 1 if `me` (or my team) wins, 0 if not, ½ if it never ends. */
+function playOut(g: Game, me: number): { score: number; steps: number } {
   const s = g.s;
-  for (let k = 0; k < ROLLOUT_STEPS && s.phase !== 'over'; k++) g.botAct(true);
-  if (s.phase !== 'over' || s.winner === null) return 0.5;
-  return s.winner === me || g.sameTeam(s.winner, me) ? 1 : 0;
+  let k = 0;
+  for (; k < ROLLOUT_STEPS && s.phase !== 'over'; k++) g.botAct(true);
+  if (s.phase !== 'over' || s.winner === null) return { score: 0.5, steps: k };
+  return { score: s.winner === me || g.sameTeam(s.winner, me) ? 1 : 0, steps: k };
 }

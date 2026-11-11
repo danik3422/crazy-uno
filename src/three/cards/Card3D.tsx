@@ -136,6 +136,26 @@ interface Props {
  * Moving between zones (deal, play, swap, chaos…) animates automatically:
  * the card arcs up while far from its target and settles with exponential damping.
  */
+/** One level deep: equal fields, and arrays (positions, angles) equal element by element. */
+function sameFields<T extends object>(a: T, b: T): boolean {
+  if (a === b) return true;
+  const ka = Object.keys(a) as (keyof T)[];
+  if (ka.length !== Object.keys(b).length) return false;
+  return ka.every(k => {
+    const x = a[k];
+    const y = b[k];
+    if (Array.isArray(x) && Array.isArray(y)) return x.length === y.length && x.every((v, i) => v === y[i]);
+    return x === y;
+  });
+}
+
+/**
+ * The layout makes new card and target objects on every change of the game, so the default comparison would redraw
+ * all 100+ cards on every move. A card whose place and face did not change keeps its render (its motion runs in useFrame).
+ */
+const sameCard = (a: Props, b: Props) =>
+  a.theme === b.theme && a.onPick === b.onPick && sameFields(a.card, b.card) && sameFields(a.t, b.t);
+
 export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
   const motion = THEMES[theme].motion;
   const ref = useRef<THREE.Group>(null!);
@@ -610,4 +630,4 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     </group>
     </>
   );
-});
+}, sameCard);

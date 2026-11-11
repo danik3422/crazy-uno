@@ -9,5 +9,9 @@ services:
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
+      # Render sits behind Cloudflare: Cloudflare puts the player's address in cf-connecting-ip (overwriting
+      # whatever the browser sent); X-Forwarded-For gets two entries appended (Cloudflare, then Render's balancer)
+      - key: CLIENT_IP_HEADER
+        value: cf-connecting-ip
       - key: TRUST_PROXY
-        value: "1"
+        value: "2"

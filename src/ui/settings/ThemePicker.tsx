@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import { THEMES_LIST } from '../../game/content';
 import { t } from '../../i18n';
 import type { Card, ThemeId } from '../../game/types';
-import { cardImage } from '../../three/cards/textures';
+import { cardImage } from '../../three/cards/cardArt';
 import { THEMES } from '../../three/themes';
 import './ThemePicker.css';
 

@@ -131,6 +131,8 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online, coach
       <Hud game={game} version={version} toasts={effects.toasts} bombLeft={bombLeft} roundLeft={locked ? null : roundLeft} online={online} locked={locked} />
       {round.stage === 'dealing' && <div className="deal-banner">{t('hud.dealing')}</div>}
       <p className="sr-only" aria-live="polite">{kb.said}</p>
+      {/* the keys, always there for screen readers; on screen only once the keyboard is in use */}
+      <p className="sr-only" dangerouslySetInnerHTML={{ __html: t('hud.keys') }} />
       {kb.active && (
         <p className="kb-hint" aria-hidden dangerouslySetInnerHTML={{ __html: t('hud.keys') }} />
       )}

@@ -66,7 +66,8 @@ export default function MascotStage() {
   const { glKey, onCreated } = useGlRecovery();
   return (
     <div className="mascot-stage" aria-hidden>
-      <Canvas key={glKey} onCreated={onCreated} camera={{ fov: 30, position: [0, 0.9, 8.5] }} gl={{ alpha: true, antialias: true }} dpr={[1, 3]}>
+      {/* at most 2×: with antialiasing on, a 3× phone would draw over twice the pixels for a small decoration */}
+      <Canvas key={glKey} onCreated={onCreated} camera={{ fov: 30, position: [0, 0.9, 8.5] }} gl={{ alpha: true, antialias: true }} dpr={[1, 2]}>
         <ambientLight intensity={0.95} />
         <directionalLight position={[3, 5, 6]} intensity={1.7} />
         <hemisphereLight args={['#fff4dc', '#7a1a10', 0.5]} />

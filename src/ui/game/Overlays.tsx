@@ -121,7 +121,7 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked, finale 
         <h2>{render(s.choice.title)}</h2>
         <div className="colors">
           {COLORS.map(c => (
-            <button key={c} style={{ background: HEX[c] }} onClick={() => game.resolveChoice(c)}>
+            <button key={c} data-color={c} style={{ background: HEX[c] }} onClick={() => game.resolveChoice(c)}>
               {CNAME[c]}
               <small>{t('ov.inHand', { n: counts[c] })}</small>
             </button>

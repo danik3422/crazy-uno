@@ -7,6 +7,8 @@
 export const STORAGE_KEYS = {
   /** online room code + seat token, to get back in after a reload */
   session: 'crazy-uno-session',
+  /** the room this browser was kicked from, with its old seat token: the server turns that token away */
+  kicked: 'crazy-uno-kicked',
   name: 'crazy-uno-name',
   avatar: 'crazy-uno-avatar',
   /** players, rules, table and theme of the last local (one device) game */

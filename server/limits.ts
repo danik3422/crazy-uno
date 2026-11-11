@@ -14,7 +14,7 @@ export interface LimitOptions {
 
 export const DEFAULT_LIMITS: LimitOptions = { connections: 24, rooms: 8, badJoins: 12, windowMs: 10 * 60_000 };
 
-class Window {
+export class Window {
   private hits = new Map<string, number[]>();
   constructor(private max: number, private ms: number) {}
   /** records a hit; false when the address is over the limit */
@@ -27,6 +27,13 @@ class Window {
     list.push(now);
     this.hits.set(key, list);
     return true;
+  }
+  forget(key: string) {
+    this.hits.delete(key);
+  }
+  /** over the limit right now (nothing recorded) */
+  blocked(key: string, now = Date.now()) {
+    return (this.hits.get(key) ?? []).filter(t => now - t < this.ms).length >= this.max;
   }
   sweep(now = Date.now()) {
     for (const [k, list] of this.hits) if (list.every(t => now - t >= this.ms)) this.hits.delete(k);

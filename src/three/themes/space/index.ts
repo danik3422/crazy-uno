@@ -1,10 +1,8 @@
-import { CELL_ID } from '../../effects/cardFx/atlas';
+import { CELL_ID } from '../../effects/cardFx/cells';
 import type { TableTheme } from '../types';
 import { drawBack } from './back';
-import { Decor } from './Decor';
 import { spaceFace } from './face';
 import { floor } from './floor';
-import { Landing } from './Landing';
 import { palette } from './palette';
 
 export const theme: TableTheme = {
@@ -17,8 +15,6 @@ export const theme: TableTheme = {
   glow: '#8fe8ff',
   // zero gravity: high floaty arcs, a slow tumble, a little drift sideways and cards bobbing in the hands
   motion: { arc: 1.6, spin: 0.6, sway: 0.22, hoverLift: 1.3, float: 0.04 },
-  Decor,
-  Landing,
   // events: an icy comet, a straight cosmic beam, stars orbiting the table
   events: {
     hot: '#9fe8ff',

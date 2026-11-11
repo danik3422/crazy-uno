@@ -76,3 +76,53 @@ it('keeps the game files for good, but always checks the page and the service wo
   expect(old.status).toBe(404);
   expect((await fetch(`http://localhost:${app.port}/missing.png`)).status).toBe(404);
 });
+
+it('keeps "$" in a name as plain text and sends the security headers', async () => {
+  const ws = new WebSocket(`ws://localhost:${app.port}/ws`);
+  await new Promise(r => ws.once('open', r));
+  const joined = new Promise<string>(r => ws.on('message', d => { const m = JSON.parse(String(d)); if (m.t === 'joined') r(m.code); }));
+  ws.send(JSON.stringify({ t: 'create', name: "Ann $` $& $'" }));
+  const code = await joined;
+  const r = await fetch(`http://localhost:${app.port}/?room=${code}`, { headers: { 'accept-language': 'en' } });
+  const html = await r.text();
+  expect(html).toContain('content="Ann $` $&amp; $&#39; invites you to UNO');
+  // the replacement patterns did not paste other parts of the page into the tag
+  expect(html.match(/<head>/g)?.length).toBe(1);
+  expect(r.headers.get('x-frame-options')).toBe('SAMEORIGIN');
+  expect(r.headers.get('x-content-type-options')).toBe('nosniff');
+  expect(r.headers.get('permissions-policy')).toContain('camera=()');
+  // plain HTTP, no proxy: no HSTS
+  expect(r.headers.get('strict-transport-security')).toBeNull();
+  ws.close();
+});
+
+it('does not let link previews be used to find open rooms by trying codes', async () => {
+  const own = await createUnoServer({ port: 0, staticDir: dir, limits: { connections: 1e6, rooms: 1e6, badJoins: 3 } });
+  try {
+    const ws = new WebSocket(`ws://localhost:${own.port}/ws`);
+    await new Promise(r => ws.once('open', r));
+    const joined = new Promise<string>(r => ws.on('message', d => { const m = JSON.parse(String(d)); if (m.t === 'joined') r(m.code); }));
+    ws.send(JSON.stringify({ t: 'create', name: 'Host' }));
+    const code = await joined;
+    const page = async (c: string) => (await fetch(`http://localhost:${own.port}/?room=${c}`, { headers: { 'accept-language': 'en' } })).text();
+    // a real room shows who is calling; that does not use up anything
+    expect(await page(code)).toContain('Host invites you to UNO');
+    expect(await page(code)).toContain('Host invites you to UNO');
+    // three wrong codes, then even a real room gets the plain page
+    for (const c of ['AAAA', 'BBBB', 'CCCC']) expect(await page(c)).not.toContain('invites you');
+    expect(await page(code)).not.toContain('invites you');
+    ws.close();
+  } finally {
+    await own.close();
+  }
+});
+
+it('names the installed app in the reader\'s language', async () => {
+  await writeFile(path.join(dir, 'manifest.webmanifest'), await readFile(path.resolve(__dirname, '../public/manifest.webmanifest'), 'utf8'));
+  const man = async (lang: string) => (await fetch(`http://localhost:${app.port}/manifest.webmanifest`, { headers: { 'accept-language': lang } })).json();
+  expect(await man('uk-UA')).toMatchObject({ name: 'Шалене UNO', short_name: 'Шалене UNO', lang: 'uk', start_url: '/' });
+  expect(await man('ru')).toMatchObject({ name: 'Безумное UNO', lang: 'ru' });
+  const en = await man('de');
+  expect(en).toMatchObject({ name: 'Crazy UNO', lang: 'en' });
+  expect(en.icons).toHaveLength(2);
+});

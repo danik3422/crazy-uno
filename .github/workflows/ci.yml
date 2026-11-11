@@ -1,4 +1,4 @@
-# Checks every push and pull request: the tests, a full build (TypeScript included), and that the built
+# Checks every push and pull request: lint, the tests, a full build (TypeScript included), and that the built
 # server starts and answers. Render deploys main only after these checks pass (see render.yaml).
 name: CI
 
@@ -25,6 +25,9 @@ jobs:
 
       - name: Install
         run: npm ci
+
+      - name: Lint
+        run: npm run lint
 
       - name: Tests
         run: npm test

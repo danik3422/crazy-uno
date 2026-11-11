@@ -40,7 +40,10 @@ export interface LandingProps {
   lite: boolean;
 }
 
-/** Everything that makes one table look and feel like itself. Each theme lives in its own folder. */
+/**
+ * Everything that makes one table look and feel like itself, short of its 3D objects (those are in ThemeScene).
+ * Each theme lives in its own folder. No three.js components here, so the menus can use it without the 3D engine.
+ */
 export interface TableTheme {
   palette: Record<Color, Palette>;
   /**
@@ -56,10 +59,14 @@ export interface TableTheme {
   /** colour of the glow behind the cards you can play */
   glow: string;
   motion: CardMotion;
+  /** how the random events look here, over the classic look (see eventFx/look.ts) */
+  events?: Partial<EventLook>;
+}
+
+/** The 3D objects of one table (see scenes.ts): loaded with the game, not with the menus. */
+export interface ThemeScene {
   /** objects around the table (with their own animation and pointer interaction) */
   Decor: ComponentType<DecorProps>;
   /** an extra effect of this table when a card lands on the pile (on top of the shared one) */
   Landing?: ComponentType<LandingProps>;
-  /** how the random events look here, over the classic look (see eventFx/look.ts) */
-  events?: Partial<EventLook>;
 }

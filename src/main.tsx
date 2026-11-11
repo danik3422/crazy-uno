@@ -6,7 +6,7 @@ import './styles/utilities.css';
 import App from './app/App';
 import { ErrorBoundary } from './ui/components/ErrorBoundary';
 import { applyDocument, onLangChange } from './i18n/core';
-import { repaintCards } from './three/cards/textures';
+import { repaintCardArt } from './three/cards/cardArt';
 
 // Card faces are painted onto canvases, so the display font should be ready first.
 // On a slow connection we do not wait long: the cards are repainted when the fonts arrive.
@@ -17,7 +17,7 @@ const fonts = Promise.all([
 ]).catch(() => undefined);
 applyDocument();
 // a new language: card faces print new names on their label strips
-onLangChange(() => repaintCards());
+onLangChange(() => repaintCardArt());
 let started = false;
 const start = () => {
   if (started) return;
@@ -38,7 +38,7 @@ fonts.then(start);
 setTimeout(() => {
   if (started) return;
   start();
-  fonts.then(() => repaintCards());
+  fonts.then(() => repaintCardArt());
 }, 1200);
 
 // the service worker: instant repeat starts and bot games without a connection (built version only)
