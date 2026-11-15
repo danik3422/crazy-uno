@@ -1,11 +1,12 @@
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { nowSec } from '../../effects/fxState';
-import { visibleHalfWidth } from '../../layout';
+import { makeView, restCamera, visibleHalfWidth, type Rect } from '../../layout';
+import { ballOnScreen, underHud, useHudZones } from '../decorKit';
 import type { DecorProps } from '../types';
 import { batTexture, dotTexture, wingGeometry } from './bits';
-import { fitToScreen, layout } from './layout';
+import { fitToHud, fitToScreen, layout, type HalloweenLayout, type Sizes } from './layout';
 import {
   booTexture, candleGeometry, crossGeometry, faceGeometry, faceTexture, flameTexture, ghostGeometry, ghostTexture,
   poolTexture, pumpkinGeometry, tombGeometry,
@@ -19,6 +20,8 @@ const setCursor = (c: string) => {
 };
 
 const ORANGE = new THREE.Color('#ff8a2a');
+/** how big the ghosts are drawn */
+const GHOST_SCALE = { landscape: 0.78, portrait: 0.95 };
 const WITCH = new THREE.Color('#9dff5a');
 
 /**
@@ -26,15 +29,22 @@ const WITCH = new THREE.Color('#9dff5a');
  * headstones and crosses along the back, candles, two shy ghosts drifting over the graves, a flock of bats
  * high above and will-o'-wisps bobbing in the mist. Pumpkins, ghosts, candles and bats react to the pointer.
  * About a dozen draw calls on a desktop, seven on a phone (no candles, pools or point light there).
+ * Nothing stays under the HUD or a plate: the layout is checked against them as measured on the page (fitToHud),
+ * and a bat or a will-o'-wisp passing under one fades out until it is clear.
  */
 export function Decor({ accent, portrait, lite }: DecorProps) {
   const gl = useThree(s => s.gl);
   // the corner lanterns follow the screen's shape (rounded, so a resize does not rebuild them every pixel)
   const aspect = useThree(s => Math.round((s.size.width / Math.max(1, s.size.height)) * 20) / 20);
-  const L = useMemo(() => {
-    const base = layout(portrait, lite);
-    return portrait ? base : fitToScreen(base, z => visibleHalfWidth({ portrait, aspect }, 0, z));
-  }, [portrait, lite, aspect]);
+  const halfWidth = useMemo(() => (z: number) => visibleHalfWidth({ portrait, aspect }, 0, z), [portrait, aspect]);
+  const base = useMemo(() => {
+    const b = layout(portrait, lite);
+    return portrait ? b : fitToScreen(b, halfWidth);
+  }, [portrait, lite, halfWidth]);
+  // the layout as it ends up clear of the HUD (worked out in the render loop when the HUD or the screen changes)
+  const [L, setL] = useState<HalloweenLayout>(base);
+  const hud = useHudZones();
+  const fitted = useRef({ version: -1, base, key: '', w: 0, h: 0 });
   const res = useMemo(() => {
     const r = {
       pumpkin: pumpkinGeometry(lite),
@@ -57,6 +67,16 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
     for (const t of [r.faceTex, r.ghostTex, r.booTex, r.batTex]) t.anisotropy = aniso;
     return r;
   }, [lite, gl]);
+  const sizes = useMemo((): Sizes => {
+    const ball = (g: THREE.BufferGeometry) => {
+      if (!g.boundingSphere) g.computeBoundingSphere();
+      return { r: g.boundingSphere!.radius, y: g.boundingSphere!.center.y };
+    };
+    // a pumpkin stands with its middle 0.46 up, a ghost is drawn at GHOST_SCALE (see the render loop)
+    const g = ball(res.ghost);
+    const k = portrait ? GHOST_SCALE.portrait : GHOST_SCALE.landscape;
+    return { pumpkin: { r: ball(res.pumpkin).r, y: 0.46 }, tomb: ball(res.tomb), cross: ball(res.cross), ghost: { r: g.r * k, y: g.y * k } };
+  }, [res, portrait]);
   // per-instance colours exist from the start, so the materials compile with them
   const colors = useMemo(() => {
     const mk = (n: number) => new THREE.InstancedBufferAttribute(new Float32Array(Math.max(1, n) * 3).fill(1), 3);
@@ -64,18 +84,18 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
   }, [L]);
   // will-o'-wisps: one Points draw call; positions and colours rewritten each frame (a few dozen floats)
   const wisp = useMemo(() => {
-    const [x0, x1, z0, z1] = L.wispBox;
-    const seeds = Array.from({ length: L.wisps }, (_, i) => {
+    const [x0, x1, z0, z1] = base.wispBox;
+    const seeds = Array.from({ length: base.wisps }, (_, i) => {
       let x = x0 + Math.random() * (x1 - x0);
       // keep the middle of the far side clear (that's where the top player plate sits)
-      if (Math.abs(x) < L.wispGap) x = Math.sign(x || 1) * (L.wispGap + Math.random() * 2);
-      return { x, z: z0 + Math.random() * (z1 - z0), y: 0.35 + Math.random() * 1.3, ph: Math.random() * 6.28, sp: 0.25 + Math.random() * 0.35, hue: i % 3 };
+      if (Math.abs(x) < base.wispGap) x = Math.sign(x || 1) * (base.wispGap + Math.random() * 2);
+      return { x, z: z0 + Math.random() * (z1 - z0), y: 0.35 + Math.random() * 1.3, ph: Math.random() * 6.28, sp: 0.25 + Math.random() * 0.35, hue: i % 3, vis: 1 };
     });
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(L.wisps * 3), 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(L.wisps * 3), 3));
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(base.wisps * 3), 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(base.wisps * 3), 3));
     return { seeds, geo };
-  }, [L]);
+  }, [base]);
   useEffect(
     () => () => {
       Object.values(res).forEach(r => r.dispose());
@@ -108,12 +128,12 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
     scatterAt: -10,
   });
   const tmp = useMemo(
-    () => ({ o: new THREE.Object3D(), c: new THREE.Color(), acc: new THREE.Color(accent), ghostTint: new THREE.Color() }),
+    () => ({ o: new THREE.Object3D(), c: new THREE.Color(), acc: new THREE.Color(accent), ghostTint: new THREE.Color(), box: { x0: 0, y0: 0, x1: 0, y1: 0 } as Rect }),
     [], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const batSeeds = useMemo(
-    () => Array.from({ length: L.bats }, (_, i) => ({ a: (i / L.bats) * Math.PI * 2, sp: 0.16 + Math.random() * 0.1, y: 1.5 + Math.random() * 0.9, ph: Math.random() * 6, dx: Math.random() - 0.5, dz: Math.random() - 0.5, s: 0.34 + Math.random() * 0.2 })),
-    [L.bats],
+    () => Array.from({ length: base.bats }, (_, i) => ({ a: (i / base.bats) * Math.PI * 2, sp: 0.16 + Math.random() * 0.1, y: 1.5 + Math.random() * 0.9, ph: Math.random() * 6, dx: Math.random() - 0.5, dz: Math.random() - 0.5, s: 0.34 + Math.random() * 0.2, vis: 1 })),
+    [base.bats],
   );
 
   // headstones, crosses, candles and light pools never move: placed once
@@ -159,7 +179,27 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
     const t = state.clock.elapsedTime;
     const now = nowSec();
     const s = st.current;
-    const { o, c, acc } = tmp;
+    const { o, c, acc, box } = tmp;
+    const { width: w, height: h } = state.size;
+    const zones = hud.current;
+
+    // the layout clear of the HUD: worked out again only when the HUD, the screen or the base layout changes
+    const f = fitted.current;
+    if (f.version !== zones.version || f.base !== base || f.w !== w || f.h !== h) {
+      f.version = zones.version;
+      f.base = base;
+      f.w = w;
+      f.h = h;
+      const cam = restCamera(makeView(w, h));
+      const clear = (x: number, y: number, z: number, r: number) => !underHud(ballOnScreen(cam, w, h, x, y, z, r, box), zones.rects, 6);
+      const next = fitToHud(base, halfWidth, sizes, clear);
+      const key = JSON.stringify(next);
+      if (key !== f.key) {
+        f.key = key;
+        setL(next);
+      }
+    }
+    const fade = 1 - Math.exp(-dt * 5);
     // eases to the new colour of play (the floor repaints with a wave; the lanterns follow just as softly)
     acc.lerp(c.set(accent), 1 - Math.exp(-dt * 2.5));
 
@@ -235,7 +275,7 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
       // a lazy figure-eight around the home spot, always drifting outward rather than over the table
       o.position.set(g.x + Math.sin(t * 0.3 + i * 2) * 0.7, g.y + Math.sin(t * 1.3 + i) * 0.16, g.z + Math.sin(t * 0.6 + i) * 0.35);
       o.rotation.set(0.12, faceCamera(o.position.x, o.position.z) + spin + Math.sin(t * 0.8 + i) * 0.2, hov ? Math.sin(t * 12) * 0.18 : Math.sin(t * 1.1 + i) * 0.08);
-      o.scale.setScalar(Math.max(0.0001, sc * (hov ? 1.12 : 1) * (portrait ? 0.95 : 0.78)));
+      o.scale.setScalar(Math.max(0.0001, sc * (hov ? 1.12 : 1) * (portrait ? GHOST_SCALE.portrait : GHOST_SCALE.landscape)));
       o.updateMatrix();
       ghosts.current.setMatrixAt(i, o.matrix);
     });
@@ -252,13 +292,16 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
       const pz = L.batZ + Math.sin(b.a) * L.batRZ + b.dz * scatter * 3;
       const py = b.y + Math.sin(t * 2 + b.ph) * 0.22 + scatter * (1.5 + b.dz * 2);
       const flap = Math.sin(t * (13 + scatter * 10) + b.ph) * 0.9;
+      // a bat flying under the HUD fades away until it is out again
+      b.vis += ((underHud(ballOnScreen(state.camera as THREE.PerspectiveCamera, w, h, px, py, pz, b.s * 1.1, box), zones.rects, 2) ? 0 : 1) - b.vis) * fade;
+      const bs = b.s * b.vis + 1e-4;
       // face the camera (a bat seen edge-on is just a line), banking toward where it flies
       const bank = -Math.sin(b.a) * 0.45;
       for (let side = 1; side >= -1; side -= 2) {
         o.position.set(px, py, pz);
         o.rotation.set(-0.5, 0, bank);
         o.rotateY(side * flap);
-        o.scale.set(side * b.s, b.s, b.s);
+        o.scale.set(side * bs, bs, bs);
         o.updateMatrix();
         bats.current.setMatrixAt(i * 2 + (side > 0 ? 0 : 1), o.matrix);
       }
@@ -268,10 +311,15 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
     // will-o'-wisps: slow bobbing lights in the mist, breathing in and out; most witch-green, some in the colour of play
     const pos = wisp.geo.attributes.position as THREE.BufferAttribute;
     const col = wisp.geo.attributes.color as THREE.BufferAttribute;
-    wisp.seeds.forEach((w, i) => {
-      pos.setXYZ(i, w.x + Math.sin(t * w.sp + w.ph) * 0.5, w.y + Math.sin(t * w.sp * 2.1 + w.ph) * 0.25, w.z + Math.cos(t * w.sp * 0.8 + w.ph) * 0.35);
-      const glow = Math.max(0, Math.sin(t * w.sp * 1.7 + w.ph * 3)) ** 2 * 0.85 + 0.15;
-      c.copy(w.hue === 0 ? acc : WITCH).multiplyScalar(glow);
+    wisp.seeds.forEach((p, i) => {
+      const x = p.x + Math.sin(t * p.sp + p.ph) * 0.5;
+      const y = p.y + Math.sin(t * p.sp * 2.1 + p.ph) * 0.25;
+      const z = p.z + Math.cos(t * p.sp * 0.8 + p.ph) * 0.35;
+      pos.setXYZ(i, x, y, z);
+      // additive: a wisp under the HUD simply goes dark
+      p.vis += ((underHud(ballOnScreen(state.camera as THREE.PerspectiveCamera, w, h, x, y, z, 0.2, box), zones.rects, 2) ? 0 : 1) - p.vis) * fade;
+      const glow = (Math.max(0, Math.sin(t * p.sp * 1.7 + p.ph * 3)) ** 2 * 0.85 + 0.15) * p.vis;
+      c.copy(p.hue === 0 ? acc : WITCH).multiplyScalar(glow);
       col.setXYZ(i, c.r, c.g, c.b);
     });
     pos.needsUpdate = true;
@@ -318,49 +366,49 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
   };
 
   return (
-    <>
-      <instancedMesh ref={pumpkins} args={[res.pumpkin, undefined, L.pumpkins.length]} castShadow={!lite} onPointerOver={over('hoverP')} onPointerOut={out('hoverP')} onClick={clickPumpkin}>
+    <group name="decor">
+      <instancedMesh name="pumpkin" ref={pumpkins} args={[res.pumpkin, undefined, L.pumpkins.length]} castShadow={!lite} onPointerOver={over('hoverP')} onPointerOut={out('hoverP')} onClick={clickPumpkin}>
         <meshLambertMaterial vertexColors emissive="#ff4a00" emissiveIntensity={0.16} />
       </instancedMesh>
-      <instancedMesh ref={faces} args={[res.face, undefined, L.pumpkins.length]} instanceColor={colors.faces}>
+      <instancedMesh name="pumpkin-face" ref={faces} args={[res.face, undefined, L.pumpkins.length]} instanceColor={colors.faces}>
         <meshBasicMaterial map={res.faceTex} transparent blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
       </instancedMesh>
       {!lite && (
-        <instancedMesh ref={pools} args={[undefined, undefined, L.pumpkins.length]} instanceColor={colors.pools} renderOrder={-50}>
+        <instancedMesh name="pool" ref={pools} args={[undefined, undefined, L.pumpkins.length]} instanceColor={colors.pools} renderOrder={-50}>
           <planeGeometry />
           <meshBasicMaterial map={res.poolTex} transparent blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
         </instancedMesh>
       )}
-      <instancedMesh ref={tombs} args={[res.tomb, undefined, L.tombs.length]}>
+      <instancedMesh name="tomb" ref={tombs} args={[res.tomb, undefined, L.tombs.length]}>
         <meshLambertMaterial vertexColors emissive="#160f22" />
       </instancedMesh>
-      <instancedMesh ref={crosses} args={[res.cross, undefined, L.crosses.length]}>
+      <instancedMesh name="cross" ref={crosses} args={[res.cross, undefined, L.crosses.length]}>
         <meshLambertMaterial vertexColors emissive="#160f22" />
       </instancedMesh>
       {L.candles.length > 0 && (
         <>
-          <instancedMesh ref={candles} args={[res.candle, undefined, L.candles.length]}>
+          <instancedMesh name="candle" ref={candles} args={[res.candle, undefined, L.candles.length]}>
             <meshLambertMaterial vertexColors emissive="#4a3010" />
           </instancedMesh>
-          <instancedMesh ref={flames} args={[undefined, undefined, L.candles.length]} instanceColor={colors.flames} onPointerOver={over('hoverC')} onPointerOut={out('hoverC')} onClick={clickCandle}>
+          <instancedMesh name="flame" ref={flames} args={[undefined, undefined, L.candles.length]} instanceColor={colors.flames} onPointerOver={over('hoverC')} onPointerOut={out('hoverC')} onClick={clickCandle}>
             <planeGeometry />
             <meshBasicMaterial map={res.flameTex} transparent blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
           </instancedMesh>
         </>
       )}
-      <instancedMesh ref={ghosts} args={[res.ghost, undefined, L.ghosts.length]} onPointerOver={over('hoverG')} onPointerOut={out('hoverG')} onClick={clickGhost}>
+      <instancedMesh name="ghost" ref={ghosts} args={[res.ghost, undefined, L.ghosts.length]} onPointerOver={over('hoverG')} onPointerOut={out('hoverG')} onClick={clickGhost}>
         <meshBasicMaterial ref={ghostMat} map={res.ghostTex} transparent opacity={0.86} toneMapped={false} />
       </instancedMesh>
       <sprite ref={boo} visible={false} renderOrder={5}>
         <spriteMaterial ref={booMat} map={res.booTex} transparent depthWrite={false} toneMapped={false} />
       </sprite>
-      <instancedMesh ref={bats} args={[res.wing, undefined, L.bats * 2]} frustumCulled={false} onClick={clickBats}>
+      <instancedMesh name="bat" ref={bats} args={[res.wing, undefined, L.bats * 2]} frustumCulled={false} onClick={clickBats}>
         <meshBasicMaterial map={res.batTex} alphaTest={0.4} side={THREE.DoubleSide} />
       </instancedMesh>
-      <points geometry={wisp.geo} frustumCulled={false}>
+      <points name="wisp" geometry={wisp.geo} frustumCulled={false}>
         <pointsMaterial map={res.dotTex} size={lite ? 0.42 : 0.34} vertexColors transparent blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
       </points>
       {!lite && <pointLight ref={light} position={portrait ? [0, 2.2, -10] : [0, 2.4, -8.5]} distance={20} decay={1.4} />}
-    </>
+    </group>
   );
 }

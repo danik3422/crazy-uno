@@ -73,6 +73,8 @@ export function paint(g: THREE.BufferGeometry, c: string) {
 }
 
 export function merge(parts: THREE.BufferGeometry[]) {
+  // nothing to merge (every piece left out on this screen): an empty geometry draws nothing
+  if (!parts.length) return new THREE.BufferGeometry();
   const g = mergeGeometries(parts)!;
   parts.forEach(p => p.dispose());
   return g;

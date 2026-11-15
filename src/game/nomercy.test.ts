@@ -244,3 +244,36 @@ describe('No Mercy games with bots', () => {
     }
   });
 });
+
+describe('knocked out on your own turn', () => {
+  /** a local game (no server), as on one device */
+  const local = (seed: number) => new Game(
+    { players: Array.from({ length: 4 }, (_, i) => ({ name: `P${i}`, bot: true })), rules: NO_MERCY },
+    { rng: seeded(seed) },
+  );
+
+  it('the debug knock-out of the player whose turn it is passes the turn on', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const g = local(seed);
+      g.s.cur = 0;
+      g.debugKnockOut('one');
+      expect(g.s.players[0].out).toBeTruthy();
+      if (g.s.phase !== 'over') expect(g.cp().out).toBeFalsy();
+    }
+  });
+
+  it('a bot that is out never moves: a stale turn is handed on, and the round finishes with a winner', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const g = local(seed);
+      g.s.cur = 0;
+      g.debugKnockOut('one');
+      // force the state the bug left behind: the turn back on the knocked-out bot
+      g.s.cur = 0;
+      for (let i = 0; i < 2000 && g.s.phase !== 'over'; i++) {
+        expect(() => g.botAct()).not.toThrow();
+        expect(g.s.players[0].hand).toHaveLength(0);
+      }
+      if (g.s.phase === 'over') expect(g.s.players[g.s.winner!]).toBeDefined();
+    }
+  });
+});

@@ -109,7 +109,7 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online, coach
         {!locked && (
           <PerformanceMonitor
             // a fresh watch some time after it gave up (see useAdaptiveDpr): never stuck low for the whole game
-            key={resolution.monitorKey}
+            key={`watch-${resolution.monitorKey}`}
             bounds={hz => [hz * 0.7, hz * 0.92]}
             onDecline={resolution.lower}
             onIncline={resolution.raise}
@@ -119,7 +119,8 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online, coach
         )}
         <GameScene
           finale={finale}
-          key={s.round}
+          // prefixed: the keys of these siblings must never meet (round 1 and the first watch were both `1`)
+          key={`round-${s.round}`}
           game={game}
           version={version}
           canDraw={canDraw}

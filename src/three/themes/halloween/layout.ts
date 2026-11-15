@@ -85,6 +85,74 @@ export function fitToScreen(L: HalloweenLayout, halfWidth: (z: number) => number
   return { ...L, pumpkins: fit(L.pumpkins), tombs: fit(L.tombs), candles: fit(L.candles) };
 }
 
+/** Sizes of the decor pieces at scale 1, for checking them against the HUD: a ball of radius `r` around height `y`. */
+export interface Sizes {
+  pumpkin: { r: number; y: number };
+  tomb: { r: number; y: number };
+  cross: { r: number; y: number };
+  ghost: { r: number; y: number };
+}
+
+/** is a ball of radius `r` around (x, y, z) clear of the HUD and the plates on the screen? */
+export type Clear = (x: number, y: number, z: number, r: number) => boolean;
+
+/** the ways a corner lantern may step aside, tried in this order: deeper or nearer, further in, then smaller */
+const STEPS = (() => {
+  const out: { dz: number; de: number; k: number }[] = [];
+  for (const k of [1, 0.85, 0.7])
+    for (const de of [0, -0.5, 0.6])
+      for (const dz of [0, -0.5, 0.5, -1, 1, -1.5]) out.push({ dz, de, k });
+  return out;
+})();
+/** how far a ghost may drift aside to get out from under the HUD (table units, either way), in steps */
+const GHOST_STEP = 0.6;
+const GHOST_STEPS = 6;
+/** a ghost wanders this far from its home spot (see Decor) */
+const GHOST_WANDER = 0.75;
+
+/**
+ * Keeps the graveyard out from under the HUD and the plates. A corner lantern (with its candles) steps aside to the
+ * nearest clear spot, or shrinks a little, or leaves if there is none (under the log on a computer screen);
+ * a ghost drifts sideways to the nearest clear spot along the back, or leaves; any other piece still under the HUD
+ * (a headstone under the log, a candle under a plate) is left out. `halfWidth` as in fitToScreen.
+ */
+export function fitToHud(L: HalloweenLayout, halfWidth: (z: number) => number, S: Sizes, clear: Clear, minX = 8.6): HalloweenLayout {
+  const edge = (p: Spot) => p.e !== undefined;
+  const at = (p: Spot, dz: number, de: number) => {
+    const z = p.z + dz;
+    return { ...p, z, x: Math.sign(p.x) * Math.max(minX, halfWidth(z) - (p.e ?? 0) - de) };
+  };
+  const pumpkinClear = (p: Spot) => clear(p.x, S.pumpkin.y * p.s, p.z, S.pumpkin.r * p.s);
+  // each side on its own: the log takes the top left, the buttons only a little of the top right
+  const shift = (side: number) => {
+    const corner = L.pumpkins.filter(p => edge(p) && Math.sign(p.x) === side);
+    return STEPS.find(({ dz, de, k }) => corner.every(p => pumpkinClear({ ...at(p, dz, de), s: p.s * k }))) ?? null;
+  };
+  const left = shift(-1);
+  const right = shift(1);
+  // an edge-anchored piece follows the corner lantern on its side (and leaves with it); the lanterns may shrink
+  const follow = (p: Spot, lantern: boolean) => {
+    if (!edge(p)) return [p];
+    const st = p.x < 0 ? left : right;
+    return st ? [{ ...at(p, st.dz, st.de), s: lantern ? p.s * st.k : p.s }] : [];
+  };
+  const pumpkins = L.pumpkins.flatMap(p => follow(p, true)).filter(pumpkinClear);
+  const candles = L.candles.flatMap(c => follow(c, false)).filter(c => clear(c.x, 0.2 + c.s * 0.25, c.z, 0.3 + c.s * 0.2));
+  const tombs = L.tombs.filter(t => clear(t.x, S.tomb.y * t.s, t.z, S.tomb.r * t.s));
+  const crosses = L.crosses.filter(t => clear(t.x, S.cross.y * t.s, t.z, S.cross.r * t.s));
+  const ghosts = L.ghosts.flatMap(g => {
+    const r = S.ghost.r * 1.15 + GHOST_WANDER;
+    for (let i = 0; i <= GHOST_STEPS * 2; i++) {
+      // 0, +1, -1, +2, -2 ... steps, outward first
+      const k = Math.ceil(i / 2) * (i % 2 ? 1 : -1) * Math.sign(g.x || 1);
+      const x = g.x + k * GHOST_STEP;
+      if (clear(x, g.y + S.ghost.y, g.z, r)) return [{ ...g, x }];
+    }
+    return [];
+  });
+  return { ...L, pumpkins, candles, tombs, crosses, ghosts };
+}
+
 /** The phone version keeps the silhouette (corner lanterns, a few graves) with a fraction of the objects. */
 export function layout(portrait: boolean, lite: boolean): HalloweenLayout {
   const L = portrait ? PORTRAIT : LANDSCAPE;

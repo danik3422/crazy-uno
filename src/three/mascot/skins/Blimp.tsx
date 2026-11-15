@@ -1,6 +1,7 @@
 import { useFrame } from '@react-three/fiber';
-import { useEffect, useMemo, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, type RefObject } from 'react';
 import * as THREE from 'three';
+import type { MascotPose } from './index';
 
 const PI = Math.PI;
 const BLUE = '#2f6bd8';
@@ -19,6 +20,10 @@ const BAN_W = 1.6;
 const BAN_H = 0.42;
 const BAN_Z = -1.78;
 const SEG = 24;
+/** the tow line starts here, under the bottom fin */
+const TOW_Z = -1.0;
+/** folded away (pose.furl = 1), the line and the banner keep this much of their length */
+const FURLED = 0.3;
 
 function canvasTexture(w: number, h: number, draw: (c: CanvasRenderingContext2D) => void) {
   const cv = document.createElement('canvas');
@@ -94,7 +99,8 @@ function nameGeometry(side: 1 | -1) {
  * The airship "Tomorrow": a fat blue-and-yellow cartoon blimp with fins, a gondola and a rear propeller (the
  * spinning `prop`), towing a fluttering banner with the famous line about looking into tomorrow.
  */
-export function Blimp({ prop }: { prop: RefObject<THREE.Group> }) {
+export function Blimp({ prop, pose }: { prop: RefObject<THREE.Group>; pose?: MascotPose }) {
+  const tow = useRef<THREE.Group>(null!);
   const res = useMemo(() => {
     const banner = canvasTexture(1024, 256, drawBanner);
     // the far side of the banner reads the right way round too
@@ -126,17 +132,33 @@ export function Blimp({ prop }: { prop: RefObject<THREE.Group> }) {
   }, [res]);
 
   useFrame(st => {
+    if (pose && !pose.active) return;
+    // low over the table or over the hand, the banner is reeled in and bunches up into folds (and lets the cards show)
+    const furl = pose?.furl ?? 0;
+    tow.current.scale.z = 1 - (1 - FURLED) * furl;
     const t = st.clock.elapsedTime;
     const p = res.cloth.attributes.position as THREE.BufferAttribute;
+    const nrm = res.cloth.attributes.normal as THREE.BufferAttribute;
     const a = p.array as Float32Array;
+    const n = nrm.array as Float32Array;
     const b = res.base;
+    const k = 9 + 14 * furl;
+    const amp = 1 + 1.2 * furl;
     for (let i = 0; i < p.count; i++) {
       const d = -b[i * 3 + 2] / BAN_W; // 0 at the leading edge, 1 at the tail
-      a[i * 3] = Math.sin(d * 9 - t * 10) * (0.02 + d * 0.11);
+      const w = d * k - t * 10;
+      const h = (0.02 + d * 0.11) * amp;
+      a[i * 3] = Math.sin(w) * h;
       a[i * 3 + 1] = b[i * 3 + 1] + Math.sin(d * 6 - t * 7) * d * 0.05;
+      // the normal of the wave x(z), worked out directly (computeVertexNormals would allocate every frame)
+      const slope = -(Math.cos(w) * k * h + Math.sin(w) * 0.11 * amp) / BAN_W;
+      const len = Math.hypot(1, slope);
+      n[i * 3] = 1 / len;
+      n[i * 3 + 1] = 0;
+      n[i * 3 + 2] = -slope / len;
     }
     p.needsUpdate = true;
-    res.cloth.computeVertexNormals();
+    nrm.needsUpdate = true;
   });
 
   return (
@@ -209,22 +231,24 @@ export function Blimp({ prop }: { prop: RefObject<THREE.Group> }) {
       </group>
 
       {/* the tow line from the bottom fin, the banner pole, and the banner itself */}
-      <mesh position={[0, -0.39, (-1.0 + BAN_Z) / 2]} rotation-x={PI / 2}>
-        <cylinderGeometry args={[0.008, 0.008, -1.0 - BAN_Z, 4]} />
-        <meshStandardMaterial color="#3a3f48" />
-      </mesh>
-      {/* leaning over a little, so the words show from the high camera over the table too */}
-      <group position={[0, -0.38, BAN_Z]} rotation-z={-0.5}>
-        <mesh>
-          <cylinderGeometry args={[0.018, 0.018, BAN_H + 0.08, 6]} />
-          <meshStandardMaterial color="#7a5232" roughness={0.8} />
+      <group ref={tow} position-z={TOW_Z}>
+        <mesh position={[0, -0.39, (BAN_Z - TOW_Z) / 2]} rotation-x={PI / 2}>
+          <cylinderGeometry args={[0.008, 0.008, TOW_Z - BAN_Z, 4]} />
+          <meshStandardMaterial color="#3a3f48" />
         </mesh>
-        <mesh geometry={res.cloth}>
-          <meshStandardMaterial map={res.banner.tex} roughness={0.8} side={THREE.FrontSide} />
-        </mesh>
-        <mesh geometry={res.cloth}>
-          <meshStandardMaterial map={res.bannerBack} roughness={0.8} side={THREE.BackSide} />
-        </mesh>
+        {/* leaning over a little, so the words show from the high camera over the table too */}
+        <group position={[0, -0.38, BAN_Z - TOW_Z]} rotation-z={-0.5}>
+          <mesh>
+            <cylinderGeometry args={[0.018, 0.018, BAN_H + 0.08, 6]} />
+            <meshStandardMaterial color="#7a5232" roughness={0.8} />
+          </mesh>
+          <mesh geometry={res.cloth}>
+            <meshStandardMaterial map={res.banner.tex} roughness={0.8} side={THREE.FrontSide} />
+          </mesh>
+          <mesh geometry={res.cloth}>
+            <meshStandardMaterial map={res.bannerBack} roughness={0.8} side={THREE.BackSide} />
+          </mesh>
+        </group>
       </group>
     </group>
   );

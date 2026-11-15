@@ -1,9 +1,12 @@
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { makeView, restCamera, type Rect } from '../../layout';
+import { ballOnScreen, underHud, useHudZones } from '../decorKit';
 import type { DecorProps } from '../types';
 import { glowTexture, merge } from './bits';
 import { CAB, cabinGeometry, windowGeometry, windowTexture } from './cabin';
+import { fitToHud, layout, type Sizes, type WinterLayout } from './layout';
 import { LANTERN_GLOW_Y, bankGeometry, lanternGeometry, pineGeometry, pineRadius } from './props';
 import { LIGHT, snowFrag, snowVert } from './snowfall';
 import { armGeometry, hatGeometry, scarfGeometry, snowmanGeometry } from './snowman';
@@ -39,45 +42,6 @@ const auroraFrag = /* glsl */ `
   }
 `;
 
-/* ---------- layout ---------- */
-
-interface Spot { x: number; z: number; s: number }
-
-/**
- * Where everything stands. The lake's shore runs just outside the opponents, so the decor keeps to the snow:
- * tall things only in the far corners (beside, never behind, the top players' plates), lanterns and low
- * snow drifts round them, more pines at the far sides for ultrawide screens.
- */
-function layout(portrait: boolean, lite: boolean) {
-  const pines: Spot[] = portrait
-    ? [
-        { x: -6.0, z: -9.6, s: 1.0 }, { x: 6.1, z: -9.2, s: 1.05 }, { x: -6.4, z: -7.2, s: 1.15 }, { x: 6.6, z: -6.8, s: 1.2 },
-        { x: -2.6, z: -11.6, s: 0.9 }, { x: 2.4, z: -12.0, s: 0.95 }, { x: 0.2, z: -13.2, s: 0.85 }, { x: -7.2, z: -11.4, s: 1.3 },
-        { x: 7.4, z: -11.0, s: 1.3 },
-      ]
-    : [
-        { x: -11.6, z: -4.4, s: 1.3 }, { x: 11.8, z: -4.0, s: 1.3 }, { x: -12.6, z: -8.6, s: 1.5 }, { x: 12.8, z: -9.0, s: 1.5 },
-        { x: -7.6, z: -10.8, s: 1.15 }, { x: 7.4, z: -10.6, s: 1.15 }, { x: -12.8, z: -0.6, s: 1.2 }, { x: 13.0, z: -0.2, s: 1.25 },
-        { x: -4.6, z: -12.0, s: 1.0 }, { x: 4.8, z: -12.4, s: 1.0 }, { x: -10.2, z: -11.4, s: 1.35 }, { x: 10.4, z: -11.8, s: 1.35 },
-      ];
-  const lanterns: Spot[] = portrait
-    ? [{ x: -4.4, z: -6.4, s: 0.9 }, { x: 4.4, z: -6.2, s: 0.9 }, { x: -5.6, z: -4.6, s: 0.85 }, { x: 5.6, z: -4.4, s: 0.85 }]
-    : [{ x: -10.0, z: -5.8, s: 0.95 }, { x: 10.0, z: -5.4, s: 0.95 }, { x: -11.0, z: -1.8, s: 0.95 }, { x: 11.0, z: -1.4, s: 0.95 }];
-  return {
-    pines: lite ? pines.slice(0, 6) : pines,
-    lanterns: lite ? lanterns.slice(0, 2) : lanterns,
-    cabin: portrait ? { x: -3.9, z: -9.3, s: 0.72 } : { x: -9.4, z: -7.6, s: 0.8 },
-    snowman: portrait ? { x: 3.7, z: -9.0, s: 0.68 } : { x: 9.2, z: -7.2, s: 0.8 },
-    flakes: lite ? 240 : 560,
-    burst: lite ? 24 : 40,
-    box: portrait ? { x: 9, z0: -15, z1: 6, y: 9 } : { x: 15, z0: -13, z1: 4, y: 8 },
-    /** snowfall only shows above this screen height (NDC y) or beyond this distance from the middle (NDC x) */
-    mask: portrait ? new THREE.Vector2(0.52, 0.9) : new THREE.Vector2(0.6, 0.8),
-    aurora: portrait ? { w: 18, z: -13.4, h: 3.2 } : { w: 32, z: -11.2, h: 2.6 },
-    cam: portrait ? new THREE.Vector3(0, 15, 10.6) : new THREE.Vector3(0, 7.6, 9.8),
-  };
-}
-
 const faceCamera = (x: number, z: number) => Math.atan2(-x, 11 - z);
 
 /** a small seeded random, so the banks come out the same every time */
@@ -99,13 +63,44 @@ const WARM = new THREE.Color('#ffb85a');
  * a log cabin with warm windows and fairy lights, a snowman in a top hat with a scarf in the colour of play,
  * crisp snow falling at the edges of the screen (never over the play area) and an aurora low over the far edge.
  * Click a pine to shake its snow off, the cabin to switch its lights on, the snowman to wave and lose his hat.
+ * Nothing stands under the HUD or a plate: the layout is checked against them as measured on the page (fitToHud).
  */
 export function Decor({ accent, portrait, lite }: DecorProps) {
-  const L = useMemo(() => layout(portrait, lite), [portrait, lite]);
-  const res = useMemo(() => {
+  const base = useMemo(() => layout(portrait, lite), [portrait, lite]);
+  // the layout as it ends up clear of the HUD (worked out in the render loop when the HUD or the screen changes)
+  const [L, setL] = useState<WinterLayout>(base);
+  const hud = useHudZones();
+  const fitted = useRef({ version: -1, base, key: '', w: 0, h: 0 });
+  const box = useMemo((): Rect => ({ x0: 0, y0: 0, x1: 0, y1: 0 }), []);
+  const res = useMemo(
+    () => ({
+      pine: pineGeometry(lite),
+      lantern: lanternGeometry(lite),
+      glow: glowTexture(),
+      cabin: cabinGeometry(),
+      windows: windowGeometry(),
+      windowTex: windowTexture(),
+      snowman: snowmanGeometry(lite, lite ? '#d83a4a' : null),
+      scarf: scarfGeometry(),
+      arm: armGeometry(),
+      hat: hatGeometry(),
+      aurora: new THREE.PlaneGeometry(1, 1, lite ? 24 : 48, 1).translate(0, 0.5, 0),
+    }),
+    [lite],
+  );
+  const sizes = useMemo((): Sizes => {
+    const ball = (g: THREE.BufferGeometry, top = 0) => {
+      if (!g.boundingSphere) g.computeBoundingSphere();
+      const b = g.boundingSphere!;
+      return { r: Math.max(b.radius, top / 2), y: Math.max(b.center.y, top / 2) };
+    };
+    // the snowman's hat sits on top of his own geometry (at 1.98)
+    return { pine: ball(res.pine), lantern: ball(res.lantern), cabin: ball(res.cabin), snowman: ball(res.snowman, 2.3) };
+  }, [res]);
+  const placed = useMemo(() => {
     // snow drifts heaped round the foot of everything that stands in the snow, so nothing floats on the floor
     const r = rng(7);
-    const banks = [...L.pines, ...L.lanterns, L.cabin, L.snowman].flatMap(o =>
+    const banks = [...L.pines, ...L.lanterns, ...(L.cabin ? [L.cabin] : []), ...(L.snowman ? [L.snowman] : [])].flatMap(o =>
       [0, 1].map(k => {
         const a = r() * Math.PI * 2;
         const d = (0.7 + r() * 0.5) * o.s * (k ? 1.4 : 1);
@@ -119,29 +114,17 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
         return g;
       }),
     );
-    return {
-      pine: pineGeometry(lite),
-      banks: bankGeometry(banks, lite),
-      lantern: lanternGeometry(lite),
-      pools,
-      glow: glowTexture(),
-      cabin: cabinGeometry(),
-      windows: windowGeometry(),
-      windowTex: windowTexture(),
-      snowman: snowmanGeometry(lite, lite ? '#d83a4a' : null),
-      scarf: scarfGeometry(),
-      arm: armGeometry(),
-      hat: hatGeometry(),
-      aurora: new THREE.PlaneGeometry(1, 1, lite ? 24 : 48, 1).translate(0, 0.5, 0),
-    };
+    return { banks: bankGeometry(banks, lite), pools };
   }, [L, lite]);
 
   // the cabin's transform, used to place its fairy lights and its burst of snow
   const cabinM = useMemo(() => {
     const o = new THREE.Object3D();
-    o.position.set(L.cabin.x, 0, L.cabin.z);
-    o.rotation.y = faceCamera(L.cabin.x, L.cabin.z);
-    o.scale.setScalar(L.cabin.s);
+    if (L.cabin) {
+      o.position.set(L.cabin.x, 0, L.cabin.z);
+      o.rotation.y = faceCamera(L.cabin.x, L.cabin.z);
+      o.scale.setScalar(L.cabin.s);
+    }
     o.updateMatrix();
     return o.matrix.clone();
   }, [L]);
@@ -151,7 +134,7 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
     // along the front eaves of the cabin
     const { w, d, wall, gable } = CAB;
     const half = w / 2 + 0.3;
-    for (let i = 0; i <= 12; i++) {
+    for (let i = 0; i <= 12 && L.cabin; i++) {
       const x = -half + (i / 12) * half * 2;
       const y = wall - 0.04 + (gable + 0.1) * (1 - Math.abs(x) / half);
       lights.push({ p: new THREE.Vector3(x, y - 0.06, d / 2 + 0.26).applyMatrix4(cabinM), c: LIGHT_COLS[i % LIGHT_COLS.length], kind: LIGHT.fairy });
@@ -225,19 +208,26 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
   useEffect(
     () => () => {
       Object.values(res).forEach(r => r.dispose());
-      cloud.dispose();
       setCursor('');
     },
-    [res, cloud],
+    [res],
+  );
+  useEffect(
+    () => () => {
+      placed.banks.dispose();
+      placed.pools.dispose();
+      cloud.dispose();
+    },
+    [placed, cloud],
   );
 
   const pines = useRef<THREE.InstancedMesh>(null!);
   const lanterns = useRef<THREE.InstancedMesh>(null!);
-  const snowman = useRef<THREE.Group>(null!);
-  const arm = useRef<THREE.Mesh>(null!);
-  const hat = useRef<THREE.Mesh>(null!);
+  const snowman = useRef<THREE.Group>(null);
+  const arm = useRef<THREE.Mesh>(null);
+  const hat = useRef<THREE.Mesh>(null);
   const scarfMat = useRef<THREE.MeshLambertMaterial>(null);
-  const winMat = useRef<THREE.MeshBasicMaterial>(null!);
+  const winMat = useRef<THREE.MeshBasicMaterial>(null);
   const poolMat = useRef<THREE.MeshBasicMaterial>(null);
   const light = useRef<THREE.PointLight>(null);
 
@@ -271,6 +261,30 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
     const s = st.current;
     s.clock = t;
     const { o, c, acc } = tmp;
+
+    // the layout clear of the HUD: worked out again only when the HUD, the screen or the base layout changes
+    const { width: w, height: h } = state.size;
+    const zones = hud.current;
+    const f = fitted.current;
+    if (f.version !== zones.version || f.base !== base || f.w !== w || f.h !== h) {
+      f.version = zones.version;
+      f.base = base;
+      f.w = w;
+      f.h = h;
+      const cam = restCamera(makeView(w, h));
+      const check = (x: number, y: number, z: number, r: number, pad: number) => {
+        ballOnScreen(cam, w, h, x, y, z, r, box);
+        // its middle on the screen, not just a sliver at the edge
+        const seen = box.x0 < box.x1 && (box.x0 + box.x1) / 2 > 0 && (box.x0 + box.x1) / 2 < w && (box.y0 + box.y1) / 2 > 0 && (box.y0 + box.y1) / 2 < h;
+        return { clear: !underHud(box, zones.rects, pad), seen };
+      };
+      const next = fitToHud(base, sizes, check);
+      const key = JSON.stringify([next.pines, next.lanterns, next.cabin, next.snowman]);
+      if (key !== f.key) {
+        f.key = key;
+        setL(next);
+      }
+    }
     acc.lerp(c.set(accent), Math.min(1, dt * 2));
     snowU.uTime.value = t;
     snowU.uViewH.value = state.size.height * state.viewport.dpr;
@@ -302,10 +316,10 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
       else flare = lk < 1 ? 1 : 1 - (lk - 1) / 3;
     }
     glow += flare * 0.8;
-    winMat.current.color.copy(WARM).lerp(acc, 0.15 + flare * 0.25).multiplyScalar(glow);
+    winMat.current?.color.copy(WARM).lerp(acc, 0.15 + flare * 0.25).multiplyScalar(glow);
     snowU.uLights.value = (s.hoverCabin ? 0.3 : 0) + flare * 1.2;
     if (light.current) {
-      light.current.intensity = 5 * glow;
+      light.current.intensity = L.cabin ? 5 * glow : 0;
       light.current.color.copy(WARM).lerp(acc, 0.2);
     }
     if (poolMat.current) poolMat.current.opacity = 0.5 + Math.sin(t * 7.3) * 0.03 + Math.sin(t * 12.9) * 0.02 + flare * 0.2;
@@ -314,16 +328,18 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
     const wk = t - s.waveAt;
     const waving = wk >= 0 && wk < 2;
     const man = snowman.current;
-    man.rotation.z = Math.sin(t * 0.8) * 0.015 + (s.hoverMan ? Math.sin(t * 10) * 0.05 : 0) + (waving && wk < 0.4 ? Math.sin(wk * 25) * 0.06 * (1 - wk / 0.4) : 0);
-    arm.current.rotation.z = waving ? 0.5 + Math.abs(Math.sin(wk * 7)) * 0.9 * Math.min(1, (2 - wk) * 2) : 0.35 + Math.sin(t * 1.3) * 0.05;
-    const hk = waving ? wk / 1.1 : 1;
-    const h = hat.current;
-    if (hk < 1) {
-      h.position.y = 1.98 + Math.sin(hk * Math.PI) * 1.1;
-      h.rotation.set(Math.sin(hk * Math.PI) * 0.4, hk * Math.PI * 4, 0);
-    } else {
-      h.position.y = 1.98;
-      h.rotation.set(0, 0, -0.12 + (s.hoverMan ? Math.sin(t * 10) * 0.08 : 0));
+    if (man && arm.current && hat.current) {
+      man.rotation.z = Math.sin(t * 0.8) * 0.015 + (s.hoverMan ? Math.sin(t * 10) * 0.05 : 0) + (waving && wk < 0.4 ? Math.sin(wk * 25) * 0.06 * (1 - wk / 0.4) : 0);
+      arm.current.rotation.z = waving ? 0.5 + Math.abs(Math.sin(wk * 7)) * 0.9 * Math.min(1, (2 - wk) * 2) : 0.35 + Math.sin(t * 1.3) * 0.05;
+      const hk = waving ? wk / 1.1 : 1;
+      const hm = hat.current;
+      if (hk < 1) {
+        hm.position.y = 1.98 + Math.sin(hk * Math.PI) * 1.1;
+        hm.rotation.set(Math.sin(hk * Math.PI) * 0.4, hk * Math.PI * 4, 0);
+      } else {
+        hm.position.y = 1.98;
+        hm.rotation.set(0, 0, -0.12 + (s.hoverMan ? Math.sin(t * 10) * 0.08 : 0));
+      }
     }
     if (scarfMat.current) scarfMat.current.color.copy(acc);
 
@@ -358,57 +374,62 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
     stop(e);
     if (st.current.clock - st.current.lightsAt > 1) st.current.lightsAt = st.current.clock;
     tmp.v.set(0, CAB.wall + CAB.gable + 0.2, 0).applyMatrix4(cabinM);
-    burst(tmp.v.x, tmp.v.y, tmp.v.z, 1.8 * L.cabin.s);
+    burst(tmp.v.x, tmp.v.y, tmp.v.z, 1.8 * (L.cabin?.s ?? 1));
   };
   const clickMan = (e: ThreeEvent<MouseEvent>) => {
     stop(e);
-    if (st.current.clock - st.current.waveAt > 2) {
+    if (L.snowman && st.current.clock - st.current.waveAt > 2) {
       st.current.waveAt = st.current.clock;
       burst(L.snowman.x, 2.0 * L.snowman.s, L.snowman.z, 1.2);
     }
   };
 
   const man = L.snowman;
+  const cabinAt = L.cabin ?? base.cabin ?? { x: 0, z: 0 };
   return (
-    <>
-      <instancedMesh ref={pines} args={[res.pine, undefined, L.pines.length]} instanceColor={pineColors} onPointerOver={overPine} onPointerOut={outPine} onClick={clickPine}>
+    <group name="decor">
+      <instancedMesh name="pine" ref={pines} args={[res.pine, undefined, L.pines.length]} instanceColor={pineColors} onPointerOver={overPine} onPointerOut={outPine} onClick={clickPine}>
         <meshLambertMaterial vertexColors emissive="#0a1a2a" />
       </instancedMesh>
-      <mesh geometry={res.banks}>
+      <mesh name="banks" geometry={placed.banks}>
         <meshLambertMaterial vertexColors emissive="#1a2440" />
       </mesh>
-      <instancedMesh ref={lanterns} args={[res.lantern, undefined, L.lanterns.length]}>
+      <instancedMesh name="lantern" ref={lanterns} args={[res.lantern, undefined, L.lanterns.length]}>
         <meshLambertMaterial vertexColors emissive="#141a26" />
       </instancedMesh>
       {!lite && (
-        <mesh geometry={res.pools} renderOrder={1}>
+        <mesh name="pools" geometry={placed.pools} renderOrder={1}>
           <meshBasicMaterial ref={poolMat} map={res.glow} color="#ffb24a" transparent opacity={0.5} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
         </mesh>
       )}
-      <group position={[L.cabin.x, 0, L.cabin.z]} rotation={[0, faceCamera(L.cabin.x, L.cabin.z), 0]} scale={L.cabin.s}>
-        <mesh geometry={res.cabin} onPointerOver={hover('hoverCabin', true)} onPointerOut={hover('hoverCabin', false)} onClick={clickCabin}>
-          <meshLambertMaterial vertexColors emissive="#140a10" />
-        </mesh>
-        <mesh geometry={res.windows} renderOrder={2}>
-          <meshBasicMaterial ref={winMat} map={res.windowTex} transparent blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
-        </mesh>
-      </group>
-      <group ref={snowman} position={[man.x, 0, man.z]} rotation={[0, faceCamera(man.x, man.z), 0]} scale={man.s}>
-        <mesh geometry={res.snowman} onPointerOver={hover('hoverMan', true)} onPointerOut={hover('hoverMan', false)} onClick={clickMan}>
-          <meshLambertMaterial vertexColors emissive="#1a2238" />
-        </mesh>
-        {!lite && (
-          <mesh geometry={res.scarf}>
-            <meshLambertMaterial ref={scarfMat} emissive="#200810" />
+      {L.cabin && (
+        <group position={[L.cabin.x, 0, L.cabin.z]} rotation={[0, faceCamera(L.cabin.x, L.cabin.z), 0]} scale={L.cabin.s}>
+          <mesh name="cabin" geometry={res.cabin} onPointerOver={hover('hoverCabin', true)} onPointerOut={hover('hoverCabin', false)} onClick={clickCabin}>
+            <meshLambertMaterial vertexColors emissive="#140a10" />
           </mesh>
-        )}
-        <mesh ref={arm} geometry={res.arm} position={[0.38, 1.32, 0]}>
-          <meshLambertMaterial vertexColors />
-        </mesh>
-        <mesh ref={hat} geometry={res.hat} position={[0, 1.98, 0]} onPointerOver={hover('hoverMan', true)} onPointerOut={hover('hoverMan', false)} onClick={clickMan}>
-          <meshLambertMaterial vertexColors emissive="#101018" />
-        </mesh>
-      </group>
+          <mesh name="windows" geometry={res.windows} renderOrder={2}>
+            <meshBasicMaterial ref={winMat} map={res.windowTex} transparent blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
+          </mesh>
+        </group>
+      )}
+      {man && (
+        <group ref={snowman} position={[man.x, 0, man.z]} rotation={[0, faceCamera(man.x, man.z), 0]} scale={man.s}>
+          <mesh name="snowman" geometry={res.snowman} onPointerOver={hover('hoverMan', true)} onPointerOut={hover('hoverMan', false)} onClick={clickMan}>
+            <meshLambertMaterial vertexColors emissive="#1a2238" />
+          </mesh>
+          {!lite && (
+            <mesh geometry={res.scarf}>
+              <meshLambertMaterial ref={scarfMat} emissive="#200810" />
+            </mesh>
+          )}
+          <mesh ref={arm} geometry={res.arm} position={[0.38, 1.32, 0]}>
+            <meshLambertMaterial vertexColors />
+          </mesh>
+          <mesh ref={hat} geometry={res.hat} position={[0, 1.98, 0]} onPointerOver={hover('hoverMan', true)} onPointerOut={hover('hoverMan', false)} onClick={clickMan}>
+            <meshLambertMaterial vertexColors emissive="#101018" />
+          </mesh>
+        </group>
+      )}
       {/* premultiplied blending: flakes cover what is behind them, lights add to it (alpha 0) */}
       <points geometry={cloud} frustumCulled={false} renderOrder={6}>
         <shaderMaterial
@@ -423,11 +444,12 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
         />
       </points>
       {!lite && (
-        <mesh geometry={res.aurora} position={[0, 0.15, L.aurora.z]} scale={[L.aurora.w, L.aurora.h, 1]} renderOrder={-10} frustumCulled={false}>
+        <mesh name="aurora" geometry={res.aurora} position={[0, 0.15, L.aurora.z]} scale={[L.aurora.w, L.aurora.h, 1]} renderOrder={-10} frustumCulled={false}>
           <shaderMaterial vertexShader={auroraVert} fragmentShader={auroraFrag} uniforms={auroraU} transparent depthWrite={false} blending={THREE.AdditiveBlending} side={THREE.DoubleSide} />
         </mesh>
       )}
-      {!lite && <pointLight ref={light} position={[L.cabin.x, 1.2, L.cabin.z + 2.2]} distance={9} decay={1.5} />}
-    </>
+      {/* stays mounted (dark) when the cabin has no room: a light coming and going would rebuild every material */}
+      {!lite && <pointLight ref={light} position={[cabinAt.x, 1.2, cabinAt.z + 2.2]} distance={9} decay={1.5} />}
+    </group>
   );
 }

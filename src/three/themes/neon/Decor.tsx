@@ -135,9 +135,9 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
   const geos = holoGeos();
   const hx = Math.min(x, 11.5);
   return (
-    <>
+    <group name="decor">
       <Holo pos={[-hx, 0.85, HOLO_Z]} geo={geos.ico} accent={accent} lite={lite} seed={0} />
       <Holo pos={[hx, 0.85, HOLO_Z]} geo={geos.gyro} accent={accent} lite={lite} seed={2.4} />
-    </>
+    </group>
   );
 }

@@ -786,6 +786,8 @@ export class Game extends Observable {
     const s = this.s;
     const p = this.cp();
     if (!p.bot && !force) return;
+    // never a move for someone already out (a stale timer after a knock-out): the turn goes on instead
+    if (this.skipIfOut()) return this.emitChange();
     // the autopilot standing in for a person always plays sensibly, whatever the bots' level
     const level = p.bot && !p.standIn ? s.table.botLevel : 'normal';
     const skill = BOT_SKILL[level];
@@ -1106,7 +1108,23 @@ export class Game extends Observable {
   debugKnockOut(which: 'one' | 'all') {
     const bots = this.s.players.filter(p => p.bot && !p.out);
     for (const p of which === 'all' ? bots : bots.slice(0, 1)) if (this.s.phase !== 'over') this.knockOut(p);
+    // a bot knocked out in the middle of its own turn hands the turn on, as a real knock-out on a draw does
+    this.skipIfOut();
     this.emitChange();
+  }
+
+  /**
+   * The player whose turn it is was knocked out (and nothing has moved the turn on yet): it passes to the next one.
+   * Left holding the turn, they would draw while out and could later lay their "last" card with nobody to win.
+   * Returns whether the turn moved.
+   */
+  private skipIfOut(): boolean {
+    const s = this.s;
+    if (s.phase === 'over' || !this.cp().out) return false;
+    s.choice = null;
+    s.phase = 'play';
+    this.advance();
+    return true;
   }
 
   /** The mercy rule: too many cards and you are out. Their cards are set aside until the deck runs out. */

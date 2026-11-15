@@ -4,14 +4,18 @@ import * as THREE from 'three';
 import type { DecorProps } from '../types';
 import { GIANT, MOON, bodyMaterial, ringMaterial } from './bodies';
 import { streakTex } from './textures';
+import { placePlanet, type PlanetSpot } from './placement';
+import { ballOnScreen, underHud, useHudZones } from '../decorKit';
+import { arena, makeView, toScreen } from '../../layout';
 
 /*
  * Space: the table is a station deck (drawn by the floor shader) adrift in a nebula. Out beyond it hang a
  * ringed gas giant with its moon, a sparse drift of asteroids far past the opponents, and now and then a
  * shooting star. The camera looks down at the table, so the only open sky is the band past the far edge:
- * the planet is pinned to a top corner of the screen (worked out from the camera, so it sits right on any
- * aspect ratio, from a portrait tablet to 21:9) and is partly cut off by it, which keeps it clear of the
- * plates and the cards. Interactive (all far from the hand and the pile):
+ * the planet hangs in the top-right part of the screen, placed in screen pixels around the HUD and the plates
+ * as measured on the page (see placement.ts), so it sits right on any screen and any number of players, and
+ * shrinks, or stays away, when there is no room. An asteroid that drifts under the HUD fades out until it is
+ * clear again. Interactive (all far from the hand and the pile):
  *   planet — hover glows, click spins it up and flashes the rings;
  *   moon — hover grows, click launches a shooting star;
  *   asteroid — hover lights it, click shatters it (it drifts back in a few seconds later).
@@ -25,14 +29,10 @@ const STREAKS = 2;
 /** the moon's radius, the planet's being 1 */
 const MOON_R = 0.2;
 
-/**
- * The planet's anchor: a point on screen (NDC) and how far along that ray it floats. The radius is a share of
- * the screen's half-height at that distance, so it is the same size on screen whatever the field of view.
- */
-const ANCHOR = {
-  landscape: { x: 0.97, y: 0.97, dist: 46, size: 0.22 },
-  portrait: { x: 0.95, y: 0.97, dist: 46, size: 0.16 },
-};
+/** how far from the camera the planet floats (it is drawn to a size in pixels, see placement.ts) */
+const PLANET_DIST = 46;
+/** the biggest planet's radius, as a share of the screen's half-height */
+const PLANET_SIZE = { landscape: 0.22, portrait: 0.16 };
 
 /** the asteroid drift: an arc far past the opponents, below the deck's level (seen "through" the void) */
 const BELT = { rx: 17, rz: 12, y: -3.2, from: Math.PI * 1.25, to: Math.PI * 1.75 };
@@ -61,7 +61,7 @@ function rockGeometry() {
   return g;
 }
 
-interface Rock { u: number; lane: number; s: number; rot: THREE.Euler; spin: number; deadUntil: number }
+interface Rock { u: number; lane: number; s: number; rot: THREE.Euler; spin: number; deadUntil: number; vis: number }
 interface Shard { p: THREE.Vector3; v: THREE.Vector3; rot: THREE.Euler; born: number; s: number }
 interface Streak { at: number; from: THREE.Vector3; dir: THREE.Vector3 }
 
@@ -70,6 +70,7 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
   const nStreaks = lite ? 1 : STREAKS;
   const camera = useThree(s => s.camera) as THREE.PerspectiveCamera;
   const gl = useThree(s => s.gl);
+  const hud = useHudZones();
 
   const system = useRef<THREE.Group>(null!);
   const planet = useRef<THREE.Group>(null!);
@@ -105,11 +106,20 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
         rot: new THREE.Euler(i, i * 2.1, i * 0.7),
         spin: 0.12 + (i % 4) * 0.07,
         deadUntil: 0,
+        vis: 1,
       })),
       shards: Array.from({ length: SHARD_POOL }, (): Shard => ({ p: new THREE.Vector3(), v: new THREE.Vector3(), rot: new THREE.Euler(), born: -10, s: 0 })),
       nextShard: 0,
       streaks: Array.from({ length: STREAKS }, (): Streak => ({ at: -10, from: new THREE.Vector3(), dir: new THREE.Vector3() })),
       nextAuto: now + 4,
+      /** where the planet should be (null: nowhere it fits) and where it is, in screen pixels */
+      spot: null as PlanetSpot | null,
+      at: { x: 0, y: 0, r: 0 },
+      hudVersion: -1,
+      seenW: 0,
+      seenH: 0,
+      seenPortrait: false,
+      box: { x0: 0, y0: 0, x1: 0, y1: 0 },
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -165,12 +175,37 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
     const t = state.clock.elapsedTime;
     dt = Math.min(dt, 0.1);
 
-    // the planet is pinned to a corner of the screen; worked out again every frame (a few multiplies),
-    // so it stays put through the camera's intro move, a resize or a turn of the device
-    const A = portrait ? ANCHOR.portrait : ANCHOR.landscape;
-    st.v.set(A.x, A.y, 0.5).unproject(camera).sub(camera.position).normalize();
-    system.current.position.copy(camera.position).addScaledVector(st.v, A.dist);
-    system.current.scale.setScalar(A.dist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * A.size);
+    // the planet's spot on screen: found again only when the HUD or the screen changes
+    const { width: w, height: h } = state.size;
+    const zones = hud.current;
+    if (zones.version !== st.hudVersion || w !== st.seenW || h !== st.seenH || portrait !== st.seenPortrait) {
+      st.hudVersion = zones.version;
+      st.seenW = w;
+      st.seenH = h;
+      st.seenPortrait = portrait;
+      const view = makeView(w, h);
+      const floor = toScreen(view, 0, 0, -arena(view).rz).y;
+      st.spot = placePlanet(w, h, (portrait ? PLANET_SIZE.portrait : PLANET_SIZE.landscape) * (h / 2), floor, zones.rects);
+    }
+    // glides to its spot (grows in right there when it had none), or shrinks away where it is when there is none
+    const k = damp(dt, 3);
+    if (st.spot) {
+      if (st.at.r < 1) {
+        st.at.x = st.spot.x;
+        st.at.y = st.spot.y;
+      }
+      st.at.x += (st.spot.x - st.at.x) * k;
+      st.at.y += (st.spot.y - st.at.y) * k;
+    }
+    st.at.r += ((st.spot?.r ?? 0) - st.at.r) * k;
+    // pinned to that point of the screen: worked out again every frame (a few multiplies), so it stays put
+    // through the camera's intro move and the mouse parallax
+    st.v.set((st.at.x / w) * 2 - 1, 1 - (st.at.y / h) * 2, 0.5).unproject(camera).sub(camera.position).normalize();
+    system.current.position.copy(camera.position).addScaledVector(st.v, PLANET_DIST);
+    // a radius in pixels, at the planet's depth in front of the camera
+    const depth = PLANET_DIST * st.v.dot(camera.getWorldDirection(st.w));
+    system.current.scale.setScalar(Math.max(1e-4, (st.at.r * 2 * depth * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) / h));
+    system.current.visible = st.at.r > 0.5;
     // the system turns to face the camera, so its rings always open up towards the player
     system.current.quaternion.copy(camera.quaternion);
 
@@ -211,6 +246,10 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
       if (i === st.rockHot) s *= 1.2;
       // the lanes lie one behind the other (deeper, lower), not wider: the belt never reaches the side plates
       d.position.set(Math.cos(ang) * BELT.rx, BELT.y - r.lane * 0.9 + Math.sin(t * 0.4 + i * 1.7) * 0.15, Math.sin(ang) * BELT.rz * (1 + r.lane * 0.15));
+      // fades out while it drifts under a plate or the HUD
+      const under = underHud(ballOnScreen(camera, w, h, d.position.x, d.position.y, d.position.z, r.s * 0.5, st.box), zones.rects, 4);
+      r.vis += ((under ? 0 : 1) - r.vis) * damp(dt, 5);
+      s *= r.vis;
       d.rotation.copy(r.rot);
       d.scale.setScalar(s);
       d.updateMatrix();
@@ -326,18 +365,18 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
   };
 
   return (
-    <>
-      {/* the ringed planet and its moon, pinned to a top corner of the screen (see ANCHOR) */}
+    <group name="decor">
+      {/* the ringed planet and its moon, pinned to a spot on screen clear of the HUD (see placement.ts) */}
       <group ref={system}>
         <group ref={planet} rotation={[0.38, 0, 0.42]}>
-          <mesh ref={planetBody} material={giantMat} {...planetEvents}>
+          <mesh name="planet" ref={planetBody} material={giantMat} {...planetEvents}>
             <sphereGeometry args={[1, lite ? 40 : 64, lite ? 24 : 40]} />
           </mesh>
           {/* drawn before the shadow catcher (renderOrder 0), whose depth would otherwise hide it: the planet hangs below the table's level */}
-          <mesh material={ringMat} rotation-x={-Math.PI / 2} renderOrder={-1}>
+          <mesh name="rings" material={ringMat} rotation-x={-Math.PI / 2} renderOrder={-1}>
             <ringGeometry args={[1.35, 2.35, lite ? 72 : 128, 1]} />
           </mesh>
-          <mesh ref={moon} material={moonMat} scale={MOON_R} {...moonEvents}>
+          <mesh name="moon" ref={moon} material={moonMat} scale={MOON_R} {...moonEvents}>
             <sphereGeometry args={[1, 24, 16]} />
           </mesh>
         </group>
@@ -345,7 +384,7 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
 
       {/* asteroids and their shards */}
       {/* a portrait screen has hardly any open sky past the far plates: no belt there */}
-      <instancedMesh ref={rocks} args={[rockGeo, undefined, nRocks]} visible={!portrait} {...rockEvents}>
+      <instancedMesh name="asteroid" ref={rocks} args={[rockGeo, undefined, nRocks]} visible={!portrait} {...rockEvents}>
         <meshLambertMaterial color="#6a6478" emissive="#0c0a14" flatShading />
       </instancedMesh>
       <instancedMesh ref={shards} args={[shardGeo, undefined, SHARD_POOL]} frustumCulled={false} visible={false}>
@@ -356,6 +395,6 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
       {Array.from({ length: nStreaks }, (_, i) => (
         <mesh key={i} ref={m => (streakMeshes.current[i] = m)} geometry={streakGeo} material={streakMat} visible={false} frustumCulled={false} />
       ))}
-    </>
+    </group>
   );
 }

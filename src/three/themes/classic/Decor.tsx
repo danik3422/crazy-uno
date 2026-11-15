@@ -154,7 +154,7 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
   });
 
   return (
-    <group>
+    <group name="decor">
       {/* invisible, larger targets round the bulbs: easy to hover and tap, never drawn */}
       <instancedMesh key={`hit${nBulbs}${portrait}`} args={[hitGeo, undefined, nBulbs]} onPointerOver={over} onPointerOut={out} onClick={click}
         onUpdate={(m) => seat(m, null, 1)}>
