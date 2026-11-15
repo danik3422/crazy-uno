@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Profile } from '../../profile/Profile';
 import { About } from '../about/About';
 import { HowTo } from '../howto/HowTo';
+import { Skins } from '../skins/Skins';
 import { HomeFooter } from './HomeFooter';
 import { HomeHero } from './HomeHero';
 import { HomeNav, type HomeTab } from './HomeNav';
@@ -23,6 +24,7 @@ export function Home(props: Props) {
     <div className={`home tab-${tab}`}>
       <HomeNav tab={tab} onTab={setTab} />
       {tab === 'profile' && <div className="home-page"><Profile name={props.name} avatar={props.avatar} /></div>}
+      {tab === 'skins' && <div className="home-page"><Skins /></div>}
       {tab === 'howto' && <div className="home-page"><HowTo onTutorial={props.onTutorial} /></div>}
       {tab === 'about' && <div className="home-page"><About /></div>}
       {tab === 'play' && (

@@ -15,7 +15,7 @@
   padding-top: max(28px, env(safe-area-inset-top, 0px));
 }
 .home.tab-play { padding-top: max(78px, calc(env(safe-area-inset-top, 0px) + 64px)); }
-.home.tab-profile, .home.tab-howto, .home.tab-about {
+.home.tab-profile, .home.tab-skins, .home.tab-howto, .home.tab-about {
   display: block;
   padding-top: max(80px, calc(env(safe-area-inset-top, 0px) + 66px));
 }
@@ -44,11 +44,11 @@
     grid-template-columns: minmax(0, 1fr) clamp(330px, 44vw, 430px);
     padding-block: max(3.5vh, 10px, env(safe-area-inset-top, 0px)) max(3.5vh, 10px, env(safe-area-inset-bottom, 0px));
   }
-  .home.tab-play, .home.tab-profile, .home.tab-howto, .home.tab-about {
+  .home.tab-play, .home.tab-profile, .home.tab-skins, .home.tab-howto, .home.tab-about {
     padding-left: calc(max(6px, env(safe-area-inset-left, 0px)) + 86px);
   }
   .home.tab-play { padding-top: max(3.5vh, 10px, env(safe-area-inset-top, 0px)); }
-  .home.tab-profile, .home.tab-howto, .home.tab-about {
+  .home.tab-profile, .home.tab-skins, .home.tab-howto, .home.tab-about {
     padding-top: max(10px, env(safe-area-inset-top, 0px));
     padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
     height: 100dvh;
@@ -58,29 +58,29 @@
 }
 /* a phone held upright */
 @media (max-width: 760px) and (orientation: portrait) {
-  .home.tab-play, .home.tab-profile, .home.tab-howto, .home.tab-about {
+  .home.tab-play, .home.tab-profile, .home.tab-skins, .home.tab-howto, .home.tab-about {
     padding-top: max(10px, env(safe-area-inset-top, 0px));
     padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   }
   .home.tab-play { gap: 10px; }
-  .home.tab-profile, .home.tab-howto, .home.tab-about { padding-top: calc(env(safe-area-inset-top, 0px) + 10px); }
+  .home.tab-profile, .home.tab-skins, .home.tab-howto, .home.tab-about { padding-top: calc(env(safe-area-inset-top, 0px) + 10px); }
 }
 /* a computer */
 @media (min-width: 761px) and (min-height: 521px) {
   .home { min-height: 100dvh; box-sizing: border-box; }
   .home.tab-play { grid-template-rows: minmax(0, 1fr) auto; padding-bottom: 12px; }
-  .home.tab-profile, .home.tab-howto, .home.tab-about {
+  .home.tab-profile, .home.tab-skins, .home.tab-howto, .home.tab-about {
     display: flex;
     flex-direction: column;
     align-items: stretch;
     padding-bottom: 12px;
   }
-  .home.tab-profile .home-page, .home.tab-howto .home-page, .home.tab-about .home-page { flex: 1 0 auto; }
+  .home.tab-profile .home-page, .home.tab-skins .home-page, .home.tab-howto .home-page, .home.tab-about .home-page { flex: 1 0 auto; }
 }
 /* installed on an iPhone home screen: iOS paints the strip by the home indicator with the page background, so the bar's colour runs to the bottom */
 @media (display-mode: standalone) and (max-width: 760px) and (orientation: portrait), (display-mode: fullscreen) and (max-width: 760px) and (orientation: portrait) {
   html:has(.home) { background: #1a0826; }
-  .home.tab-play, .home.tab-profile, .home.tab-howto, .home.tab-about { padding-bottom: 84px; }
+  .home.tab-play, .home.tab-profile, .home.tab-skins, .home.tab-howto, .home.tab-about { padding-bottom: 84px; }
 }
 /* a wide computer screen */
 @media (min-width: 901px) and (min-height: 521px) {

@@ -10,6 +10,8 @@ import { debugValue, exposeDebug } from '../../lib/debug';
 import { nowSec } from '../effects/fxState';
 import type { View } from '../layout';
 import { vanBusy } from './vanBusy';
+import { useSkins } from '../../game/skins';
+import { VAN_LOOKS } from './looks';
 import { BigGuy, DOOR_W, DOOR_X, Van, VAN_D, Victim, WHEEL_R, limbs, makePrint } from './models';
 import { ARRIVE, DOOR_T, WALK, add, along, clamp01, hold, lerp2, plan, road, roadAt, sideOf, smooth, span, type P2, type Run } from './plan';
 
@@ -35,6 +37,16 @@ function alongExt(path: P2[], dist: number) {
   if (dist >= 0) return along(path, dist);
   const first = along(path, 0);
   return { p: add(first.p, first.dir, dist), dir: first.dir, done: false };
+}
+
+type Print = ReturnType<typeof makePrint>;
+/** puts the print on the van's sides; a van flipped to drive the other way gets the mirrored picture, so it reads right */
+function showPrint(print: Print, mirror: boolean, [near, far, door]: readonly THREE.MeshBasicMaterial[]) {
+  const pr = mirror ? print.flipped : print.normal;
+  near.map = pr.full;
+  far.map = pr.full;
+  door.map = pr.door;
+  for (const m of [near, far, door]) m.needsUpdate = true;
 }
 
 interface Guy {
@@ -66,9 +78,17 @@ export function KnockoutVan({ game, version, view }: { game: GameView; version: 
   const printNear = useRef<THREE.MeshBasicMaterial>(null!);
   const printFar = useRef<THREE.MeshBasicMaterial>(null!);
   const printDoor = useRef<THREE.MeshBasicMaterial>(null!);
-  const print = useMemo(() => makePrint(), []);
+  const vanSkin = useSkins().van;
+  const look = VAN_LOOKS[vanSkin];
+  const print = useMemo(() => makePrint(look), [look]);
   const queue = useRef<{ seat: number; tex: THREE.Texture | null; bg: string }[]>([]);
   const run = useRef<Run | null>(null);
+  const printMats = () => [printNear.current, printFar.current, printDoor.current] as const;
+  // a new skin brings new print pictures: the old ones go, and a van already on its way is repainted
+  useEffect(() => {
+    if (run.current) showPrint(print, run.current.mirror, printMats());
+    return () => print.dispose();
+  }, [print]);
   const seen = useRef<{ game: GameView | null; outs: boolean[] }>({ game: null, outs: [] });
   const sfx = useRef(0);
   const engineOn = useRef(false);
@@ -124,12 +144,7 @@ export function KnockoutVan({ game, version, view }: { game: GameView; version: 
       face.current.map = q.tex;
       face.current.needsUpdate = true;
       body.current.color.set(q.bg);
-      // a van flipped to drive the other way mirrors its print: show the mirrored picture so it reads right
-      const pr = r.mirror ? print.flipped : print.normal;
-      printNear.current.map = pr.full;
-      printFar.current.map = pr.full;
-      printDoor.current.map = pr.door;
-      for (const m of [printNear.current, printFar.current, printDoor.current]) m.needsUpdate = true;
+      showPrint(print, r.mirror, printMats());
       const f = yawOf([-r.o[0], -r.o[1]]);
       yaw.current = [f, f];
     }
@@ -393,10 +408,10 @@ export function KnockoutVan({ game, version, view }: { game: GameView; version: 
   return (
     <group ref={root} visible={false}>
       <group ref={vanAt}>
-        <Van g={van} door={door} wheels={wheels} print={{ near: printNear, far: printFar, door: printDoor }} />
+        <Van g={van} door={door} wheels={wheels} print={{ near: printNear, far: printFar, door: printDoor }} look={look} />
       </group>
-      <BigGuy g={a} paper />
-      <BigGuy g={b} moustache />
+      <BigGuy g={a} paper look={look} />
+      <BigGuy g={b} moustache look={look} />
       <Victim g={victim} face={face} body={body} />
     </group>
   );

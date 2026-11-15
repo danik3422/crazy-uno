@@ -1,0 +1,166 @@
+/* The skins tab: a heading, then two blocks (mascot, van), each a 3D preview over a row of looks. */
+
+.skins {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.skins-head h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: clamp(22px, 3.4vw, 32px);
+}
+.skins-head p { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+
+.skins-cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.skin-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 24px;
+  background: linear-gradient(170deg, rgba(43, 16, 54, 0.94), rgba(18, 6, 26, 0.94));
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.35);
+  min-width: 0;
+}
+.skin-block h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: 18px;
+}
+
+/* the preview: a little lit stage */
+.skin-stage {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  border-radius: 18px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 72%, rgba(255, 214, 120, 0.28), transparent 70%),
+    linear-gradient(180deg, #3a1a5c, #1c0a2c);
+}
+.skin-van .skin-stage {
+  background:
+    radial-gradient(ellipse 60% 30% at 50% 78%, rgba(255, 255, 255, 0.16), transparent 70%),
+    linear-gradient(180deg, #2c3a5c, #141a2c);
+}
+.skin-stage canvas { touch-action: pan-y; }
+.skin-stage-wait { position: absolute; inset: 0; }
+
+.skin-caption {
+  margin: -4px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* room for a two-line description, so the tiles below don't jump while pointing at looks */
+  min-height: 3.6em;
+  animation: skin-cap 0.25s ease-out;
+}
+.skin-caption b { font-family: var(--display); font-weight: 900; font-size: 15px; }
+.skin-caption span { font-size: 13px; color: var(--muted); }
+
+.skin-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.skin-tile {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 4px 8px;
+  border-radius: 14px;
+  cursor: pointer;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid transparent;
+  transition: transform 0.15s cubic-bezier(0.2, 1.4, 0.4, 1), background 0.15s, border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.skin-badge {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--sw);
+  border: 3px solid var(--edge);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+}
+.skin-tick {
+  position: absolute;
+  right: -7px;
+  bottom: -5px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font: 900 12px/1 var(--body);
+  color: var(--on-gold);
+  background: var(--gold-bright);
+  border: 2px solid var(--edge);
+  transform: scale(0);
+  transition: transform 0.2s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+.skin-name {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 11.5px;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+@media (hover: hover) {
+  .skin-tile:hover { background: rgba(255, 255, 255, 0.12); transform: translateY(-3px); }
+}
+.skin-tile:focus { outline: none; }
+.skin-tile:focus-visible { border-color: var(--gold-bright); }
+.skin-tile.on { background: rgba(255, 208, 74, 0.14); border-color: var(--gold-bright); }
+.skin-tile.on .skin-tick { transform: scale(1); }
+.skin-tile.on .skin-name { color: var(--gold-bright); }
+
+/* one block under the other on narrower screens */
+@media (max-width: 900px) {
+  .skins-cols { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 480px) {
+  .skin-block { padding: 12px; border-radius: 20px; }
+  .skin-grid { gap: 5px; }
+  .skin-badge { width: 32px; height: 32px; }
+  .skin-name { font-size: 10px; }
+  .skin-caption span { font-size: 12px; }
+}
+/* a phone on its side: the two blocks side by side, shorter previews */
+@media (orientation: landscape) and (max-height: 520px) {
+  .skins { gap: 10px; }
+  .skins-head p { display: none; }
+  .skins-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .skin-block { padding: 10px; gap: 8px; }
+  .skin-stage { aspect-ratio: 16 / 6.5; }
+  .skin-caption { min-height: 0; margin: 0; }
+  .skin-caption b { font-size: 12px; }
+  .skin-caption span { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .skins-head h1 { font-size: 18px; }
+  .skin-badge { width: 28px; height: 28px; }
+  .skin-tile { padding: 6px 2px; }
+  .skin-name { font-size: 9.5px; }
+}
+
+@keyframes skin-cap { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) {
+  .skin-caption { animation: none; }
+}

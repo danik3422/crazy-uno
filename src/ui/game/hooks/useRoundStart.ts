@@ -64,7 +64,10 @@ export function useRoundStart(game: GameView, local: Game | null, version: numbe
     later(at + pileMs / 1000 + 0.4, () => sound.play('card')); // as it lands
     later(end, () => {
       setStage('play');
-      summonMascot('fly', 1.2);
+      // the route comes from what every screen shares (the round and the pile's first card), not Math.random:
+      // online the whole table sees the same flight at the same moment, each in their own skin
+      const first = game.s.discard[0];
+      summonMascot('fly', 1.2, 0, roundSeed(game.s.round, first?.id ?? 0));
     });
   }, [game]);
 
@@ -139,4 +142,9 @@ export function useRoundStart(game: GameView, local: Game | null, version: numbe
     turning,
     turningLong,
   };
+}
+
+/** A route seed (0..1) every screen at the table computes alike. */
+export function roundSeed(round: number, cardId: number) {
+  return (((round * 7919 + cardId * 104729) % 1000) + 1000) % 1000 / 1000;
 }

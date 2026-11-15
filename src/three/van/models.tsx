@@ -1,6 +1,7 @@
 import { Billboard, RoundedBox } from '@react-three/drei';
 import type { RefObject } from 'react';
 import * as THREE from 'three';
+import type { VanLook } from './looks';
 
 /* The cast of the knock-out scene: the olive van, the two big guys in uniform, and the player being taken. */
 
@@ -17,7 +18,6 @@ const PRINT_X = 0.16;
 const PRINT_W = 2.45;
 const PRINT_Y = 0.43;
 const PRINT_H = 0.42;
-const PRINT_TEXT = 'NAVIйну';
 
 export interface VanPrint {
   near: RefObject<THREE.MeshBasicMaterial>;
@@ -29,7 +29,8 @@ export interface VanPrint {
  * The print's pictures: the whole side, and the door's piece of it; each also mirrored, for a van that is
  * flipped to drive the other way (the flip mirrors the picture back).
  */
-export function makePrint() {
+export function makePrint(look: VanLook) {
+  const { text: PRINT_TEXT, top, bottom, stroke, band } = look.print;
   const W = 1024;
   const H = Math.round((W * PRINT_H) / PRINT_W);
   const draw = (cv: HTMLCanvasElement, flip: boolean) => {
@@ -39,6 +40,16 @@ export function makePrint() {
     if (flip) {
       c.translate(W, 0);
       c.scale(-1, 1);
+    }
+    if (band) {
+      // a painted stripe behind the words, with thin darker edges
+      c.fillStyle = band;
+      c.beginPath();
+      c.roundRect(0, H * 0.04, W, H * 0.92, H * 0.18);
+      c.fill();
+      c.fillStyle = 'rgba(0,0,0,0.18)';
+      c.fillRect(0, H * 0.06, W, H * 0.03);
+      c.fillRect(0, H * 0.91, W, H * 0.03);
     }
     const size = H * 0.78;
     c.font = `900 ${size}px Unbounded, "Arial Black", Impact, sans-serif`;
@@ -51,11 +62,11 @@ export function makePrint() {
     c.transform(fit, 0, -0.18, 1, 0, 0);
     c.lineJoin = 'round';
     c.lineWidth = size * 0.16;
-    c.strokeStyle = '#151515';
+    c.strokeStyle = stroke;
     c.strokeText(PRINT_TEXT, 0, 0);
     const grad = c.createLinearGradient(0, -size / 2, 0, size / 2);
-    grad.addColorStop(0, '#fff27a');
-    grad.addColorStop(1, '#f5b800');
+    grad.addColorStop(0, top);
+    grad.addColorStop(1, bottom);
     c.fillStyle = grad;
     c.fillText(PRINT_TEXT, 0, 0);
     c.restore();
@@ -77,9 +88,11 @@ export function makePrint() {
   };
   const normal = make(false);
   const flipped = make(true);
+  let disposed = false;
   // the display font may arrive later: paint again then
   if (typeof document !== 'undefined' && document.fonts) {
     void document.fonts.load('900 40px Unbounded').then(() => {
+      if (disposed) return;
       for (const [p, f] of [[normal, false], [flipped, true]] as const) {
         draw(p.cv, f);
         p.full.needsUpdate = true;
@@ -87,15 +100,22 @@ export function makePrint() {
       }
     }).catch(() => {});
   }
-  return { normal, flipped };
+  const dispose = () => {
+    disposed = true;
+    for (const p of [normal, flipped]) {
+      p.full.dispose();
+      p.door.dispose();
+    }
+  };
+  return { normal, flipped, dispose };
 }
 
-const OLIVE = '#5d6338';
-const OLIVE_DARK = '#454a29';
 const SKIN = '#eab48c';
 
 /** A big guy in an olive uniform and cap. `paper`: holds a sheet (the summons) in one hand. */
-export function BigGuy({ g, paper, moustache }: { g: RefObject<THREE.Group>; paper?: boolean; moustache?: boolean }) {
+export function BigGuy({ g, paper, moustache, look }: { g: RefObject<THREE.Group>; paper?: boolean; moustache?: boolean; look: VanLook }) {
+  const OLIVE = look.crew.uniform;
+  const OLIVE_DARK = look.crew.dark;
   return (
     <group ref={g}>
       {/* legs and boots */}
@@ -197,9 +217,9 @@ export function BigGuy({ g, paper, moustache }: { g: RefObject<THREE.Group>; pap
 }
 
 /** The olive van: rounded body, a short nose, dark windows, a sliding side door facing the camera. */
-export function Van({ g, door, wheels, print }: { g: RefObject<THREE.Group>; door: RefObject<THREE.Group>; wheels: RefObject<THREE.Group>; print: VanPrint }) {
+export function Van({ g, door, wheels, print, look }: { g: RefObject<THREE.Group>; door: RefObject<THREE.Group>; wheels: RefObject<THREE.Group>; print: VanPrint; look: VanLook }) {
   const glass = <meshStandardMaterial color="#1b2228" roughness={0.2} metalness={0.4} />;
-  const paint = <meshStandardMaterial color={OLIVE} roughness={0.75} metalness={0.05} />;
+  const paint = <meshStandardMaterial color={look.paint} roughness={look.gloss?.roughness ?? 0.75} metalness={look.gloss?.metalness ?? 0.05} />;
   return (
     <group ref={g}>
       {/* body: the box and the sloped nose */}
@@ -264,11 +284,11 @@ export function Van({ g, door, wheels, print }: { g: RefObject<THREE.Group>; doo
       {/* bumpers, lights, a mirror */}
       <mesh position={[-VAN_L / 2 - 0.42, WHEEL_R + 0.08, 0]}>
         <boxGeometry args={[0.08, 0.14, VAN_D * 1.02]} />
-        <meshStandardMaterial color="#2a2c22" roughness={0.6} />
+        <meshStandardMaterial color={look.trim} roughness={0.6} />
       </mesh>
       <mesh position={[0.12 + VAN_L / 2 + 0.02, WHEEL_R + 0.08, 0]}>
         <boxGeometry args={[0.08, 0.14, VAN_D * 1.02]} />
-        <meshStandardMaterial color="#2a2c22" roughness={0.6} />
+        <meshStandardMaterial color={look.trim} roughness={0.6} />
       </mesh>
       {[0.36, -0.36].map(z => (
         <mesh key={z} position={[-VAN_L / 2 - 0.42, WHEEL_R + 0.33, z]} rotation-z={Math.PI / 2}>
@@ -278,8 +298,9 @@ export function Van({ g, door, wheels, print }: { g: RefObject<THREE.Group>; doo
       ))}
       <mesh position={[-VAN_L / 2 + 0.05, WHEEL_R + VAN_H * 0.62, VAN_D / 2 + 0.1]}>
         <boxGeometry args={[0.06, 0.14, 0.1]} />
-        <meshStandardMaterial color="#2a2c22" />
+        <meshStandardMaterial color={look.trim} />
       </mesh>
+      {look.roof?.()}
       {/* wheels */}
       <group ref={wheels}>
         {[-VAN_L / 2 + 0.18, VAN_L / 2 - 0.05].flatMap(x =>
@@ -291,7 +312,7 @@ export function Van({ g, door, wheels, print }: { g: RefObject<THREE.Group>; doo
               </mesh>
               <mesh position-z={s * 0.092} rotation-x={Math.PI / 2}>
                 <cylinderGeometry args={[0.11, 0.11, 0.01, 12]} />
-                <meshStandardMaterial color="#7d8070" metalness={0.5} roughness={0.4} />
+                <meshStandardMaterial color={look.hub} metalness={look.hubMetal ?? 0.5} roughness={0.4} />
               </mesh>
             </group>
           )),

@@ -21,6 +21,8 @@ export const STORAGE_KEYS = {
   localGame: 'crazy-uno-local-game',
   /** which tutorials (classic, No Mercy) were played or skipped (ui/tutorial) */
   tutorial: 'crazy-uno-tutorial',
+  /** the looks picked for the mascot and the knock-out van (game/skins.ts) */
+  skins: 'crazy-uno-skins',
 } as const;
 
 export function readJson<T>(key: string): T | null {
