@@ -17,8 +17,7 @@
 }
 .rematch-sub .btn { font-size: 13px; padding: 7px 12px; background: transparent; color: var(--muted); }
 .rematch-sub .btn:hover { color: var(--ink); background: rgba(255, 255, 255, 0.08); }
-.rematch-list .rm-name {
-  white-space: normal; overflow: hidden; text-overflow: clip; overflow-wrap: break-word; line-height: 1.15;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-}
+/* a long name: one line, cut with "…" (two lines made the chips ragged) */
+.rematch-list li { max-width: 100%; min-width: 0; }
+.rematch-list .rm-name { min-width: 0; max-width: 11em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
 @keyframes count-pop { from { transform: scale(1.8); opacity: 0; } }

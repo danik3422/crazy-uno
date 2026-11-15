@@ -12,6 +12,7 @@ export function useGlRecovery() {
   const [glKey, setGlKey] = useState(0);
   const lost = useRef(false);
   const cleanup = useRef<(() => void) | null>(null);
+  const glRef = useRef<WebGLRenderer | null>(null);
 
   const rebuild = useCallback(() => {
     if (!lost.current) return;
@@ -23,6 +24,7 @@ export function useGlRecovery() {
   const onCreated = useCallback(
     ({ gl, scene }: { gl: WebGLRenderer; scene?: Scene }) => {
       cleanup.current?.();
+      glRef.current = gl;
       exposeDebug('__gl', gl);
       exposeDebug('__scene', scene);
       const el = gl.domElement;
@@ -45,9 +47,19 @@ export function useGlRecovery() {
   );
 
   useEffect(() => {
-    document.addEventListener('visibilitychange', rebuild);
+    // back from the background / the lock screen / the back-forward cache: iOS may have dropped the context without
+    // a `webglcontextlost` event reaching us (the page was frozen), so ask the context itself
+    const check = () => {
+      if (document.visibilityState !== 'visible') return;
+      const ctx = glRef.current?.getContext();
+      if (ctx?.isContextLost()) lost.current = true;
+      rebuild();
+    };
+    document.addEventListener('visibilitychange', check);
+    window.addEventListener('pageshow', check);
     return () => {
-      document.removeEventListener('visibilitychange', rebuild);
+      document.removeEventListener('visibilitychange', check);
+      window.removeEventListener('pageshow', check);
       cleanup.current?.();
     };
   }, [rebuild]);

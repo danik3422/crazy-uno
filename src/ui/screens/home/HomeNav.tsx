@@ -1,12 +1,14 @@
 import { useSyncExternalStore } from 'react';
 import { ACHIEVEMENTS } from '../../../game/stats';
-import { useT } from '../../../i18n';
+import { type StrKey, useT } from '../../../i18n';
 import { LangMenu } from '../../components/LangMenu';
 import { profile } from '../../profile/store';
 import './HomeNav.css';
 
 export type HomeTab = 'play' | 'profile' | 'skins' | 'howto' | 'about';
 const TABS: HomeTab[] = ['play', 'profile', 'skins', 'howto', 'about'];
+/** the phone's tab bar has room for one short line per tab: these tabs have a shorter name there */
+const SHORT: Partial<Record<HomeTab, StrKey>> = { howto: 'nav.howtoShort', about: 'nav.aboutShort' };
 
 const TAB_ICON: Record<HomeTab, JSX.Element> = {
   play: <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden><rect x="8.5" y="3" width="10" height="14" rx="2" transform="rotate(12 13.5 10)" fill="none" stroke="currentColor" strokeWidth="2.2" /><rect x="4.5" y="6" width="10" height="14" rx="2" transform="rotate(-8 9.5 13)" fill="currentColor" /></svg>,
@@ -26,13 +28,29 @@ export function HomeNav({ tab, onTab }: { tab: HomeTab; onTab: (tab: HomeTab) =>
   const unlocked = ACHIEVEMENTS.filter(a => profile.get().unlocked[a.id]).length;
   return (
     <nav className="home-nav" aria-label={t('nav.aria')}>
-      {TABS.map(k => (
-        <button key={k} type="button" data-nav={k} className={tab === k ? 'on' : ''} aria-current={tab === k ? 'page' : undefined} onClick={() => onTab(k)}>
-          <span className="hn-ico">{TAB_ICON[k]}</span>
-          <span className="hn-label">{t(`nav.${k}`)}</span>
-          {k === 'profile' && <em className="hn-count">{unlocked}/{ACHIEVEMENTS.length}</em>}
-        </button>
-      ))}
+      {TABS.map(k => {
+        const full = t(`nav.${k}`);
+        const sk = SHORT[k];
+        const short = sk ? t(sk) : full;
+        return (
+          <button
+            key={k}
+            type="button"
+            data-nav={k}
+            className={tab === k ? 'on' : ''}
+            aria-current={tab === k ? 'page' : undefined}
+            aria-label={k === 'profile' ? `${full} ${unlocked}/${ACHIEVEMENTS.length}` : full}
+            onClick={() => onTab(k)}
+          >
+            <span className="hn-ico">{TAB_ICON[k]}</span>
+            <span className="hn-label" aria-hidden>
+              <span className={short !== full ? 'hn-full hn-long' : 'hn-full'}>{full}</span>
+              {short !== full && <span className="hn-short">{short}</span>}
+            </span>
+            {k === 'profile' && <em className="hn-count" aria-hidden>{unlocked}/{ACHIEVEMENTS.length}</em>}
+          </button>
+        );
+      })}
       <LangMenu nav />
     </nav>
   );

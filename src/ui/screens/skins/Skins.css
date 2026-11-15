@@ -139,7 +139,6 @@
 }
 @media (max-width: 480px) {
   .skin-block { padding: 12px; border-radius: 20px; }
-  .skin-grid { gap: 5px; }
   .skin-badge { width: 32px; height: 32px; }
   .skin-name { font-size: 10px; }
   .skin-caption span { font-size: 12px; }
@@ -160,6 +159,13 @@
   .skin-name { font-size: 9.5px; }
 }
 
+/* a phone: five tiles in a row leave ~55px for a name like «Тракторные» or «Дирижабль» (no mid-word breaks),
+   so the tiles go three to a row, the last row centred */
+@media (max-width: 480px), (orientation: landscape) and (max-height: 520px) {
+  .skin-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+  .skin-tile { flex: 0 0 calc((100% - 12px) / 3); min-width: 0; }
+  .skin-name { max-width: 100%; overflow-wrap: normal; }
+}
 @keyframes skin-cap { from { opacity: 0; transform: translateY(6px); } }
 @media (prefers-reduced-motion: reduce) {
   .skin-caption { animation: none; }

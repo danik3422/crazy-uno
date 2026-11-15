@@ -39,17 +39,14 @@
 }
 .plate.team.t0 .plate-ava { border-color: #ff8a7a; }
 .plate.team.t1 .plate-ava { border-color: #8ac0ff; }
-/* long names: wrap onto a second line instead of being cut with "…" (names are at most 16 characters) */
-/* the plate takes the width the name needs (up to its max), and only wraps past that */
+/* long names: one line, cut with "…" past the plate's width (two lines made the plate tall and ragged) */
+/* the plate takes the width the name needs, up to its max */
 .plate-name {
-  white-space: normal;
+  display: block;
+  white-space: nowrap;
   overflow: hidden;
-  text-overflow: clip;
-  overflow-wrap: break-word;
-  line-height: 1.15;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  text-overflow: ellipsis;
+  line-height: 1.2;
   width: max-content;
   max-width: 190px;
 }
@@ -66,7 +63,7 @@
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28); transition: border-color 0.25s, box-shadow 0.25s, transform 0.25s;
 }
 .oplate .oplate-ava { border: 3px solid #fff; border-radius: 14px; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3); }
-.oplate-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.oplate-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; max-width: 100%; }
 .oplate .plate-name {
   background: none; clip-path: none; border: 0; padding: 0; width: max-content; max-width: 132px;
   font-family: var(--display); font-weight: 600; font-size: 13.5px; color: #fff; text-shadow: none;
@@ -75,7 +72,11 @@
   align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 6px; border-radius: 999px;
   background: rgba(255, 255, 255, 0.12); font-family: var(--display); font-weight: 900; font-size: 13px; font-variant-numeric: tabular-nums;
 }
-.oplate-away { font-size: 10.5px; font-weight: 600; color: #ffd2cc; }
+.oplate-away {
+  font-size: 10.5px; font-weight: 600; color: #ffd2cc; max-width: 132px; line-height: 1.2; text-wrap: balance;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.oplate.small .oplate-away { max-width: 100px; font-size: 9.5px; }
 .oplate.cur { border-color: var(--gold); transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3), 0 0 0 3px rgba(255, 216, 74, 0.18), 0 0 28px rgba(255, 196, 60, 0.35); }
 .oplate.cur .plate-name { color: var(--gold); }
 /* No Mercy: knocked out of the round */
@@ -86,7 +87,9 @@
 .oplate.off { opacity: 0.85; }
 .oplate.off .oplate-ava { filter: grayscale(0.6); }
 .oplate.win { border-color: #7dff8a; }
-.oplate .plate-uno { top: -10px; right: -12px; }
+/* over the portrait's top corner, so the name and the card count under it stay readable */
+.oplate .plate-uno { top: -14px; right: auto; left: -12px; transform: none; rotate: -12deg; z-index: 4; }
+.oplate.small .plate-uno, .oplate.tiny .plate-uno { font-size: 10.5px; padding: 2px 6px; border-width: 1.5px; top: -12px; left: -10px; }
 .oplate-team {
   /* a little ribbon over the plate's top edge, in the team's colour */
   position: absolute; top: -12px; left: 50%; translate: -50% 0; z-index: 2;
@@ -106,7 +109,7 @@
 .oplate.team.t0 .oplate-ava { border-color: #ff9a8c; }
 .oplate.team.t1 .oplate-ava { border-color: #9ac8ff; }
 .oplate.small { padding: 4px 9px 4px 4px; gap: 6px; border-radius: 14px; }
-.oplate.small .plate-name { font-size: 11px; max-width: 86px; }
+.oplate.small .plate-name { font-size: 11px; max-width: 100px; }
 .oplate.small .oplate-count { font-size: 11px; padding: 1px 6px 1px 5px; }
 .oplate.small .oplate-ava { border-width: 2px; border-radius: 11px; }
 /* my own card count: a small badge on the avatar corner, like the opponents' */

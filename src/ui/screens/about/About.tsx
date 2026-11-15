@@ -20,17 +20,17 @@ export function About() {
           <a className="ab-link" href={PORTFOLIO} target="_blank" rel="noopener noreferrer">
             <small>{t('about.author')}</small>
             <b>{AUTHOR}</b>
-            <em>{t('about.portfolio')} ↗</em>
+            <em>{t('about.portfolio')}{'\u00a0'}↗</em>
           </a>
           <a className="ab-link" href={PROJECT_PAGE} target="_blank" rel="noopener noreferrer">
             <small>{t('about.project')}</small>
             <b>danylodev.com</b>
-            <em>{t('about.projectSub')} ↗</em>
+            <em>{t('about.projectSub')}{'\u00a0'}↗</em>
           </a>
           <a className="ab-link" href={REPO} target="_blank" rel="noopener noreferrer">
             <small>GitHub</small>
-            <b>danik3422/crazy-uno</b>
-            <em>{t('about.repo')} ↗</em>
+            <b>danik3422/<wbr />crazy-uno</b>
+            <em>{t('about.repo')}{'\u00a0'}↗</em>
           </a>
         </div>
       </section>

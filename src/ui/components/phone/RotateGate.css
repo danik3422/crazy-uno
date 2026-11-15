@@ -23,6 +23,7 @@
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.16);
+  text-wrap: balance;
 }
 .rg-phone { overflow: visible; filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.35)); }
 .rg-turn { transform-origin: 60px 60px; animation: rg-turn 2.6s cubic-bezier(.6, 0, .25, 1) infinite; }

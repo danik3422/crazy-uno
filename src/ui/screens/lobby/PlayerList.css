@@ -75,7 +75,7 @@ button.pl-ava { cursor: pointer; }
   font-weight: 600;
   white-space: normal;
   overflow: hidden;
-  text-overflow: clip;
+  text-overflow: ellipsis;
   line-height: 1.15;
   display: -webkit-box;
   -webkit-line-clamp: 2;

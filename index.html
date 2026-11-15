@@ -6,16 +6,24 @@
     <title>Crazy UNO</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='6' y='2' width='20' height='28' rx='4' fill='%23e5413a' stroke='%23fffdf6' stroke-width='2'/%3E%3Cellipse cx='16' cy='16' rx='6' ry='10' transform='rotate(24 16 16)' fill='%23fffdf6'/%3E%3C/svg%3E" />
     <meta name="theme-color" content="#d42c1c" />
-    <!-- installed on the home screen: no browser bars, held on its side (iPhone has no full screen otherwise) -->
+    <!-- installed on the home screen: no browser bars. black-translucent puts the page under the status bar / Dynamic
+         Island, so every screen pads itself with env(safe-area-inset-*) (see --sat/--sab/--sal/--sar in tokens.css).
+         Pinch zoom is left on (accessibility); double-tap zoom is off via touch-action in global.css. -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Crazy UNO" />
-    <!-- iPhone launch screens: the same splash, so the home-screen app never opens on a black screen -->
+    <!-- iPhone launch screens: the same splash, so the home-screen app never opens on a black screen.
+         CSS size × scale: 440×956@3 16/17 Pro Max · 420×912@3 Air · 402×874@3 16/17 Pro, 17 · 430×932@3 15/16 Plus, 14/15 Pro Max
+         · 393×852@3 14 Pro, 15, 15 Pro, 16 · 428×926@3 12/13 Pro Max, 14 Plus · 390×844@3 12/13/14, 12/13 Pro, 16e
+         · 375×812@3 X, XS, 11 Pro, 12/13 mini · 414×896@3 XS Max, 11 Pro Max · 414×896@2 XR, 11 · 375×667@2 SE, 6–8
+         · 414×736@3 6–8 Plus · 320×568@2 SE (1st) -->
     <link rel="apple-touch-startup-image" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-1320x2868.jpg" />
     <link rel="apple-touch-startup-image" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="/splash/splash-2868x1320.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 420px) and (device-height: 912px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-1260x2736.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 420px) and (device-height: 912px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="/splash/splash-2736x1260.jpg" />
     <link rel="apple-touch-startup-image" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-1206x2622.jpg" />
     <link rel="apple-touch-startup-image" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="/splash/splash-2622x1206.jpg" />
     <link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/splash/splash-1290x2796.jpg" />

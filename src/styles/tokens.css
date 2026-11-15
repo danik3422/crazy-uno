@@ -26,6 +26,14 @@
   --display: 'Unbounded', 'Arial Black', system-ui, sans-serif;
   --body: 'Rubik', system-ui, -apple-system, 'Segoe UI', sans-serif;
   color-scheme: dark;
+  /* the safe areas (Dynamic Island / notch, home indicator, rounded corners); 0 outside the home-screen app or a
+     viewport-fit=cover page. On its side the island sits left OR right (it swaps when the phone turns over): --sax
+     is the larger of the two, for layouts that keep both sides symmetrical */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sax: max(var(--sal), var(--sar));
 }
 
 /* each table look tints the menus behind it (the class sits on the page, see ui/backdrop/pageTheme) */

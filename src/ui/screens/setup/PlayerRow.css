@@ -10,6 +10,7 @@
   padding: 10px 12px;
   color: var(--ink);
   font: inherit;
+  font-size: 16px; /* under 16px iOS zooms the page on focus */
 }
 .btn.tog { min-width: 116px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .btn.x { padding: 10px 12px; color: var(--muted); }

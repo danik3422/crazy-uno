@@ -11,6 +11,8 @@ const ASSETS = __ASSETS__;
 const PAGE = 'uno-page';
 const FILES = 'uno-assets';
 const EXTRA = 'uno-extra';
+/** where the worker remembers its own file list, so the next version knows what the running page may still need */
+const LIST = '/__sw-assets.json';
 /** a slow network (a server waking up) must not hold the game back: after this long the cached page is used */
 const PAGE_TIMEOUT_MS = 2500;
 /** the game's fonts (the same link as in index.html) */
@@ -47,10 +49,15 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
-    // files of older versions are dropped: the page in the cache always matches the files in the cache
+    // files of older versions are dropped, except the version just before this one: a home-screen app on an iPhone
+    // can stay open for days, and the page still running the old version loads its parts (the table, the mascot)
+    // on demand; those must still be there after this worker takes over. The next update drops them.
     const files = await caches.open(FILES);
-    const keep = new Set(ASSETS);
+    const extra = await caches.open(EXTRA);
+    const prev = await extra.match(LIST).then(r => (r ? r.json() : [])).catch(() => []);
+    const keep = new Set([...ASSETS, ...(Array.isArray(prev) ? prev : [])]);
     for (const r of await files.keys()) if (!keep.has(new URL(r.url).pathname)) await files.delete(r);
+    await extra.put(LIST, new Response(JSON.stringify(ASSETS), { headers: { 'content-type': 'application/json' } }));
     for (const name of await caches.keys()) if (![PAGE, FILES, EXTRA].includes(name)) await caches.delete(name);
     await self.clients.claim();
   })());
@@ -66,8 +73,9 @@ async function page(request) {
   const cached = cache.match('/');
   const timeout = new Promise(r => setTimeout(r, PAGE_TIMEOUT_MS));
   const first = await Promise.race([fresh.catch(() => null), timeout.then(() => null)]);
-  if (first) return first;
-  return (await cached) ?? fresh;
+  // a server that is waking up or failing (5xx) must not replace a working game with an error page
+  if (first && first.status < 500) return first;
+  return (await cached) ?? first ?? fresh;
 }
 
 /** Files named by their content never change: the cache, else the network (and keep it). */

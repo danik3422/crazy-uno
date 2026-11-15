@@ -15,22 +15,23 @@
 .coach-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .coach-body b { font-family: var(--display); font-size: 16px; color: var(--gold); }
 .coach-body p { margin: 0; font-size: 14px; line-height: 1.4; color: rgba(255, 255, 255, 0.92); }
-.coach-btns { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+.coach-btns { display: flex; flex-wrap: wrap; align-items: center; column-gap: 14px; row-gap: 4px; margin-top: 6px; }
 .btn.coach-ok {
   padding: 7px 16px; border-radius: 12px; font-weight: 800; color: var(--on-gold);
   background: linear-gradient(180deg, var(--gold-1), var(--gold-2) 55%, var(--gold-3)); box-shadow: 0 3px 0 var(--gold-edge);
 }
 .btn.coach-ok:hover { filter: brightness(1.06); background: linear-gradient(180deg, var(--gold-1), var(--gold-2) 55%, var(--gold-3)); }
-.coach-skip { padding: 4px 2px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12.5px; text-decoration: underline; cursor: pointer; }
+.coach-skip { white-space: nowrap; padding: 4px 2px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12.5px; text-decoration: underline; cursor: pointer; }
 @keyframes coach-in { from { opacity: 0; transform: translateY(-10px) scale(0.96); } }
 
 /* a phone on its side: smaller and higher, in the gap between the two opponents' plates (about a third of the width) */
 @media (orientation: landscape) and (max-height: 520px) {
-  .coach { top: calc(env(safe-area-inset-top, 0px) + 8px); width: min(360px, 34vw); padding: 8px 10px 7px 9px; gap: 8px; border-width: 2px; border-radius: 16px; }
+  /* (40% of the width: wide enough that the text keeps to a few lines, narrow enough to miss the side plates) */
+  .coach { top: calc(env(safe-area-inset-top, 0px) + 8px); width: min(400px, 40vw); padding: 8px 10px 7px 9px; gap: 8px; border-width: 2px; border-radius: 16px; }
   .coach-badge { width: 22px; height: 22px; font-size: 13px; }
   .coach-body b { font-size: 13px; }
   .coach-body p { font-size: 11.5px; line-height: 1.3; }
-  .coach-btns { margin-top: 3px; }
+  .coach-btns { margin-top: 3px; column-gap: 10px; }
   .btn.coach-ok { padding: 4px 11px; font-size: 12px; }
   .coach-skip { font-size: 11px; }
 }

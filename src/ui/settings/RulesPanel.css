@@ -40,6 +40,6 @@
 @media (prefers-reduced-motion: reduce) {
   .mode { transition: none; }
 }
-.mode-svg { display: block; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.35)); transition: transform 0.2s; }
+.mode-svg { display: block; flex: none; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.35)); transition: transform 0.2s; }
 .mode:hover .mode-svg { transform: rotate(-6deg) scale(1.08); }
 .mode.on .mode-svg { transform: scale(1.12) rotate(-4deg); }

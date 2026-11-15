@@ -243,7 +243,9 @@
 }
 /* small screens */
 @media (max-width: 760px) {
-  .pc-name { font-size: 15px; }
+  .pc-name { font-size: 16px; } /* never under 16px: iOS zooms the page on focus */
+  /* "Create a room" stays on one line on an iPhone SE in every language */
+  .btn.pc-main { font-size: clamp(15px, 4.3vw, 19px); gap: 8px; padding-inline: 14px; }
 }
 /* a phone on its side: everything on one screen */
 @media (orientation: landscape) and (max-height: 520px) {
@@ -274,7 +276,7 @@
     width: clamp(42px, 12vh, 58px) !important;
     height: clamp(42px, 12vh, 58px) !important;
   }
-  .pc-name { padding: 6px 30px 6px 10px; font-size: clamp(15px, 4.1vh, 18px); padding-block: clamp(5px, 1.6vh, 9px); }
+  .pc-name { padding: 6px 30px 6px 10px; font-size: clamp(16px, 4.1vh, 18px); padding-block: clamp(5px, 1.6vh, 9px); }
   .pc-label { font-size: clamp(10px, 2.6vh, 11.5px); }
   .btn.pc-main, .pc-join .btn { font-size: clamp(15px, 4vh, 17px); padding-block: clamp(8px, 2.6vh, 13px); }
   .btn.pc-local { padding: 7px 12px; border-radius: 12px; padding-block: clamp(6px, 2vh, 10px); }

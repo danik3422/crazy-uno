@@ -119,7 +119,8 @@ export function toScreen(v: View, x: number, y: number, z: number) {
  */
 export function dockSize(v: View) {
   const { w } = viewSize(v);
-  if (v.compact) return { side: Math.round(Math.min(190, Math.max(124, w * 0.18))), edge: 8, top: 52, bar: false };
+  // a phone on its side: wide enough for the status line beside your face on one line (Hud.css, MyDock)
+  if (v.compact) return { side: Math.round(Math.min(210, Math.max(150, w * 0.21))), edge: 8, top: 52, bar: false };
   if (w <= 560) return { side: Math.round(w), edge: 8, top: 68, bar: true };
   return { side: Math.round(Math.min(300, w * 0.21)), edge: 16, top: 86, bar: false };
 }

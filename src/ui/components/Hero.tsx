@@ -16,7 +16,7 @@ const HERO: Card[] = [
 ];
 
 /** Flat fan shown while the 3D stage loads. */
-function FlatFan() {
+export function FlatFan() {
   return (
     <div className="fan" aria-hidden>
       {HERO.map((c, i) => (

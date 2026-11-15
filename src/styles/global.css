@@ -10,6 +10,20 @@ body {
   line-height: 1.45;
 }
 button { font: inherit; color: inherit; }
+
+/* ---------- a phone app, not a web page (iPhone Safari and the home-screen app) ---------- */
+/* no text inflation when the iPhone turns on its side */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* no grey flash on tap, no double-tap zoom (pinch zoom stays for accessibility; canvases opt out themselves) */
+html { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+/* game UI: a long press never selects text or opens the callout (copy / look up / image preview)… */
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+img, svg { -webkit-user-drag: none; }
+/* …but typing fields and anything marked .selectable keep normal selection */
+input, textarea, [contenteditable='true'], .selectable { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+/* a field under 16px makes iOS zoom the whole page on focus: the default is 16px (zero specificity, so any
+   component may go bigger; on phones never go smaller) */
+:where(input, textarea, select) { font-size: 16px; }
 button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

@@ -33,6 +33,8 @@ function unlock() {
 }
 if (typeof document !== 'undefined') {
   document.addEventListener('pointerdown', unlock, { once: true, capture: true });
+  // sent to the background: a shout must not keep talking over the home screen (iOS queues it otherwise)
+  document.addEventListener('visibilitychange', () => { if (document.hidden) synth?.cancel(); });
   // asking once starts loading the voice list (Chrome fills it a moment later)
   synth?.getVoices();
 }

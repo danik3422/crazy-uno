@@ -41,7 +41,9 @@
   background: linear-gradient(to top, rgba(3, 14, 10, 0.75), transparent);
 }
 .hud .me { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
-.hint { font-weight: 500; display: flex; flex-direction: column; gap: 1px; text-shadow: none; min-width: 0; }
+.hint { font-weight: 500; display: flex; align-items: center; gap: 7px; text-shadow: none; min-width: 0; }
+/* the words: a title and a quiet second line, always in their own column beside the faces */
+.hint-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 /* toasts */
 .toasts {
@@ -164,7 +166,9 @@
   .hud .me { justify-content: center; }
   .hud-bottom { width: calc(100% - 16px); bottom: calc(6px + env(safe-area-inset-bottom, 0px)); padding: 6px 8px 6px 6px; gap: 8px; border-radius: 18px; }
   .hint b { font-size: 13.5px; }
-  .hint small { display: none; }
+  /* the quiet line only when it fits on one line (MyDock leaves it out otherwise) */
+  .hint small { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; font-size: 11.5px; }
+  .hint small.hint-cut { display: none; }
   .btn.act { padding: 9px 12px; font-size: 13px; }
   .log { display: none; }
   .hud-bottom { flex-direction: row !important; align-items: center !important; justify-content: space-between; }
@@ -196,8 +200,16 @@
   
   }
   .hud-bottom.my-turn .me { border-color: rgba(255, 216, 74, 0.75); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28), 0 0 22px rgba(255, 196, 60, 0.3); }
-  .hint b { font-size: 12px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .hint small { display: none; }
+  /* one line: MyDock steps the font down to fit the column, "…" only past that */
+  .hint { gap: 6px; }
+  /* (the narrower body face: more of the words fit the panel at a size still easy to read) */
+  .hint b { display: block; font-family: var(--body); font-weight: 700; font-size: 13.5px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* the second line under it (in the same column), when it fits in two short lines; otherwise it is left out */
+  .hint small {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    font-size: 11px; line-height: 1.2; text-wrap: balance; overflow-wrap: normal;
+  }
+  .hint small.hint-cut { display: none; }
   .actions { pointer-events: auto; flex-direction: column; align-items: stretch; gap: 6px; max-width: var(--dock-side, 18%); }
 }
 .dirIcon { display: inline-grid; place-items: center; }
@@ -205,10 +217,10 @@
 @keyframes log-in { from { transform: translateY(6px); opacity: 0; } }
 
 /* Jump-In: you hold the same card as the top one; a small copy of it pulses next to the prompt */
-.hint.jump { display: grid; grid-template-columns: auto 1fr; column-gap: 9px; align-items: center; }
+.hint.jump { gap: 9px; }
 .hint.jump b { color: var(--gold); }
 .hint.jump .jump-card {
-  grid-row: span 2; width: 30px; height: auto; border-radius: 4px;
+  flex: none; width: 30px; height: auto; border-radius: 4px;
   box-shadow: 0 0 0 2px var(--gold), 0 0 14px var(--gold);
   animation: jump-pulse 0.8s ease-in-out infinite alternate;
 }
@@ -248,8 +260,7 @@
   color: var(--on-gold); background: linear-gradient(180deg, var(--gold-1), var(--gold-2) 55%, var(--gold-3)); border: 2px solid #fff;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35); animation: turn-tag-in 0.35s cubic-bezier(0.2, 1.5, 0.4, 1);
 }
-/* the face of whoever is moving, inside "X is moving…" */
-.hint b { display: inline-flex; align-items: center; gap: 7px; }
+/* the face of whoever is moving, beside "X is moving…" */
 .hint-ava { flex: none; border-radius: 7px !important; border: 2px solid #fff; box-shadow: 0 0 0 2px rgba(255, 216, 74, 0.8); }
 @keyframes turn-tag-in { from { transform: translateY(-62%) scale(0.4); opacity: 0; } }
 @media (orientation: landscape) and (max-height: 520px) {
@@ -260,7 +271,7 @@
   .dirIcon { font-size: 14px; }
   .pen, .bombTimer, .round-clock { font-size: 12px; }
   .log { display: none; }
-  .btn.act { padding: 8px 12px; font-size: 12.5px; border-radius: 12px; gap: 6px; justify-content: center; }
+  .btn.act { padding: 8px 10px; font-size: 12.5px; border-radius: 12px; gap: 6px; justify-content: center; }
   .btn.act svg { width: 15px; height: 15px; }
   .act-deck { width: 21px; height: 24px; }
   .act-deck img { width: 15px; height: 22px; }
@@ -268,8 +279,7 @@
   .toast { font-size: 13px; padding: 7px 14px; }
   .toast.big { font-size: 24px; padding: 10px 20px; }
   .me-turn-tag { display: none; }
-  .hint-ava { width: 18px !important; height: 18px !important; }
-  /* at most two lines, so the panel keeps its height beside the hand (the face sits inline with the words) */
-  .hint b { display: -webkit-box; }
-  .hint-ava { display: inline-block; vertical-align: -4px; margin-right: 5px; }
+  .hint-ava { width: 20px !important; height: 20px !important; }
+  .hint.hint-narrow .hint-ava { display: none; }
+  .hint.jump .jump-card { width: 22px; }
 }

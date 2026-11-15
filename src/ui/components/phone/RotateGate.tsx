@@ -5,6 +5,9 @@ import { canFullscreen, enterFullscreen, isIOS, usePhone } from '../../hooks/pho
 import { FullscreenIcon, ShareIcon } from './phoneIcons';
 import './RotateGate.css';
 
+/** the top colour of the gate's backdrop (RotateGate.css) */
+const GATE_TOP = '#5c24a0';
+
 /** A phone outline that turns on its side, with the table glowing on its screen. */
 function PhoneTurn() {
   return (
@@ -41,7 +44,23 @@ export function RotateGate({ waiting = false }: { waiting?: boolean }) {
   useEffect(() => {
     if (!on) return;
     document.documentElement.classList.add('gate-on');
-    return () => document.documentElement.classList.remove('gate-on');
+    // …and Safari's bars (theme-color tints the status bar area in a tab) match its purple instead of the table's colour
+    // (the table sets its own colour when its scene loads behind the gate: that one is kept for later, the gate's stays)
+    const meta = document.querySelector('meta[name="theme-color"]');
+    let before = meta?.getAttribute('content') ?? null;
+    meta?.setAttribute('content', GATE_TOP);
+    const watch = new MutationObserver(() => {
+      const now = meta?.getAttribute('content') ?? null;
+      if (now === GATE_TOP) return;
+      before = now;
+      meta?.setAttribute('content', GATE_TOP);
+    });
+    if (meta) watch.observe(meta, { attributes: true, attributeFilter: ['content'] });
+    return () => {
+      watch.disconnect();
+      document.documentElement.classList.remove('gate-on');
+      if (meta && before) meta.setAttribute('content', before);
+    };
   }, [on]);
   if (!on) return null;
   const fs = canFullscreen() && !fullscreen;

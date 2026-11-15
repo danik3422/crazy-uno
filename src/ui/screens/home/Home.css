@@ -45,7 +45,7 @@
     padding-block: max(3.5vh, 10px, env(safe-area-inset-top, 0px)) max(3.5vh, 10px, env(safe-area-inset-bottom, 0px));
   }
   .home.tab-play, .home.tab-profile, .home.tab-skins, .home.tab-howto, .home.tab-about {
-    padding-left: calc(max(6px, env(safe-area-inset-left, 0px)) + 86px);
+    padding-left: calc(max(8px, env(safe-area-inset-left, 0px)) + 88px);
   }
   .home.tab-play { padding-top: max(3.5vh, 10px, env(safe-area-inset-top, 0px)); }
   .home.tab-profile, .home.tab-skins, .home.tab-howto, .home.tab-about {
@@ -60,7 +60,8 @@
 @media (max-width: 760px) and (orientation: portrait) {
   .home.tab-play, .home.tab-profile, .home.tab-skins, .home.tab-howto, .home.tab-about {
     padding-top: max(10px, env(safe-area-inset-top, 0px));
-    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+    /* the tab bar: its tab, its padding and border, the home indicator's inset, then a gap */
+    padding-bottom: calc(var(--hn-h) + 6px + max(5px, env(safe-area-inset-bottom, 0px)) + 18px);
   }
   .home.tab-play { gap: 10px; }
   .home.tab-profile, .home.tab-skins, .home.tab-howto, .home.tab-about { padding-top: calc(env(safe-area-inset-top, 0px) + 10px); }
@@ -77,10 +78,9 @@
   }
   .home.tab-profile .home-page, .home.tab-skins .home-page, .home.tab-howto .home-page, .home.tab-about .home-page { flex: 1 0 auto; }
 }
-/* installed on an iPhone home screen: iOS paints the strip by the home indicator with the page background, so the bar's colour runs to the bottom */
+/* installed on an iPhone home screen: the strip by the home indicator (and any rubber-band overscroll) takes the tab bar's colour */
 @media (display-mode: standalone) and (max-width: 760px) and (orientation: portrait), (display-mode: fullscreen) and (max-width: 760px) and (orientation: portrait) {
   html:has(.home) { background: #1a0826; }
-  .home.tab-play, .home.tab-profile, .home.tab-skins, .home.tab-howto, .home.tab-about { padding-bottom: 84px; }
 }
 /* a wide computer screen */
 @media (min-width: 901px) and (min-height: 521px) {

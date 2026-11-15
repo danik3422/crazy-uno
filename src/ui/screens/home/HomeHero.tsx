@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { useT } from '../../../i18n';
 import { lazyFile } from '../../../lib/lazyFile';
+import { FlatFan } from '../../components/Hero';
 import { UiIcon } from '../../components/UiIcon';
 import './HomeHero.css';
 
@@ -20,6 +21,8 @@ export function HomeHero() {
   return (
     <section className="home-hero">
       <div className="home-stage">
+        {/* the flat fan holds the place until the 3D stage has loaded and drawn (a few seconds on a phone's first visit) */}
+        <FlatFan />
         <Suspense fallback={null}>
           <MascotStage />
         </Suspense>

@@ -9,12 +9,12 @@ type FsDoc = Document & { webkitFullscreenElement?: Element | null; webkitFullsc
 type FsEl = HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void };
 type LockableOrientation = ScreenOrientation & { lock?: (o: 'landscape') => Promise<void> };
 
+const isPhoneSized = () => typeof screen !== 'undefined' && Math.min(screen.width, screen.height) <= 600;
+
 /** a touch screen whose short side is phone-sized */
 export function isPhone() {
   if (typeof window === 'undefined') return false;
-  const coarse = matchMedia('(pointer: coarse)').matches;
-  const short = Math.min(screen.width, screen.height);
-  return coarse && short <= 600;
+  return matchMedia('(pointer: coarse)').matches && isPhoneSized();
 }
 
 export const isIOS = () =>
@@ -25,9 +25,13 @@ export const isStandalone = () =>
   typeof window !== 'undefined' &&
   (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true);
 
-/** the browser can take the page full screen (Android Chrome, Samsung, Firefox; not the iPhone) */
+/**
+ * The browser can take the page full screen (Android Chrome, Samsung, Firefox). Never the iPhone: Safari there has no
+ * Fullscreen API for pages (only for <video>) and no orientation lock, so no button may promise either on iOS.
+ */
 export function canFullscreen() {
   if (typeof document === 'undefined') return false;
+  if (isIOS() && isPhoneSized()) return false;
   const d = document as FsDoc;
   const el = document.documentElement as FsEl;
   return !!(d.fullscreenEnabled || d.webkitFullscreenEnabled) && !!(el.requestFullscreen || el.webkitRequestFullscreen);
@@ -81,13 +85,24 @@ export function usePhone(): PhoneState {
       const n = read();
       return n.phone === prev.phone && n.portrait === prev.portrait && n.fullscreen === prev.fullscreen ? prev : n;
     });
+    // iOS can fire `resize` before the new size is readable (home-screen app, turning over 180°, coming back from
+    // the lock screen turned): the orientation query and a late re-read on pageshow / becoming visible catch it
+    const mq = matchMedia('(orientation: portrait)');
+    const late = () => { upd(); setTimeout(upd, 250); };
+    const onVisible = () => { if (document.visibilityState === 'visible') late(); };
     window.addEventListener('resize', upd);
-    window.addEventListener('orientationchange', upd);
+    window.addEventListener('orientationchange', late);
+    window.addEventListener('pageshow', late);
+    document.addEventListener('visibilitychange', onVisible);
+    mq.addEventListener('change', upd);
     document.addEventListener('fullscreenchange', upd);
     document.addEventListener('webkitfullscreenchange', upd);
     return () => {
       window.removeEventListener('resize', upd);
-      window.removeEventListener('orientationchange', upd);
+      window.removeEventListener('orientationchange', late);
+      window.removeEventListener('pageshow', late);
+      document.removeEventListener('visibilitychange', onVisible);
+      mq.removeEventListener('change', upd);
       document.removeEventListener('fullscreenchange', upd);
       document.removeEventListener('webkitfullscreenchange', upd);
     };

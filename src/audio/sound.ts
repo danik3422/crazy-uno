@@ -90,11 +90,16 @@ class SoundEngine extends Observable {
     window.addEventListener('pointerdown', unlock, { capture: true });
     window.addEventListener('touchend', unlock, { capture: true });
     window.addEventListener('keydown', unlock, { capture: true });
+    // the app sent to the background / the phone locked: silence and free the audio hardware (iOS), back on return
+    // (if iOS refuses a resume without a tap, the next tap does it, see unlock)
+    const pause = () => { if (this.ctx && this.ctx.state === 'running') this.ctx.suspend().catch(() => {}); };
     document.addEventListener('visibilitychange', () => {
       if (!this.ctx) return;
-      if (document.hidden) this.ctx.suspend().catch(() => {});
+      if (document.hidden) pause();
       else this.ctx.resume().catch(() => {});
     });
+    window.addEventListener('pagehide', pause);
+    window.addEventListener('pageshow', () => { if (!document.hidden) this.ctx?.resume().catch(() => {}); });
   }
 
   /* ---------- settings (React reads them via subscribe/getVersion) ---------- */
@@ -128,6 +133,12 @@ class SoundEngine extends Observable {
     }
     const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AC) return;
+    // iPhone: a game's sounds mix with the player's own music and follow the silent switch, instead of stopping
+    // their music the first time a card is played (Safari 16.4+; elsewhere the property does not exist)
+    const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+    if (session) {
+      try { session.type = 'ambient'; } catch { /* not allowed here */ }
+    }
     const ctx = new AC();
     this.ctx = ctx;
     // older iOS only unlocks output once something has been played inside the gesture

@@ -1,5 +1,5 @@
 import { Canvas, useFrame } from '@react-three/fiber';
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import type { Card } from '../../game/types';
 import { Mascot } from '../../three/mascot/Mascot';
@@ -61,17 +61,28 @@ function SwayingFan() {
   );
 }
 
+/** Calls `onDrawn` once the scene has drawn a few frames (shaders compiled, textures up): the flat stand-in can go. */
+function Drawn({ onDrawn }: { onDrawn: () => void }) {
+  const frames = useRef(0);
+  useFrame(() => {
+    if (++frames.current === 3) onDrawn();
+  });
+  return null;
+}
+
 /** Menu hero: a 3D fan of cards with the barrel-plane mascot doing laps around it. */
 export default function MascotStage() {
   const { glKey, onCreated } = useGlRecovery();
+  const [drawn, setDrawn] = useState(false);
   return (
-    <div className="mascot-stage" aria-hidden>
+    <div className={`mascot-stage ${drawn ? 'drawn' : ''}`} aria-hidden>
       {/* at most 2×: with antialiasing on, a 3× phone would draw over twice the pixels for a small decoration */}
       <Canvas key={glKey} onCreated={onCreated} camera={{ fov: 30, position: [0, 0.9, 8.5] }} gl={{ alpha: true, antialias: true }} dpr={[1, 2]}>
         <ambientLight intensity={0.95} />
         <directionalLight position={[3, 5, 6]} intensity={1.7} />
         <hemisphereLight args={['#fff4dc', '#7a1a10', 0.5]} />
         <SwayingFan />
+        {!drawn && <Drawn onDrawn={() => setDrawn(true)} />}
         {/* circles the fan like a satellite: dips in front of the cards, rises behind them */}
         <group position={[0, 0.55, 0]}>
           <Mascot mode="orbit" scale={0.55} orbit={[3.5, 2.3]} />

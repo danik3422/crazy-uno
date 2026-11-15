@@ -44,6 +44,16 @@ setTimeout(() => {
 // the service worker: instant repeat starts and bot games without a connection (built version only)
 if (import.meta.env.PROD && 'serviceWorker' in navigator && location.protocol !== 'file:') {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => undefined);
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      // a home-screen app on an iPhone is rarely reloaded (it is resumed from the background), so the browser's own
+      // check on navigation hardly ever runs: look for a new version when the player comes back, at most hourly.
+      // The new version is used from the next start; the running game is never reloaded under the player.
+      let checked = Date.now();
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'visible' || Date.now() - checked < 3600e3) return;
+        checked = Date.now();
+        reg.update().catch(() => undefined);
+      });
+    }).catch(() => undefined);
   });
 }

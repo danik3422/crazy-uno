@@ -2,6 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 /** above 2×, at most this many pixels drawn per frame (a phone at 3× fits) */
 const MAX_PIXELS = 4.7e6;
+/**
+ * A phone's ceiling: the GPU memory and fill rate of an iPhone (Safari caps WebGL memory per page, and with 4× MSAA
+ * every drawn pixel costs several buffers). A 6.1" iPhone on its side still gets its full 3× (852×393 ≈ 3.0M px);
+ * a Pro Max / Plus (956×440 at 3× would be 3.8M px) gets about 2.8×, which looks the same at that density.
+ */
+const PHONE_MAX_PIXELS = 3.2e6;
 /** a struggling device never drops below this many pixels (a phone stays sharp at about 2×) */
 const MIN_PIXELS = 1.3e6;
 /**
@@ -21,8 +27,9 @@ function limits() {
   if (typeof window === 'undefined') return { max: 1, min: 1 };
   const area = Math.max(1, window.innerWidth * window.innerHeight);
   const device = window.devicePixelRatio || 1;
-  // phones are small, so they can afford their full 3× screen; a big monitor stays near 1×–2×
-  const max = Math.min(device, Math.max(2, Math.min(3, Math.sqrt(MAX_PIXELS / area))));
+  const phone = matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) <= 600;
+  // phones are small, so they can afford (nearly) their full 3× screen; a big monitor stays near 1×–2×
+  const max = Math.min(device, Math.max(2, Math.min(3, Math.sqrt((phone ? PHONE_MAX_PIXELS : MAX_PIXELS) / area))));
   const min = Math.min(max, Math.max(1, device * MIN_SHARE, Math.min(2, Math.sqrt(MIN_PIXELS / area))));
   return { max, min };
 }

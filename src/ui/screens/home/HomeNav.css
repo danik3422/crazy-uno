@@ -53,7 +53,15 @@
 .home-nav .lm-btn .lm-label { display: none; }
 .home-nav .lm-btn.on { color: #fff; background: rgba(255, 255, 255, 0.14); }
 .home-nav .lm-code { letter-spacing: 0.05em; }
-/* a phone held upright */
+.hn-short { display: none; }
+/* the height of one tab on a phone (the bar and the page padding under it are worked out from it) */
+:root { --hn-h: 52px; }
+@media (orientation: landscape) and (max-height: 380px) { :root { --hn-h: 46px; } }
+/*
+ * A phone held upright: an iOS-style tab bar. Six equal columns, an icon capsule over one short line of text
+ * (the long tab names have a shorter version, `nav.*Short`), the active tab shown by a gold capsule.
+ * The bar ends exactly at the home indicator: its bottom padding is the safe-area inset (or a small gap without one).
+ */
 @media (max-width: 760px) and (orientation: portrait) {
   .home-nav {
     position: fixed;
@@ -62,63 +70,108 @@
     right: 0;
     bottom: 0;
     transform: none;
-    border-radius: 22px 22px 0 0;
-    justify-content: space-around;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 0;
-    padding: 6px 8px max(8px, env(safe-area-inset-bottom, 0px));
-    background: rgba(20, 6, 30, 0.88);
+    padding: 5px max(4px, env(safe-area-inset-right, 0px)) max(5px, env(safe-area-inset-bottom, 0px)) max(4px, env(safe-area-inset-left, 0px));
+    border-radius: 22px 22px 0 0;
+    background: rgba(20, 6, 30, 0.94);
     border: 0;
     border-top: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.25);
   }
-  /* six items share the width evenly: a long label wraps instead of pushing the last one off screen */
+  /* the language list opens above the bar, against its right edge (always on screen) */
+  .home-nav .lang-menu { position: static; display: flex; min-width: 0; }
   .home-nav > button, .home-nav .lm-btn {
-    flex: 1 1 0;
+    width: 100%;
     min-width: 0;
+    height: var(--hn-h);
     flex-direction: column;
-    gap: 2px;
-    padding: 6px 2px;
-    border-radius: 16px;
-    font-size: clamp(9.5px, 2.8vw, 11.5px);
+    justify-content: center;
+    gap: 3px;
+    padding: 0 2px;
+    border-radius: 14px;
+    font-family: var(--body);
+    font-weight: 700;
+    font-size: clamp(10.5px, 2.9vw, 12px);
     line-height: 1.15;
-    white-space: normal;
-    text-align: center;
+    letter-spacing: 0;
+    white-space: nowrap;
+    color: rgba(255, 255, 255, 0.74);
+    -webkit-tap-highlight-color: transparent;
   }
-  .hn-label { letter-spacing: -0.02em; }
-  /* the language keeps its own size in the bar */
-  .home-nav .lm-btn { font-size: 12px; }
-  .home-nav > button.on { box-shadow: none; }
-  .hn-count { position: absolute; top: 2px; left: calc(50% + 8px); font-size: 9.5px; padding: 0 5px; }
+  .home-nav > button:hover, .home-nav .lm-btn:hover { background: none; }
+  .home-nav > button.on { background: none; box-shadow: none; color: var(--gold); }
+  .hn-ico, .home-nav .lm-ico {
+    width: 46px;
+    height: 28px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    transition: background 0.2s, color 0.2s;
+  }
+  .home-nav > button.on .hn-ico {
+    color: var(--on-gold);
+    background: linear-gradient(180deg, var(--gold-1), var(--gold-2) 55%, var(--gold-3));
+    box-shadow: 0 2px 0 var(--gold-edge);
+  }
+  .home-nav .lm-btn.on { background: none; }
+  .home-nav .lm-btn.on .lm-ico { background: rgba(255, 255, 255, 0.16); }
+  .hn-label, .home-nav .lm-btn .lm-label { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .hn-long { display: none; }
+  .hn-short { display: inline; }
+  /* the achievements count sits on the corner of the profile icon */
+  .hn-count, .home-nav > button.on .hn-count {
+    position: absolute;
+    z-index: 1;
+    top: 1px;
+    left: calc(50% + 9px);
+    font-family: var(--body);
+    font-size: 9.5px;
+    font-weight: 800;
+    line-height: 14px;
+    padding: 0 4px;
+    background: #2a0f3a;
+    border: 1px solid rgba(255, 216, 74, 0.55);
+    color: var(--gold);
+  }
   .home-nav .lm-btn .lm-code { display: none; }
-  .home-nav .lm-btn .lm-label { display: inline; }
-  .home-nav .lm-pop { top: auto; bottom: calc(100% + 12px); transform-origin: bottom right; }
+  .home-nav .lm-pop { top: auto; right: max(8px, env(safe-area-inset-right, 0px)); bottom: calc(100% + 8px); transform-origin: bottom right; }
 }
-/* a phone on its side: everything on one screen */
+/* a phone on its side: the same tabs as a rail down the left, clear of the Dynamic Island when it is on that side */
 @media (orientation: landscape) and (max-height: 520px) {
   .home-nav {
     position: fixed;
     top: 50%;
-    left: max(6px, env(safe-area-inset-left, 0px));
+    left: max(8px, env(safe-area-inset-left, 0px));
     transform: translateY(-50%);
     flex-direction: column;
+    gap: 2px;
     border-radius: 22px;
     padding: 5px;
   }
   .home-nav > button, .home-nav .lm-btn {
+    width: 66px;
+    height: var(--hn-h);
     flex-direction: column;
-    gap: 1px;
-    padding: 7px 6px;
+    justify-content: center;
+    gap: 2px;
+    padding: 0 3px;
     border-radius: 16px;
-    font-size: 9.5px;
-    width: 68px;
-    white-space: normal;
-    text-align: center;
+    font-family: var(--body);
+    font-weight: 700;
+    font-size: 10.5px;
+    line-height: 1.15;
+    letter-spacing: 0;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
   }
   .home-nav > button.on { box-shadow: 0 2px 0 var(--gold-edge); }
-  .hn-count { font-size: 9px; padding: 0 5px; }
+  .hn-label, .home-nav .lm-btn .lm-label { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .hn-long { display: none; }
+  .hn-short { display: inline; }
+  .hn-count { position: absolute; top: 3px; right: 3px; font-family: var(--body); font-size: 9px; line-height: 13px; padding: 0 4px; }
+  .home-nav .lm-btn .lm-code { display: none; }
   .home-nav .lm-pop { top: auto; bottom: 0; right: auto; left: calc(100% + 10px); transform-origin: bottom left; }
-  .home-nav .lm-btn { font-size: 11px; }
-}
-/* installed on an iPhone home screen: iOS paints the strip by the home indicator with the page background, so the bar's colour runs to the bottom */
-@media (display-mode: standalone) and (max-width: 760px) and (orientation: portrait), (display-mode: fullscreen) and (max-width: 760px) and (orientation: portrait) {
-  .home-nav { padding-bottom: 8px; background: #1a0826; }
 }
