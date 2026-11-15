@@ -15,7 +15,8 @@
 .deal-banner {
   position: absolute;
   left: 50%;
-  top: calc(64px + env(safe-area-inset-top, 0px));
+  /* in the row of the top corner widgets, above the far seat's plate (which keeps below this row, see PlayerPlates) */
+  top: calc(12px + env(safe-area-inset-top, 0px));
   transform: translateX(-50%);
   z-index: 30;
   pointer-events: none;
@@ -28,7 +29,6 @@
   background: rgba(20, 8, 30, 0.85);
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
   font-size: 15px;
   white-space: nowrap;
 }
@@ -50,3 +50,7 @@
   .deal-banner { display: none; }
 }
 @keyframes flash { 0% { opacity: 0; } 12% { opacity: 0.6; } 100% { opacity: 0; } }
+/* a narrow window: no room beside the corner widgets, so the "Dealing…" pill goes just under them */
+@media (max-width: 560px) and (min-height: 521px) {
+  .deal-banner { top: calc(62px + env(safe-area-inset-top, 0px)); font-size: 13.5px; padding: 6px 14px; }
+}

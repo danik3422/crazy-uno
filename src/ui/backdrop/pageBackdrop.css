@@ -171,7 +171,8 @@
   background: radial-gradient(circle, #fff 0 35%, rgba(255, 255, 255, 0.6) 55%, transparent 72%);
   animation: pb-fall linear infinite; will-change: transform;
 }
-.pb-winter .pb-fl.near { filter: blur(1px); }
+/* the near flakes are softer (out of focus) through their gradient, not a filter: no blur pass on dozens of moving flakes */
+.pb-winter .pb-fl.near { background: radial-gradient(circle, #fff 0 18%, rgba(255, 255, 255, 0.6) 44%, transparent 72%); }
 @keyframes pb-fall { to { transform: translate3d(var(--dx), calc(100lvh + 24px), 0); } }
 @keyframes pb-wave {
   0% { transform: translateX(-3%) skewX(-5deg) scaleY(0.92); }

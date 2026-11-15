@@ -92,6 +92,8 @@ export function EventFx({ game, view, theme }: Props) {
     for (const m of [glow.mesh, solid.mesh, icons.mesh]) m.userData.fit = 'fx';
     return k;
   }, [lite]);
+  // the pools go to React as <primitive>s, which R3F never disposes (the table is rebuilt every round)
+  useEffect(() => () => kit.dispose(), [kit]);
 
   // the bolt: a few jagged shapes made once (one is picked per strike), or a straight beam of light
   const bolts = useMemo(() => [11, 23, 37].map(boltGeometry), []);

@@ -8,7 +8,8 @@ import { Arena, PALETTES } from './Environment';
 import { EventFx } from '../effects/eventFx/EventFx';
 import { DEBUG, crashProbe } from '../../lib/debug';
 import { FitProbe } from '../debug/FitProbe';
-import { arena, computeTargets, deckCenter, deckSpot, type View } from '../layout';
+import { arena, computeTargets, deckCenter, deckSpot, dockSize, handRoom, makeView, type View } from '../layout';
+import { readSafeArea } from '../layout/safeArea';
 import { KnockoutVan } from '../van/KnockoutVan';
 import { Mascot } from '../mascot/Mascot';
 import { PlayFx, StackFx } from '../effects/PlayFx';
@@ -45,14 +46,21 @@ interface Props {
 export function GameScene({ game, version, onCard, onDeck, canDraw, onReady, dealing = false, finale = false }: Props) {
   crashProbe('3d');
   const size = useThree(s => s.size);
-  const portrait = size.width / size.height < 0.9;
-  // a phone lying on its side: wide but very short, so the HUD and plates get compact
-  const compact = !portrait && size.height < 520;
-  // rounded, so resizing a window does not rebuild the layout on every pixel
-  const aspect = Math.round((size.width / size.height) * 50) / 50;
-  // the screen's height in CSS pixels (rounded): a short phone gets bigger cards
-  const h = Math.round(size.height / 10) * 10;
-  const view: View = useMemo(() => ({ portrait, compact, aspect, h }), [portrait, compact, aspect, h]);
+  // the notch and the rounded corners of a phone: the layout keeps the cards out of them (re-read on resize/rotation)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the insets change with the screen's size and orientation
+  const safe = useMemo(() => readSafeArea(), [size.width, size.height]);
+  // a phone lying on its side (compact): wide but very short, so the HUD and plates get compact
+  const base = makeView(size.width, size.height, safe);
+  const { portrait, compact, aspect, h } = base;
+  const { t: it, r: ir, b: ib, l: il } = safe;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- rebuilt only when a rounded value changes
+  const view: View = useMemo(() => base, [portrait, compact, aspect, h, it, ir, ib, il]);
+  // the HUD's corner panels get exactly the width the layout keeps free for them beside your hand (see dockSize);
+  // with the hand above them, they may take up to half the screen
+  useLayoutEffect(() => {
+    const side = handRoom(view).beside ? dockSize(view).side : Math.min(300, Math.round(size.width * 0.45));
+    document.documentElement.style.setProperty('--dock-side', `${side}px`);
+  }, [view, size.width]);
   // the game changes in place: `version` is what says it did
   // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   const targets = useMemo(() => computeTargets(game, view), [game, version, view]);

@@ -7,7 +7,7 @@
 }
 .status {
   display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 999px;
-  background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(6px);
+  background: linear-gradient(rgba(8, 2, 14, 0.22), rgba(8, 2, 14, 0.22)) var(--panel); border: 1px solid var(--line);
   font-weight: 700;
 }
 .swatch {
@@ -69,9 +69,8 @@
   border-radius: 22px;
   align-items: center;
   flex-wrap: nowrap;
-  background: rgba(14, 4, 18, 0.5);
+  background: rgba(14, 4, 18, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(12px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   transition: border-color 0.3s, box-shadow 0.3s;
 }
@@ -82,14 +81,14 @@
 .round-clock.hot { color: var(--danger); animation: pulse 0.6s infinite; }
 /* top-left: game status as a glass pill, and the log as a quiet card under it */
 .status {
-  background: rgba(14, 4, 18, 0.55); border: 1px solid rgba(255, 255, 255, 0.14); backdrop-filter: blur(10px);
+  background: rgba(14, 4, 18, 0.74); border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); padding: 7px 14px 7px 8px; gap: 9px;
 }
 .cname { font-family: var(--display); font-weight: 600; font-size: 14px; letter-spacing: 0.01em; }
 .dirIcon { font-size: 18px; opacity: 0.8; }
 .log {
   top: calc(66px + env(safe-area-inset-top, 0px)); gap: 3px; padding: 8px 12px; border-radius: 14px; max-width: min(320px, 22vw, calc(100% - 24px));
-  background: linear-gradient(to bottom, rgba(14, 4, 18, 0.45), rgba(14, 4, 18, 0.2)); backdrop-filter: blur(6px);
+  background: linear-gradient(to bottom, rgba(14, 4, 18, 0.6), rgba(14, 4, 18, 0.34));
   text-shadow: none; font-size: 12.5px; line-height: 1.35;
   -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), #000 60%); mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), #000 60%);
 }
@@ -143,7 +142,7 @@
 .hud.th-neon .btn.act.danger { border-color: #ff3b5c; color: #ffe2e7; box-shadow: 0 0 14px rgba(255, 59, 92, 0.85), 0 0 34px rgba(255, 59, 92, 0.35), inset 0 0 12px rgba(255, 59, 92, 0.35); text-shadow: 0 0 8px #ff3b5c; }
 .hud.th-neon .btn.act:hover { filter: brightness(1.2); }
 /* space: frosted glass lit by starlight */
-.hud.th-space .btn.act { background: linear-gradient(160deg, rgba(120, 160, 255, 0.22), rgba(20, 16, 60, 0.6)); border: 1px solid rgba(160, 220, 255, 0.55); color: #eef6ff; backdrop-filter: blur(8px); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
+.hud.th-space .btn.act { background: linear-gradient(160deg, rgba(120, 160, 255, 0.22), rgba(20, 16, 60, 0.78)); border: 1px solid rgba(160, 220, 255, 0.55); color: #eef6ff; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
 .hud.th-space .btn.act.primary { background: linear-gradient(135deg, #8fe8ff, #6b7dff 55%, #9b5cff); color: #0b0a2a; border-color: rgba(255, 255, 255, 0.7); box-shadow: 0 0 22px rgba(143, 232, 255, 0.55), 0 6px 18px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.7); }
 .hud.th-space .btn.act.danger { background: linear-gradient(135deg, #ffb08a, #ff4d6d 55%, #a0206a); color: #fff; border-color: rgba(255, 255, 255, 0.6); box-shadow: 0 0 22px rgba(255, 77, 109, 0.55), 0 6px 18px rgba(0, 0, 0, 0.35); }
 /* halloween: a pumpkin-orange button with a witchy green glow; blood red for a penalty */
@@ -151,7 +150,7 @@
 .hud.th-halloween .btn.act.primary { background: linear-gradient(180deg, #ffb24a, #ff7a1a 55%, #d8520a); color: #2a0c00; border-color: #3a1200; box-shadow: inset 0 2px 0 rgba(255, 230, 170, 0.6), 0 4px 0 #6a2400, 0 0 20px rgba(141, 255, 74, 0.45); }
 .hud.th-halloween .btn.act.danger { background: linear-gradient(180deg, #e0453a, #9e1414 60%, #5a0606); color: #ffe9d6; border-color: #2a0000; box-shadow: inset 0 2px 0 rgba(255, 180, 160, 0.4), 0 4px 0 #3a0000, 0 0 20px rgba(255, 60, 40, 0.4); }
 /* winter: frosted ice, a warm knitted-red primary with a cap of snow; berry red for a penalty */
-.hud.th-winter .btn.act { background: linear-gradient(170deg, rgba(220, 240, 255, 0.28), rgba(20, 40, 90, 0.7)); border: 1.5px solid rgba(200, 236, 255, 0.7); color: #f2f9ff; backdrop-filter: blur(8px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 14px rgba(160, 225, 255, 0.35), 0 6px 16px rgba(0, 10, 40, 0.4); }
+.hud.th-winter .btn.act { background: linear-gradient(170deg, rgba(220, 240, 255, 0.28), rgba(20, 40, 90, 0.84)); border: 1.5px solid rgba(200, 236, 255, 0.7); color: #f2f9ff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 14px rgba(160, 225, 255, 0.35), 0 6px 16px rgba(0, 10, 40, 0.4); }
 .hud.th-winter .btn.act.primary {
   background: radial-gradient(circle at 25% 0, #ffffff 0 7px, transparent 7.5px) 0 -2px / 24px 12px repeat-x, linear-gradient(#ffffff, #e6f1ff) 0 0 / 100% 5px no-repeat,
     repeating-linear-gradient(60deg, rgba(255, 255, 255, 0.12) 0 3px, transparent 3px 7px), linear-gradient(180deg, #e8505a, #c22a3e 60%, #8e1a2c);
@@ -176,7 +175,7 @@
 }
 /* toasts and banners: same glass family, readable on every table colour */
 .toast {
-  background: rgba(20, 8, 30, 0.88); color: #fff; border: 1px solid rgba(255, 216, 74, 0.6); backdrop-filter: blur(10px);
+  background: rgba(20, 8, 30, 0.92); color: #fff; border: 1px solid rgba(255, 216, 74, 0.6);
   font-size: 15px; padding: 10px 18px; border-radius: 16px; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
 }
 .toast.big { background: linear-gradient(180deg, var(--gold-1), var(--gold-2) 55%, var(--gold-3)); color: var(--on-gold); border-color: transparent; box-shadow: 0 5px 0 var(--gold-edge), 0 16px 34px rgba(0, 0, 0, 0.35); }
@@ -191,15 +190,15 @@
   }
   .hud-bottom.my-turn { box-shadow: none; }
   .hud-bottom .me {
-      pointer-events: auto; gap: 8px; max-width: 30%; padding: 4px 10px 4px 4px; border-radius: 16px;
-      background: rgba(14, 4, 18, 0.55); border: 1px solid rgba(255, 255, 255, 0.14); backdrop-filter: blur(10px);
+      pointer-events: auto; gap: 8px; max-width: var(--dock-side, 18%); padding: 4px 10px 4px 4px; border-radius: 16px;
+      background: rgba(14, 4, 18, 0.74); border: 1px solid rgba(255, 255, 255, 0.14);
       box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28); transition: border-color 0.3s, box-shadow 0.3s;
   
   }
   .hud-bottom.my-turn .me { border-color: rgba(255, 216, 74, 0.75); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28), 0 0 22px rgba(255, 196, 60, 0.3); }
   .hint b { font-size: 12px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .hint small { display: none; }
-  .actions { pointer-events: auto; flex-direction: column; align-items: stretch; gap: 6px; max-width: 30%; }
+  .actions { pointer-events: auto; flex-direction: column; align-items: stretch; gap: 6px; max-width: var(--dock-side, 18%); }
 }
 .dirIcon { display: inline-grid; place-items: center; }
 .dirIcon svg { display: block; }
@@ -230,15 +229,16 @@
   }
   .hud-bottom.my-turn { box-shadow: none; }
   .hud-bottom .me {
-    pointer-events: auto; gap: 12px; max-width: min(330px, 26vw); padding: 8px 16px 8px 8px; border-radius: 20px;
-    background: linear-gradient(180deg, rgba(30, 10, 40, 0.72), rgba(14, 4, 18, 0.72)); border: 1.5px solid rgba(255, 255, 255, 0.16);
-    backdrop-filter: blur(12px); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.32); transition: border-color 0.3s, box-shadow 0.3s;
+    /* --dock-side: the width the table layout keeps free beside your hand (three/layout/fit.ts, dockSize) */
+    pointer-events: auto; gap: 12px; max-width: var(--dock-side, min(300px, 21vw)); padding: 8px 16px 8px 8px; border-radius: 20px;
+    background: linear-gradient(180deg, rgba(30, 10, 40, 0.84), rgba(14, 4, 18, 0.84)); border: 1.5px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.32); transition: border-color 0.3s, box-shadow 0.3s;
   }
   .hud-bottom.my-turn .me { border-color: rgba(255, 216, 74, 0.85); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.32), 0 0 0 3px rgba(255, 216, 74, 0.14), 0 0 28px rgba(255, 196, 60, 0.35); }
   .me-plate .plate-ava { width: 50px !important; height: 50px !important; border-width: 3px; }
   .me-plate .plate-count { min-width: 26px; height: 32px; font-size: 15px; }
   .hint b { font-size: 15px; }
-  .actions { pointer-events: auto; }
+  .actions { pointer-events: auto; max-width: var(--dock-side, min(300px, 21vw)); }
 }
 
 /* the "your turn" tag on your card */
@@ -269,4 +269,7 @@
   .toast.big { font-size: 24px; padding: 10px 20px; }
   .me-turn-tag { display: none; }
   .hint-ava { width: 18px !important; height: 18px !important; }
+  /* at most two lines, so the panel keeps its height beside the hand (the face sits inline with the words) */
+  .hint b { display: -webkit-box; }
+  .hint-ava { display: inline-block; vertical-align: -4px; margin-right: 5px; }
 }

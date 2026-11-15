@@ -43,9 +43,8 @@
   border-radius: 999px;
   font-size: 13px;
   font-weight: 700;
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(4px);
 }
 .home-chips li .ui-ico { margin: -3px 0 -3px -2px; }
 .home-hero {

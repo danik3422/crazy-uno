@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { GameView } from '../../game/view';
 import { CARD_H, CARD_W } from '../cards/cardShape';
 import { CAMERA, PARALLAX_X, visibleHalfWidth } from './camera';
+import { insetsOf, viewSize } from './fit';
 import { arena } from './table';
 import type { Vec3, View } from './types';
 
@@ -95,7 +96,11 @@ export function oppWall(g: GameView, i: number, v: View): OppWall {
   const dRef = Math.hypot(cam[0], cam[1] - midY, cam[2] + A.rz);
   const scale = base * Math.min(1, Math.hypot(cam[0] - x, cam[1] - midY, cam[2] - z) / dRef);
   // keep the whole fan (and the mouse parallax) on screen
-  const room = visibleHalfWidth(v, midY, z) - PARALLAX_X - FAN_HALF * scale - (v.portrait ? 0.15 : 0.3);
+  // (and out of a phone's notch: the safe-area inset, turned from pixels into table units at the fan's depth)
+  const vhw = visibleHalfWidth(v, midY, z);
+  const { w: wPx } = viewSize(v);
+  const notch = (Math.max(insetsOf(v).l, insetsOf(v).r) / wPx) * 2 * vhw;
+  const room = vhw - (v.compact ? 0 : PARALLAX_X) - notch - FAN_HALF * scale - (v.portrait ? 0.15 : 0.3);
   if (Math.abs(x) > room) x = Math.sign(x) * Math.max(0, room);
   const face = Math.atan2(x - cam[0], z - cam[2]);
   eulTmp.set(OPP_FAN.lean, face, 0);

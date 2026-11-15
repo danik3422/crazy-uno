@@ -1,0 +1,180 @@
+/* The colour choice after a wild: a compact panel of four small cards over a lightly dimmed table. */
+
+.ov.pick-ov {
+  /* the table stays readable behind: a soft vignette, darker only where the panel sits */
+  background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(8, 4, 18, 0.62), rgba(8, 4, 18, 0.28) 70%);
+}
+
+.cpick {
+  --card-w: clamp(66px, 10.5vw, 116px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 20px clamp(16px, 3vw, 30px) 18px;
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(34, 22, 62, 0.97), rgba(16, 10, 32, 0.97));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12) inset, 0 24px 60px rgba(0, 0, 0, 0.55);
+  max-width: 100%;
+  animation: cpick-in 0.32s cubic-bezier(0.2, 1.2, 0.4, 1);
+}
+
+.cpick-title {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: clamp(18px, 2.2vw, 24px);
+  color: var(--ink);
+  text-align: center;
+  text-wrap: balance;
+}
+
+.cpick-row {
+  display: flex;
+  gap: clamp(10px, 1.6vw, 18px);
+  /* room above the cards for the crown and the hover lift */
+  padding-top: 10px;
+}
+
+.cpick-card {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  animation: cpick-deal 0.42s cubic-bezier(0.2, 1.25, 0.4, 1) backwards;
+  animation-delay: calc(var(--i) * 55ms + 60ms);
+}
+
+/* the little card: the colour, a cream edge and the tilted oval of the game's own cards */
+.cpick-face {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--card-w);
+  aspect-ratio: 2 / 3;
+  border-radius: calc(var(--card-w) * 0.12);
+  border: calc(var(--card-w) * 0.055) solid var(--edge);
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0.18)),
+    var(--c);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.4);
+  transition: transform 0.18s cubic-bezier(0.2, 1.4, 0.4, 1), box-shadow 0.18s;
+}
+
+.cpick-oval {
+  display: grid;
+  place-items: center;
+  width: 62%;
+  height: 86%;
+  border-radius: 50%;
+  background: var(--edge);
+  transform: rotate(28deg);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.12) inset;
+}
+
+.cpick-n {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18em;
+  transform: rotate(-28deg);
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: calc(var(--card-w) * 0.34);
+  line-height: 1;
+  color: var(--c);
+  font-variant-numeric: tabular-nums;
+}
+/* the same small card glyph as the "cards in hand" counters on the plates */
+.cpick-n::before {
+  content: '';
+  width: 0.36em;
+  height: 0.52em;
+  border-radius: 0.07em;
+  background: currentColor;
+  opacity: 0.55;
+}
+/* yellow numbers on cream need a darker ink */
+.cpick-card[data-color='yellow'] .cpick-n { color: #c48a00; }
+
+.cpick-crown {
+  position: absolute;
+  top: calc(var(--card-w) * -0.2);
+  left: 50%;
+  translate: -50% 0;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.45));
+}
+
+.cpick-key {
+  position: absolute;
+  right: 5%;
+  bottom: 4%;
+  min-width: 1.5em;
+  padding: 1px 4px;
+  border-radius: 6px;
+  font: 700 11px/1.3 var(--body);
+  text-align: center;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(0, 0, 0, 0.28);
+}
+/* touch screens have no keyboard */
+@media (pointer: coarse) {
+  .cpick-key { display: none; }
+}
+
+.cpick-name {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(12px, 1.2vw, 15px);
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+/* the best colour stands a little forward with a gold rim */
+.cpick-card.best .cpick-face {
+  transform: translateY(-6px);
+  box-shadow: 0 0 0 3px var(--gold-bright), 0 10px 22px rgba(0, 0, 0, 0.45);
+}
+.cpick-card.best .cpick-name { color: var(--gold-bright); }
+
+/* a colour you hold none of: still pickable, just quieter */
+.cpick-card.none .cpick-face { opacity: 0.6; }
+.cpick-card.none .cpick-name { opacity: 0.7; }
+
+@media (hover: hover) {
+  .cpick-card:hover .cpick-face {
+    transform: translateY(-10px) rotate(-3deg);
+    opacity: 1;
+    box-shadow: 0 0 0 3px var(--edge), 0 14px 26px rgba(0, 0, 0, 0.5);
+  }
+}
+.cpick-card:active .cpick-face { transform: translateY(-2px) scale(0.96); transition-duration: 0.06s; }
+/* the focus ring goes on the little card, not round the card and its name; the best one already wears gold */
+.cpick-card:focus { outline: none; }
+.cpick-card:focus-visible:not(.best) .cpick-face { outline: 3px solid var(--gold-bright); outline-offset: 4px; }
+
+/* a phone on its side: one tight row, smaller cards */
+@media (orientation: landscape) and (max-height: 520px) {
+  .cpick { --card-w: clamp(56px, 9vw, 74px); gap: 10px; padding: 12px 18px 12px; border-radius: 22px; }
+  .cpick-row { padding-top: 6px; }
+  .cpick-card { gap: 5px; }
+  .cpick-name { font-size: 12px; }
+}
+/* narrow portrait: four cards across the width */
+@media (max-width: 480px) {
+  .cpick { --card-w: calc((100vw - 32px - 32px - 3 * 10px) / 4); padding-inline: 16px; }
+  .cpick-row { gap: 10px; }
+  .cpick-name { font-size: 11px; }
+}
+
+@keyframes cpick-in { from { transform: translateY(18px) scale(0.96); opacity: 0; } }
+@keyframes cpick-deal { from { transform: translateY(36px) rotate(10deg); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .cpick, .cpick-card { animation: none; }
+  .cpick-face { transition: none; }
+}

@@ -127,6 +127,12 @@ export class QuadPool {
       at.needsUpdate = true;
     }
   }
+
+  /** frees the GPU buffers and the shader material (the shared atlas texture stays: other pools use it) */
+  dispose() {
+    this.geo.dispose();
+    (this.mesh.material as THREE.Material).dispose();
+  }
 }
 
 const E = new THREE.Euler(0, 0, 0, 'YXZ');
@@ -169,6 +175,12 @@ export class CardPool {
     this.mesh.visible = this.n > 0;
     if (this.n) this.mesh.instanceMatrix.needsUpdate = true;
   }
+  /** the geometry is this pool's own copy (see cardFaceGeometry); the card-back texture is shared and stays */
+  dispose() {
+    this.mesh.geometry.dispose();
+    (this.mesh.material as THREE.Material).dispose();
+    this.mesh.dispose();
+  }
 }
 
 export interface Badge {
@@ -196,6 +208,17 @@ export class Kit {
     this.icons.end();
     this.cards.end();
     for (let i = 0; i < this.badges.length; i++) this.badges[i].sprite.visible = i < this.badgeIdx;
+  }
+  /**
+   * The pools are handed to React as <primitive>s, which R3F never disposes; the table is rebuilt every round,
+   * so without this each round left its buffers and materials behind on the GPU.
+   */
+  dispose() {
+    this.glow.dispose();
+    this.solid.dispose();
+    this.icons.dispose();
+    this.cards.dispose();
+    for (const b of this.badges) b.mat.dispose();
   }
   /** additive light: sparks, rings, splashes */
   g(cell: Cell, x: number, y: number, z: number, w: number, rot: number, flat: boolean, c: THREE.Color | null, a: number, h = w) {

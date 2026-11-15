@@ -4,6 +4,9 @@ import * as THREE from 'three';
 import { fxState, nowSec } from '../effects/fxState';
 import { CAMERA, PARALLAX_X, cameraFov, type View } from '../layout';
 
+/** Frame-rate independent easing: the share of the way to cover this frame (the same glide at 30 or 144 fps). */
+const damp = (dt: number, k: number) => 1 - Math.exp(-dt * k);
+
 const finePointer = typeof matchMedia !== 'undefined' && matchMedia('(hover: hover) and (pointer: fine)').matches;
 
 export function CameraRig({ view, finale, focus }: { view: View; finale: boolean; focus: [number, number, number] }) {
@@ -19,7 +22,7 @@ export function CameraRig({ view, finale, focus }: { view: View; finale: boolean
     const base = finale ? (portrait ? [focus[0], 6.2, 11.8] : [focus[0], 4.6, 8.6]) : cam0.pos;
     const fov = cameraFov(view);
     if (Math.abs(cam.fov - fov) > 0.01) {
-      cam.fov += (fov - cam.fov) * Math.min(1, dt * 4);
+      cam.fov += (fov - cam.fov) * damp(dt, 4);
       cam.updateProjectionMatrix();
     }
     const now = nowSec();
@@ -37,16 +40,16 @@ export function CameraRig({ view, finale, focus }: { view: View; finale: boolean
     const py = finePointer ? state.pointer.y * 0.2 : 0;
     const tx = base[0] + px + Math.sin(orbit) * base[2] + sx;
     const tz = base[2] * Math.cos(orbit);
-    cam.position.x += (tx - cam.position.x) * Math.min(1, dt * 3);
-    cam.position.y += (base[1] + py + sy - cam.position.y) * Math.min(1, dt * 3);
-    cam.position.z += (tz - cam.position.z) * Math.min(1, dt * 3);
+    cam.position.x += (tx - cam.position.x) * damp(dt, 3);
+    cam.position.y += (base[1] + py + sy - cam.position.y) * damp(dt, 3);
+    cam.position.z += (tz - cam.position.z) * damp(dt, 3);
     // on phones the results sheet takes the lower half, so aim low and lift the podium up the screen
     // lying on its side the results sit on the right, so the podium moves into the left half
-    if (finale) look.lerp(tmpLook.set(focus[0] + (compact ? 2.1 : 0), portrait ? -1.2 : compact ? 0.9 : 0.75, focus[2]), Math.min(1, dt * 2.5));
-    else look.lerp(tmpLook.set(cam0.look[0], cam0.look[1], cam0.look[2]), Math.min(1, dt * 4));
+    if (finale) look.lerp(tmpLook.set(focus[0] + (compact ? 2.1 : 0), portrait ? -1.2 : compact ? 0.9 : 0.75, focus[2]), damp(dt, 2.5));
+    else look.lerp(tmpLook.set(cam0.look[0], cam0.look[1], cam0.look[2]), damp(dt, 4));
     cam.lookAt(look);
     // "upside down" event: roll the whole view over
-    roll.current += ((now < fxState.upsideUntil ? Math.PI : 0) - roll.current) * Math.min(1, dt * 2.2);
+    roll.current += ((now < fxState.upsideUntil ? Math.PI : 0) - roll.current) * damp(dt, 2.2);
     if (Math.abs(roll.current) > 0.001) cam.rotateZ(roll.current);
   });
   return null;

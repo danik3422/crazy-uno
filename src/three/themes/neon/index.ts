@@ -8,7 +8,8 @@ import { palette } from './palette';
 export const theme: TableTheme = {
   palette,
   floor,
-  shadowOpacity: 0.4,
+  // the floor is a deep night, so shadows need a little more weight to seat the cards
+  shadowOpacity: 0.5,
   drawBack,
   drawFace: neonFace,
   // a hot magenta halo behind the cards you can play

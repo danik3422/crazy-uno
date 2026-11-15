@@ -7,6 +7,7 @@ import { SPIN_TIME, fxState, nowSec } from '../effects/fxState';
 import { lastPlace, spawn, type Target } from '../layout';
 import { cardBodyGeometry, cardFaceGeometry, CARD_H, CARD_W } from './cardShape';
 import { cardTexture } from './textures';
+import { fillSoft } from './glowTexture';
 import { THEMES } from '../themes/index';
 
 /** the printed faces, cut to the card's rounded outline */
@@ -51,11 +52,11 @@ const glowMat = (() => {
   cv.width = W;
   cv.height = H;
   const ctx = cv.getContext('2d')!;
-  ctx.filter = 'blur(7px)';
   ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.roundRect(18, 18, W - 36, H - 36, 16);
-  ctx.fill();
+  fillSoft(ctx, 7, c => {
+    c.beginPath();
+    c.roundRect(18, 18, W - 36, H - 36, 16);
+  });
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
   return new THREE.MeshBasicMaterial({ map: tex, color: '#fff2b0', transparent: true, opacity: 0.55, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending });
@@ -70,6 +71,21 @@ jumpGlowMat.blending = THREE.NormalBlending;
 /** Each table glows its playable cards in its own colour. */
 export function setPlayableGlow(color: string) {
   glowMat.color.set(color);
+}
+
+/**
+ * Sharper sampling of the printed faces. The GPU picks a mipmap level from how many texels land on a pixel; a hand
+ * card at 3× (or on a 4K screen) shows the 768-texel face at about 300–400 pixels, which lands between the half
+ * and the quarter size, and blending in the quarter size softens the numbers and corners. A small negative LOD bias
+ * moves the pick toward the bigger level: crisp, with no visible shimmer on art this bold. The art itself is untouched.
+ * One shared function, so every card face still compiles to the same shader program.
+ */
+const FACE_LOD_BIAS = '-0.5';
+function sharpFaces(shader: THREE.WebGLProgramParametersWithUniforms) {
+  shader.fragmentShader = shader.fragmentShader.replace(
+    '#include <map_fragment>',
+    THREE.ShaderChunk.map_fragment.replace('texture2D( map, vMapUv )', `texture2D( map, vMapUv, ${FACE_LOD_BIAS} )`),
+  );
 }
 
 const easeInOut = (p: number) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
@@ -245,8 +261,9 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
   useFrame((st, rawDt) => {
     // the same number for every card within one frame
     const frameKey = st.clock.elapsedTime;
-    // a long frame (tab switch, GC pause) must not teleport cards: cap the step
-    const dt = Math.min(rawDt, 1 / 30);
+    // a long frame (tab switch, GC pause) must not teleport cards: cap the step. The cap sits well under a slow
+    // device's frame time (20–30 fps), so the springs keep their real-time pace there instead of going slow-motion
+    const dt = Math.min(rawDt, 1 / 12);
     const g = ref.current;
     const tt = tRef.current;
     const now = nowSec();
@@ -507,7 +524,7 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
       vel.s.v = 0;
       const shade = tt.dim ? 0.5 : 1;
       const c = frontMat.current.color;
-      c.setScalar(c.r + (shade - c.r) * Math.min(1, dt * 8));
+      c.setScalar(c.r + (shade - c.r) * (1 - Math.exp(-dt * 8)));
       return;
     }
     if (f) flight.current = null;
@@ -621,10 +638,10 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     <group ref={ref} userData={{ fit: 'card', id: card.id }} {...(inHand ? {} : handlers)}>
       <mesh ref={bodyRef} geometry={body} material={edgeMat} castShadow />
       <mesh ref={frontRef} geometry={plane} position-z={THICK / 2 + 0.0015}>
-        <meshStandardMaterial ref={frontMat} map={front} roughness={0.38} metalness={0} />
+        <meshStandardMaterial ref={frontMat} map={front} roughness={0.38} metalness={0} onBeforeCompile={sharpFaces} />
       </mesh>
       <mesh ref={backRef} geometry={plane} position-z={-THICK / 2 - 0.0015} rotation={[0, Math.PI, Math.PI]}>
-        <meshStandardMaterial ref={backMat} map={back} roughness={0.38} />
+        <meshStandardMaterial ref={backMat} map={back} roughness={0.38} onBeforeCompile={sharpFaces} />
       </mesh>
       <mesh ref={glowRef} geometry={glowPlane} material={glowMat} position-z={-THICK / 2 - 0.006} visible={false} />
     </group>

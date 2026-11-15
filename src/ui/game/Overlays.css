@@ -10,7 +10,7 @@
 /* overlays */
 .ov {
   position: fixed; inset: 0; z-index: 50; display: grid; place-items: center;
-  background: rgba(3, 14, 10, 0.55); backdrop-filter: blur(3px);
+  background: rgba(3, 14, 10, 0.64);
   padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
   animation: fade 0.2s;
 }
@@ -24,16 +24,6 @@
 .box h2.huge { font-size: clamp(28px, 7vw, 44px); color: var(--gold); }
 .box p { margin: 0; font-size: 17px; }
 .box p.muted { font-size: 15px; }
-.colors { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
-.colors button {
-  border: 4px solid var(--edge); border-radius: 16px; height: 86px; cursor: pointer; font-family: var(--display); font-weight: 900;
-  color: var(--edge); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  transition: transform 0.15s;
-}
-.colors button:hover { transform: scale(1.04) rotate(-1deg); }
-/* light cards get dark text: cream on yellow or green is hard to read */
-.colors button[data-color='yellow'], .colors button[data-color='green'] { color: #1d1206; text-shadow: none; }
-.colors small { font-family: var(--body); font-weight: 500; font-size: 12px; opacity: 0.9; }
 .plist { display: flex; flex-direction: column; gap: 8px; width: 100%; }
 .plist-bot { margin: -3px 6px -2px 0; }
 .win-cup { margin: -6px 0 -4px; }
@@ -96,9 +86,7 @@
   .box p { font-size: 14px; }
   .box p.muted { font-size: 13px; }
   .box.band { padding-block: 12px; }
-  .colors { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .colors button { height: 60px; }
-  .dare { font-size: 15px !important; padding: 10px 12px; }
+      .dare { font-size: 15px !important; padding: 10px 12px; }
   .box.sheet h2 { font-size: 16px; }
   .box.sheet .score div { font-size: 12px; padding: 2px 8px; }
   .ov.sheet-ov { place-items: center end; align-items: center; background: linear-gradient(to left, rgba(10, 0, 20, 0.55), transparent 60%); }

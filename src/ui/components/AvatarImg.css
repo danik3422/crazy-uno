@@ -6,7 +6,7 @@
 /* ---------- the picker dialog ---------- */
 .ava-dlg-back {
   position: fixed; inset: 0; z-index: 150; display: grid; place-items: center; padding: max(12px, env(safe-area-inset-top, 0px)) 16px;
-  background: rgba(12, 2, 22, 0.62); backdrop-filter: blur(5px); animation: ava-fade 0.18s ease-out;
+  background: rgba(12, 2, 22, 0.74); animation: ava-fade 0.18s ease-out;
 }
 .ava-dlg {
   --cols: 6; --rows: 4; --cell: 68px; --gap: 10px;

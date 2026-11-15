@@ -69,9 +69,10 @@ export function computeTargets(g: GameView, v: View): Map<number, Target> {
   const myTurn = viewer !== null && viewer === s.cur;
 
   const ctx: PlaceCtx = { g, v, A, out, dealDelay, seat, viewer, myTurn, over };
+  // the opponents first: your hand keeps clear of their fans
   s.players.forEach((p, pi) => {
-    if (pi === seat) placeHand(ctx, p);
-    else placeFan(ctx, p, pi);
+    if (pi !== seat) placeFan(ctx, p, pi);
   });
+  if (seat >= 0 && seat < n) placeHand(ctx, s.players[seat]);
   return out;
 }

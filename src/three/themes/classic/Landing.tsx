@@ -37,8 +37,9 @@ function sunburst(kind: 'glow' | 'paint' | 'wild') {
     c.fill();
   }
   if (kind === 'glow') {
-    const core = c.createRadialGradient(0, 0, 0, 0, 0, 50);
-    core.addColorStop(0, 'rgba(255,255,255,.9)');
+    // a small, modest core: the flash reads as light on the card's colour, not as a white blob over the pile
+    const core = c.createRadialGradient(0, 0, 0, 0, 0, 40);
+    core.addColorStop(0, 'rgba(255,255,255,.55)');
     core.addColorStop(1, 'rgba(255,255,255,0)');
     c.fillStyle = core;
     c.fillRect(-128, -128, 256, 256);

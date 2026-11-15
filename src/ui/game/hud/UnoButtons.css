@@ -1,5 +1,6 @@
 .uno-call-zone {
-  position: absolute; right: max(24px, calc((100% - 980px) / 2 + 12px)); bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+  /* over the action button in the bottom-right corner: the hand keeps clear of that corner (three/layout/fit.ts) */
+  position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(104px + env(safe-area-inset-bottom, 0px));
   pointer-events: none; z-index: 3;
 }
 .uno-call {

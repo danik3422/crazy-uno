@@ -6,9 +6,8 @@
   gap: 4px;
   padding: 5px;
   border-radius: 999px;
-  background: rgba(20, 6, 30, 0.55);
+  background: rgba(20, 6, 30, 0.74);
   border: 1px solid rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(12px);
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3);
   top: max(14px, env(safe-area-inset-top, 0px));
   left: 50%;

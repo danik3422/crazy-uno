@@ -10,10 +10,10 @@ export function DropZone({ at, radius }: { at: [number, number, number]; radius:
   useFrame((st, dt) => {
     const on = drag.id !== null && drag.moved;
     const target = on ? (drag.over ? 0.95 : 0.35 + Math.sin(st.clock.elapsedTime * 6) * 0.12) : 0;
-    mat.current.opacity += (target - mat.current.opacity) * Math.min(1, dt * 12);
+    mat.current.opacity += (target - mat.current.opacity) * (1 - Math.exp(-dt * 12));
     ring.current.visible = mat.current.opacity > 0.01;
     const sc = on && drag.over ? 1.08 : 1;
-    ring.current.scale.setScalar(ring.current.scale.x + (sc - ring.current.scale.x) * Math.min(1, dt * 10));
+    ring.current.scale.setScalar(ring.current.scale.x + (sc - ring.current.scale.x) * (1 - Math.exp(-dt * 10)));
   });
   return (
     <mesh ref={ring} rotation-x={-Math.PI / 2} position={[at[0], 0.01, at[2]]} visible={false}>

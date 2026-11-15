@@ -38,7 +38,9 @@ export function Confetti({ active }: { active: boolean }) {
     wasActive.current = active;
     mesh.visible = active;
     if (!active) return;
-    parts.forEach((q, i) => {
+    // a plain loop: no closure made every frame for 320 pieces
+    for (let i = 0; i < parts.length; i++) {
+      const q = parts[i];
       q.p.y -= q.v * dt;
       q.p.x += Math.sin(q.p.y + i) * dt * 0.4;
       if (q.p.y < 0.05) q.p.y = 0.05;
@@ -50,7 +52,7 @@ export function Confetti({ active }: { active: boolean }) {
       dummy.rotation.copy(q.r);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
-    });
+    }
     mesh.instanceMatrix.needsUpdate = true;
   });
   return (

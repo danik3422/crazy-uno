@@ -1,5 +1,6 @@
-import { type ReactNode, useEffect, useState } from 'react';
-import { CNAME, COLORS, HEX, teamName } from '../../game/content';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import { COLORS, teamName } from '../../game/content';
+import type { Color } from '../../game/types';
 import { render, useT } from '../../i18n';
 import type { GameView } from '../../game/view';
 import { IconCards, IconExit } from '../components/Icons';
@@ -11,6 +12,7 @@ import { GearMenu } from '../components/GearMenu';
 import { canFullscreen, enterFullscreen, SMALL_SCREEN, useMedia, usePhone } from '../hooks/phone';
 import { UiIcon } from '../components/UiIcon';
 import { CoinFlip } from './CoinFlip';
+import { ColorPick } from './ColorPick';
 import { RematchVote } from './RematchVote';
 import { ReactionButton } from './Reactions';
 import type { OnlineCtx } from './onlineCtx';
@@ -41,6 +43,7 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked, finale 
   const small = useMedia(SMALL_SCREEN);
   const phone = usePhone();
   const [showEnd, setShowEnd] = useState(false);
+  const pickColor = useCallback((c: Color) => game.resolveChoice(c), [game]);
 
   // let the confetti and revealed hands play for a moment before the results card
   useEffect(() => {
@@ -115,19 +118,11 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked, finale 
       </Modal>
     );
   } else if (s.phase === 'choose' && mine && s.choice?.kind === 'color') {
-    const counts = Object.fromEntries(COLORS.map(c => [c, p.hand.filter(x => x.color === c).length]));
+    const counts = Object.fromEntries(COLORS.map(c => [c, p.hand.filter(x => x.color === c).length])) as Record<Color, number>;
     modal = (
-      <Modal band>
-        <h2>{render(s.choice.title)}</h2>
-        <div className="colors">
-          {COLORS.map(c => (
-            <button key={c} data-color={c} style={{ background: HEX[c] }} onClick={() => game.resolveChoice(c)}>
-              {CNAME[c]}
-              <small>{t('ov.inHand', { n: counts[c] })}</small>
-            </button>
-          ))}
-        </div>
-      </Modal>
+      <div className="ov pick-ov">
+        <ColorPick title={render(s.choice.title)} counts={counts} onPick={pickColor} />
+      </div>
     );
   } else if (s.phase === 'choose' && mine && s.choice?.kind === 'player') {
     modal = (

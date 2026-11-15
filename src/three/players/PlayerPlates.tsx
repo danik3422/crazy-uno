@@ -12,7 +12,7 @@ import { ReactionBubble } from '../../ui/game/Reactions';
 import { peek } from '../../ui/game/peek';
 import { UiIcon } from '../../ui/components/UiIcon';
 import { TurnTimer } from '../../ui/game/TurnTimer';
-import { PARALLAX_X, arena, oppWall, visibleHalfWidth, type View } from '../layout';
+import { PARALLAX_X, arena, insetsOf, oppWall, visibleHalfWidth, type View } from '../layout';
 import '../../ui/game/Plates.css';
 
 const tmpV = new THREE.Vector3();
@@ -30,7 +30,7 @@ export function PlayerPlates({ game, view, dealing }: { game: GameView; view: Vi
   const small = view.portrait || view.compact || (s.players.length >= 7 && height < 900);
   const tiny = (view.portrait && s.players.length > 3) || (view.compact && s.players.length > 5);
   // the HUD's corner widgets, measured on the screen (the colour pill, the menu buttons)
-  const corners = typeof document === 'undefined' ? [] : [...document.querySelectorAll('.hud-top .status, .corner-btns')].map(e => e.getBoundingClientRect());
+  const corners = typeof document === 'undefined' ? [] : [...document.querySelectorAll('.hud-top .status, .corner-btns, .deal-banner')].map(e => e.getBoundingClientRect());
   // who went out while this table was open: their plate steps aside while the van takes them (KnockoutVan)
   const outs = useRef<{ game: GameView | null; was: boolean[]; taken: Set<number> }>({ game: null, was: [], taken: new Set() });
   if (outs.current.game !== game) outs.current = { game, was: s.players.map(p => !!p.out), taken: new Set() };
@@ -63,12 +63,14 @@ export function PlayerPlates({ game, view, dealing }: { game: GameView; view: Vi
         const vhw = visibleHalfWidth(view, pos[1], pos[2]);
         const perPx = (2 * vhw) / width;
         const out = Math.max(0, Math.min(1, (Math.abs(w.pos[0]) / (arena(view).rx * 0.8) - 0.55) / 0.45));
-        const maxX = Math.max(0, vhw - PARALLAX_X - (halfPx + 6) * perPx);
+        // (and out of a phone's notch: the safe-area inset)
+        const notch = Math.max(insetsOf(view).l, insetsOf(view).r);
+        const maxX = Math.max(0, vhw - (view.compact ? 0 : PARALLAX_X) - (halfPx + 6 + notch) * perPx);
         pos[0] = Math.max(-maxX, Math.min(maxX, pos[0] + Math.sign(pos[0]) * out * halfPx * 0.6 * perPx));
         // and never at the top edge of the screen: a gap that grows with the screen (rounded corners and the
         // browser's bar on a phone). On a phone the far seats already sit lower (see oppWall), so this rarely bites.
         const halfH = tiny ? 20 : small ? 24 : 32;
-        const margin = Math.round(Math.max(8, height * 0.03));
+        const margin = Math.round(Math.max(8, height * 0.03)) + insetsOf(view).t;
         const ndc = tmpV.set(...pos).project(camera);
         const topPx = ((1 - ndc.y) / 2) * height - halfH - margin;
         if (topPx < 0) pos[1] = Math.max(0, pos[1] + (topPx * (2 * visibleHalfWidth(view, pos[1], pos[2]))) / width);

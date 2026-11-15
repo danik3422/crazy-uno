@@ -71,6 +71,7 @@ export function CardFx({ game, version, view, theme, pile }: Props) {
     k.lite = lite;
     return k;
   }, [lite]);
+  useEffect(() => () => kit.dispose(), [kit]);
   useEffect(() => kit.cards.setBack(cardTexture(null, theme)), [kit, theme]);
 
   const actives = useRef<Active[]>([]);

@@ -190,7 +190,8 @@ export function Arena({ color, theme, view, center }: Props) {
       uniforms.uWave.value = wt < 0 ? -2 : WAVE_REACH * (1 - Math.pow(1 - wt / WAVE_TIME, 2.4));
       // the sky follows the wave
       if (wt >= 0) {
-        const k = Math.min(1, dt * 4);
+        // exponential: the same pace at 30, 60 or 120 fps
+        const k = 1 - Math.exp(-dt * 4);
         bg.lerp(tmp.set(p.outer), k);
         scene.fog?.color.lerp(tmp, k);
       }

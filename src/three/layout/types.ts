@@ -34,5 +34,15 @@ export interface View {
   aspect?: number;
   /** height of the canvas in CSS pixels */
   h?: number;
+  /** the screen's safe-area insets in CSS pixels (a phone's notch and rounded corners), see safeArea.ts */
+  insets?: Insets;
+}
+
+/** Safe-area insets (CSS pixels): top, right, bottom, left. */
+export interface Insets {
+  t: number;
+  r: number;
+  b: number;
+  l: number;
 }
 

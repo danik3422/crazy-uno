@@ -7,6 +7,8 @@ import type { Vec3, View, Zone } from './types';
  * would come out tiny: the shorter the screen, the more they grow (about 1.25× on a tall phone, up to 1.4×).
  */
 export function handScale(v: View) {
+  // a tall screen looks at the table from high up, so its hand comes out small: it has the room to be bigger
+  if (v.portrait) return 1.25;
   if (!v.compact) return 1;
   const h = v.h ?? 390;
   // a narrower phone (16:9) has less room between the corner panels

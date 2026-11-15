@@ -101,12 +101,15 @@ export function GameScreen({ game, score, onAgain, onMenu, onOver, online, coach
         events={tableEvents}
         dpr={resolution.dpr}
         camera={{ fov: 42, position: [0, 9, 10] }}
-        gl={{ antialias: true, powerPreference: 'high-performance' }}
+        // no stencil buffer: nothing uses it, and at 3× it is a full-screen buffer of memory for nothing
+        gl={{ antialias: true, powerPreference: 'high-performance', stencil: false }}
       >
         {/* a device that can't keep up renders at a lower resolution; watched only once the cards
             are dealt, so loading hiccups (shaders, textures) don't count against it */}
         {!locked && (
           <PerformanceMonitor
+            // a fresh watch some time after it gave up (see useAdaptiveDpr): never stuck low for the whole game
+            key={resolution.monitorKey}
             bounds={hz => [hz * 0.7, hz * 0.92]}
             onDecline={resolution.lower}
             onIncline={resolution.raise}

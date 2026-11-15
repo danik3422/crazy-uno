@@ -57,6 +57,8 @@ export function DirectionArrows({ dir, at }: { dir: 1 | -1; at: [number, number,
     () => new THREE.MeshBasicMaterial({ color: '#fff3c4', transparent: true, opacity: 0.22, toneMapped: false, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }),
     [],
   );
+  // made here, not by JSX: the table remounts every round, so free them on the way out
+  useEffect(() => () => [geo, haloGeo, mat, halo].forEach(x => x.dispose()), [geo, haloGeo, mat, halo]);
   const speed = useRef(0);
   const flip = useRef<{ from: number; to: number; t0: number } | null>(null);
   const shown = useRef<number>(dir);
@@ -68,7 +70,7 @@ export function DirectionArrows({ dir, at }: { dir: 1 | -1; at: [number, number,
   useFrame((_, dt) => {
     const now = nowSec();
     const racing = now < fxState.carouselUntil;
-    speed.current += (dir * (racing ? 7 : 0.7) - speed.current) * Math.min(1, dt * (racing ? 6 : 2));
+    speed.current += (dir * (racing ? 7 : 0.7) - speed.current) * (1 - Math.exp(-dt * (racing ? 6 : 2)));
     spin.current.rotation.y -= speed.current * dt;
     let pulse = 0;
     const f = flip.current;

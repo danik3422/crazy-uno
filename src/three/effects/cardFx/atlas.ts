@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CELL_ID } from './cells';
+import { fillSoft } from '../../cards/glowTexture';
 import { HEX } from '../../../game/content';
 import { drawEventIcon, drawFxShape } from '../../themes/eventIcons';
 import { drawIcon } from '../../themes/icons';
@@ -202,11 +203,11 @@ export function fxAtlas(): THREE.CanvasTexture {
     c.fill();
   });
   at(CELL_ID.cardGlow, c => {
-    c.filter = 'blur(8px)';
     c.fillStyle = W;
-    c.beginPath();
-    c.roundRect(-30, -46, 60, 92, 10);
-    c.fill();
+    fillSoft(c, 8, p => {
+      p.beginPath();
+      p.roundRect(-30, -46, 60, 92, 10);
+    });
   });
   at(CELL_ID.plus, c => {
     c.fillStyle = W;
@@ -221,12 +222,12 @@ export function fxAtlas(): THREE.CanvasTexture {
     c.fillText('?', 0, 6);
   });
   at(CELL_ID.cloud, c => {
-    c.filter = 'blur(3px)';
     c.fillStyle = W;
     for (const [x, y, r] of [[-30, 8, 26], [0, -8, 34], [30, 6, 26], [0, 16, 24]] as const) {
-      c.beginPath();
-      c.arc(x, y, r, 0, Math.PI * 2);
-      c.fill();
+      fillSoft(c, 3, p => {
+        p.beginPath();
+        p.arc(x, y, r, 0, Math.PI * 2);
+      });
     }
   });
   at(CELL_ID.gift, c => emoji(c, '🎁'));

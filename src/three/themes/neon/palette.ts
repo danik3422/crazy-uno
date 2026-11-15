@@ -1,9 +1,11 @@
 import type { Color } from '../../../game/types';
 import type { Palette } from '../types';
 
+// One synthwave night for every colour: the far dark stays a deep indigo (the club), the pool under the pile
+// and every neon line take the current colour, so it reads at a glance without the floor turning muddy.
 export const palette: Record<Color, Palette> = {
-  red: { inner: '#ff2e88', mid: '#2a0634', outer: '#05010c', accent: '#ff2e88' },
-  yellow: { inner: '#ffe600', mid: '#2a1a06', outer: '#05010c', accent: '#ffe600' },
-  green: { inner: '#39ff88', mid: '#062a20', outer: '#02060a', accent: '#39ff88' },
-  blue: { inner: '#2ee6ff', mid: '#061c34', outer: '#02040e', accent: '#2ee6ff' },
+  red: { inner: '#ff2e6a', mid: '#3a0a2e', outer: '#07021a', accent: '#ff2e6a' },
+  yellow: { inner: '#ffd60a', mid: '#33260a', outer: '#08041a', accent: '#ffd60a' },
+  green: { inner: '#2bff8a', mid: '#06302a', outer: '#030619', accent: '#2bff8a' },
+  blue: { inner: '#2ed8ff', mid: '#08224a', outer: '#03041c', accent: '#2ed8ff' },
 };

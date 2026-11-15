@@ -43,30 +43,6 @@ export function softGlow() {
   return glowTex;
 }
 
-let spotTex: THREE.Texture | null = null;
-/**
- * A stage spotlight's pool, for normal blending: a bright disc with a soft edge and a faint dark rim just
- * outside it. The rim is what makes the pool read on a bright floor, where adding light alone shows nothing.
- */
-export function spotDisc() {
-  if (spotTex) return spotTex;
-  const cv = document.createElement('canvas');
-  cv.width = cv.height = 128;
-  const c = cv.getContext('2d')!;
-  const g = c.createRadialGradient(64, 64, 0, 64, 64, 64);
-  g.addColorStop(0, 'rgba(255,255,255,.55)');
-  g.addColorStop(0.5, 'rgba(255,255,255,.42)');
-  g.addColorStop(0.66, 'rgba(255,255,255,.12)');
-  g.addColorStop(0.74, 'rgba(0,0,0,.2)');
-  g.addColorStop(0.88, 'rgba(0,0,0,.08)');
-  g.addColorStop(1, 'rgba(0,0,0,0)');
-  c.fillStyle = g;
-  c.fillRect(0, 0, 128, 128);
-  spotTex = new THREE.CanvasTexture(cv);
-  spotTex.colorSpace = THREE.SRGBColorSpace;
-  return spotTex;
-}
-
 const vert = /* glsl */ `
   attribute float aSize;
   attribute vec3 aColor;

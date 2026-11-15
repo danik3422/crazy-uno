@@ -44,3 +44,30 @@ export function wingGeometry() {
   for (let i = 0; i < uv.count; i++) uv.setX(i, 0.5 + uv.getX(i) * 0.5);
   return g;
 }
+
+/** Gives every vertex of `g` a colour from `f(x, y, z)`; returns a non-indexed copy ready to merge. */
+export function paintVertices(g: THREE.BufferGeometry, f: (x: number, y: number, z: number, out: THREE.Color) => void) {
+  const src = g.index ? g.toNonIndexed() : g;
+  const p = src.attributes.position;
+  const arr = new Float32Array(p.count * 3);
+  const c = new THREE.Color();
+  for (let i = 0; i < p.count; i++) {
+    f(p.getX(i), p.getY(i), p.getZ(i), c);
+    c.toArray(arr, i * 3);
+  }
+  src.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+  if (src !== g) g.dispose();
+  return src;
+}
+
+/** A soft round dot, white so it takes any tint (will-o'-wisps). Small and mipmapped: crisp at any size. */
+export const dotTexture = () =>
+  canvasTex(64, 64, ctx => {
+    const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.18, 'rgba(255,255,255,.85)');
+    g.addColorStop(0.45, 'rgba(255,255,255,.22)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 64, 64);
+  });

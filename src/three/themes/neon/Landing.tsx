@@ -5,7 +5,6 @@ import { landingTime } from '../../effects/PlayFx';
 import { nowSec } from '../../effects/fxState';
 import type { LandingProps } from '../types';
 import { NEON } from './face';
-import { glowTex } from './textures';
 
 const LIFE = 0.75;
 const SPARKS = 12;
@@ -15,7 +14,8 @@ const WILD = [NEON.red, NEON.yellow, NEON.green, NEON.blue].map((c) => new THREE
 const hexGeo = new THREE.RingGeometry(0.93, 1, 6, 1).rotateX(-Math.PI / 2);
 /** a spark streak lying on the floor, running along +X from its start */
 const sparkGeo = new THREE.PlaneGeometry(1, 1).translate(0.5, 0, 0).rotateX(-Math.PI / 2);
-const flashGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+/** a filled hexagon under the card: a crisp flash with hard edges (no soft glow blob) */
+const flashGeo = new THREE.CircleGeometry(0.5, 6).rotateX(-Math.PI / 2);
 
 const easeOut = (x: number) => 1 - Math.pow(1 - x, 3);
 
@@ -95,8 +95,9 @@ export function Landing({ top, at, lite }: LandingProps) {
 
     // a glitchy flash: bright, then a few hard flickers
     const flick = x < 0.12 ? 1 : Math.sin(t * 70) > 0.2 ? 0.55 : 0.1;
-    flashMat.current.opacity = Math.max(0, 1 - x * 1.4) * flick;
-    flash.current.scale.set(3.6 + x * 1.5, 1, 3.6 + x * 1.5);
+    flashMat.current.opacity = Math.max(0, 1 - x * 1.6) * flick * 0.35;
+    flash.current.scale.set(2.6 + x * 1.2, 1, 2.6 + x * 1.2);
+    flash.current.rotation.y = 0.3;
 
     // spark streaks shoot outward and shrink
     if (!lite) {
@@ -120,7 +121,7 @@ export function Landing({ top, at, lite }: LandingProps) {
   return (
     <group>
       <mesh ref={flash} geometry={flashGeo} position={[at[0], 0.008, at[2]]} visible={false}>
-        <meshBasicMaterial ref={flashMat} map={glowTex()} {...mat} />
+        <meshBasicMaterial ref={flashMat} {...mat} />
       </mesh>
       <mesh ref={hexA} geometry={hexGeo} position={[at[0], 0.01, at[2]]} visible={false}>
         <meshBasicMaterial ref={matA} {...mat} />
