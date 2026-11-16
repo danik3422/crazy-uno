@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { Ball, Placer } from '../decorKit';
 
 /*
  * Where the Winter decor stands. The lake's shore runs just outside the opponents, so the decor keeps to the snow:
@@ -105,5 +106,48 @@ export function fitToHud(L: WinterLayout, S: Sizes, check: Check): WinterLayout 
     );
   const pines = L.pines.filter(p => check(p.x, S.pine.y * p.s, p.z, S.pine.r * p.s, PAD).clear && !inTheWay(p));
   const lanterns = L.lanterns.filter(p => check(p.x, S.lantern.y * p.s, p.z, S.lantern.r * p.s, PAD).clear && !inTheWay(p));
+  return { ...L, cabin, snowman, pines, lanterns };
+}
+
+/** spots in the band past the far players: every x, at every depth */
+export const farBand = (xs: number[], zs: number[]) => zs.flatMap(z => xs.map(x => ({ x, z })));
+
+/** puts the spots on one side (sign of x) first */
+const sideFirst = (spots: { x: number; z: number }[], side: number) => [...spots.filter(p => Math.sign(p.x) === side), ...spots.filter(p => Math.sign(p.x) !== side)];
+
+/**
+ * A phone on its side has no free corners to speak of: its plates, the dock and the hand take most of the screen.
+ * The scene is placed in what is left (see Placer): the strips of snow at the side edges, beside and between the
+ * side players, and the band past the far ones. The cabin and the snowman come first (one at each side when they
+ * can), then two lanterns and up to six pines, each sized for the phone's short screen.
+ */
+export function phoneLayout(L: WinterLayout, P: Placer, S: Record<keyof Sizes, Ball>, prev?: WinterLayout): WinterLayout {
+  const h = P.h;
+  const es = [1.6, 2.4, 1, 3.2, 4.2];
+  const sideZ = [-3, -1.5, -4.5, 0, 1.5, -6, 3, 4];
+  const sides = [-1, 1].flatMap(side => [...P.side(side, sideZ, es), ...P.strip(side)]);
+  const back = farBand([-9, 9, -7, 7, -11, 11, -5, 5, -13, 13], [-10, -12, -8.5]);
+  const big = { maxPx: 0.16 * h, minPx: 0.042 * h, onScreen: 0.95 };
+  const cabin = P.place([...sideFirst(sides, -1), ...sideFirst(back, -1)], S.cabin, big, prev?.cabin);
+  // the snowman takes the other side from the cabin
+  const away = cabin && cabin.x < 0 ? 1 : -1;
+  const snowman = P.place([...sideFirst(sides, away), ...sideFirst(back, away)], S.snowman, big, prev?.snowman);
+  const lanterns: Spot[] = [];
+  const lanternSpots = [-1, 1].flatMap(side => [...P.side(side, [0.5, -1, 2, -2.5, -4, -5.5, 3, 4], [0.6, 1.2, 2, 3, 4]), ...P.strip(side)]);
+  for (let i = 0; i < L.lanterns.length; i++) {
+    const p = P.place(sideFirst(lanternSpots, i % 2 ? 1 : -1), S.lantern, { maxPx: 0.07 * h, minPx: 0.03 * h, onScreen: 0.9 }, prev?.lanterns[i]);
+    if (p) lanterns.push(p);
+  }
+  const pines: Spot[] = [];
+  const sidePines = [-1, 1].flatMap(side => [...P.side(side, [-5, -2, 1, -7, 3, 4], [0.8, 1.8, 2.8, 3.8]), ...P.strip(side)]);
+  const farPines = farBand([-12, 12, -9.5, 9.5, -7, 7, -4.5, 4.5, -2, 2], [-12.5, -10.5, -8.5]);
+  // the pines frame the table: the sides by turns, every third one in the band past the far players
+  for (let i = 0; i < L.pines.length; i++) {
+    const want = i % 2 ? 1 : -1;
+    const near = sideFirst(sidePines, want);
+    const far = sideFirst(farPines, want);
+    const p = P.place(i % 3 === 2 ? [...far, ...near] : [...near, ...far], S.pine, { maxPx: 0.12 * h, minPx: 0.045 * h, onScreen: 0.6 }, prev?.pines[i]);
+    if (p) pines.push(p);
+  }
   return { ...L, cabin, snowman, pines, lanterns };
 }

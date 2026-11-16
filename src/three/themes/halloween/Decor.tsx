@@ -3,10 +3,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { nowSec } from '../../effects/fxState';
 import { makeView, restCamera, visibleHalfWidth, type Rect } from '../../layout';
-import { ballOnScreen, underHud, useHudZones } from '../decorKit';
+import { Placer, ballOf, ballOnScreen, underHud, useHudZones } from '../decorKit';
 import type { DecorProps } from '../types';
 import { batTexture, dotTexture, wingGeometry } from './bits';
-import { fitToHud, fitToScreen, layout, type HalloweenLayout, type Sizes } from './layout';
+import { fitToHud, fitToScreen, layout, phoneLayout, type HalloweenLayout, type Sizes } from './layout';
 import {
   booTexture, candleGeometry, crossGeometry, faceGeometry, faceTexture, flameTexture, ghostGeometry, ghostTexture,
   poolTexture, pumpkinGeometry, tombGeometry,
@@ -77,6 +77,11 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
     const k = portrait ? GHOST_SCALE.portrait : GHOST_SCALE.landscape;
     return { pumpkin: { r: ball(res.pumpkin).r, y: 0.46 }, tomb: ball(res.tomb), cross: ball(res.cross), ghost: { r: g.r * k, y: g.y * k } };
   }, [res, portrait]);
+  // tighter boxes for a phone's small free room (a pumpkin stands on the ground: its geometry is centred on its middle)
+  const balls = useMemo(() => {
+    const p = ballOf(res.pumpkin);
+    return { pumpkin: { ...p, y: 0.46 }, tomb: ballOf(res.tomb), cross: ballOf(res.cross), ghost: sizes.ghost };
+  }, [res, sizes]);
   // per-instance colours exist from the start, so the materials compile with them
   const colors = useMemo(() => {
     const mk = (n: number) => new THREE.InstancedBufferAttribute(new Float32Array(Math.max(1, n) * 3).fill(1), 3);
@@ -182,17 +187,22 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
     const { o, c, acc, box } = tmp;
     const { width: w, height: h } = state.size;
     const zones = hud.current;
+    const phone = lite && !portrait && !!zones.view.compact;
+    // what the drifting bits fade out under: the HUD, and on a phone the cards and the hand's room too
+    const avoid = phone ? zones.keep : zones.rects;
 
     // the layout clear of the HUD: worked out again only when the HUD, the screen or the base layout changes
     const f = fitted.current;
     if (f.version !== zones.version || f.base !== base || f.w !== w || f.h !== h) {
       f.version = zones.version;
+      const keepPrev = f.base === base;
       f.base = base;
       f.w = w;
       f.h = h;
       const cam = restCamera(makeView(w, h));
       const clear = (x: number, y: number, z: number, r: number) => !underHud(ballOnScreen(cam, w, h, x, y, z, r, box), zones.rects, 6);
-      const next = fitToHud(base, halfWidth, sizes, clear);
+      // a phone on its side: the graveyard goes wherever this screen has room (see phoneLayout)
+      const next = phone ? phoneLayout(base, new Placer(w, h, zones), balls, keepPrev ? L : undefined) : fitToHud(base, halfWidth, sizes, clear);
       const key = JSON.stringify(next);
       if (key !== f.key) {
         f.key = key;
@@ -266,16 +276,17 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
         if (b < 1.3) {
           booOn = true;
           const k = Math.min(1, b / 0.18);
-          boo.current.position.set(g.x, g.y + 1.1 + b * 0.3, g.z + 0.4);
+          boo.current.position.set(g.x, g.y + (1.1 + b * 0.3) * (g.s ?? 1), g.z + 0.4);
           boo.current.scale.set(2 * (0.6 + 0.4 * k), 1 * (0.6 + 0.4 * k), 1);
           booMat.current.opacity = b < 0.9 ? k : 1 - (b - 0.9) / 0.4;
         }
       }
       const hov = s.hoverG === i;
       // a lazy figure-eight around the home spot, always drifting outward rather than over the table
-      o.position.set(g.x + Math.sin(t * 0.3 + i * 2) * 0.7, g.y + Math.sin(t * 1.3 + i) * 0.16, g.z + Math.sin(t * 0.6 + i) * 0.35);
+      const gs = g.s ?? 1;
+      o.position.set(g.x + Math.sin(t * 0.3 + i * 2) * 0.7 * gs, g.y + Math.sin(t * 1.3 + i) * 0.16 * gs, g.z + Math.sin(t * 0.6 + i) * 0.35 * gs);
       o.rotation.set(0.12, faceCamera(o.position.x, o.position.z) + spin + Math.sin(t * 0.8 + i) * 0.2, hov ? Math.sin(t * 12) * 0.18 : Math.sin(t * 1.1 + i) * 0.08);
-      o.scale.setScalar(Math.max(0.0001, sc * (hov ? 1.12 : 1) * (portrait ? GHOST_SCALE.portrait : GHOST_SCALE.landscape)));
+      o.scale.setScalar(Math.max(0.0001, sc * gs * (hov ? 1.12 : 1) * (portrait ? GHOST_SCALE.portrait : GHOST_SCALE.landscape)));
       o.updateMatrix();
       ghosts.current.setMatrixAt(i, o.matrix);
     });
@@ -293,7 +304,7 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
       const py = b.y + Math.sin(t * 2 + b.ph) * 0.22 + scatter * (1.5 + b.dz * 2);
       const flap = Math.sin(t * (13 + scatter * 10) + b.ph) * 0.9;
       // a bat flying under the HUD fades away until it is out again
-      b.vis += ((underHud(ballOnScreen(state.camera as THREE.PerspectiveCamera, w, h, px, py, pz, b.s * 1.1, box), zones.rects, 2) ? 0 : 1) - b.vis) * fade;
+      b.vis += ((underHud(ballOnScreen(state.camera as THREE.PerspectiveCamera, w, h, px, py, pz, b.s * 1.1, box), avoid, 2) ? 0 : 1) - b.vis) * fade;
       const bs = b.s * b.vis + 1e-4;
       // face the camera (a bat seen edge-on is just a line), banking toward where it flies
       const bank = -Math.sin(b.a) * 0.45;
@@ -317,7 +328,7 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
       const z = p.z + Math.cos(t * p.sp * 0.8 + p.ph) * 0.35;
       pos.setXYZ(i, x, y, z);
       // additive: a wisp under the HUD simply goes dark
-      p.vis += ((underHud(ballOnScreen(state.camera as THREE.PerspectiveCamera, w, h, x, y, z, 0.2, box), zones.rects, 2) ? 0 : 1) - p.vis) * fade;
+      p.vis += ((underHud(ballOnScreen(state.camera as THREE.PerspectiveCamera, w, h, x, y, z, 0.2, box), avoid, 2) ? 0 : 1) - p.vis) * fade;
       const glow = (Math.max(0, Math.sin(t * p.sp * 1.7 + p.ph * 3)) ** 2 * 0.85 + 0.15) * p.vis;
       c.copy(p.hue === 0 ? acc : WITCH).multiplyScalar(glow);
       col.setXYZ(i, c.r, c.g, c.b);

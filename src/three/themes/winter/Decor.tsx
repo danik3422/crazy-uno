@@ -2,11 +2,11 @@ import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { makeView, restCamera, type Rect } from '../../layout';
-import { ballOnScreen, underHud, useHudZones } from '../decorKit';
+import { Placer, ballOf, ballOnScreen, underHud, useHudZones } from '../decorKit';
 import type { DecorProps } from '../types';
 import { glowTexture, merge } from './bits';
 import { CAB, cabinGeometry, windowGeometry, windowTexture } from './cabin';
-import { fitToHud, layout, type Sizes, type WinterLayout } from './layout';
+import { fitToHud, layout, phoneLayout, type Sizes, type WinterLayout } from './layout';
 import { LANTERN_GLOW_Y, bankGeometry, lanternGeometry, pineGeometry, pineRadius } from './props';
 import { LIGHT, snowFrag, snowVert } from './snowfall';
 import { armGeometry, hatGeometry, scarfGeometry, snowmanGeometry } from './snowman';
@@ -97,6 +97,11 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
     // the snowman's hat sits on top of his own geometry (at 1.98)
     return { pine: ball(res.pine), lantern: ball(res.lantern), cabin: ball(res.cabin), snowman: ball(res.snowman, 2.3) };
   }, [res]);
+  // tighter boxes for a phone's small free room (the snowman's arms reach out about a unit, his hat up to 2.3)
+  const balls = useMemo(
+    () => ({ pine: ballOf(res.pine), lantern: ballOf(res.lantern), cabin: ballOf(res.cabin), snowman: { ...ballOf(res.snowman, 2.3), rx: 1 } }),
+    [res],
+  );
   const placed = useMemo(() => {
     // snow drifts heaped round the foot of everything that stands in the snow, so nothing floats on the floor
     const r = rng(7);
@@ -268,6 +273,7 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
     const f = fitted.current;
     if (f.version !== zones.version || f.base !== base || f.w !== w || f.h !== h) {
       f.version = zones.version;
+      const keepPrev = f.base === base;
       f.base = base;
       f.w = w;
       f.h = h;
@@ -278,7 +284,8 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
         const seen = box.x0 < box.x1 && (box.x0 + box.x1) / 2 > 0 && (box.x0 + box.x1) / 2 < w && (box.y0 + box.y1) / 2 > 0 && (box.y0 + box.y1) / 2 < h;
         return { clear: !underHud(box, zones.rects, pad), seen };
       };
-      const next = fitToHud(base, sizes, check);
+      // a phone on its side: the scene goes wherever this screen has room (see phoneLayout)
+      const next = lite && zones.view.compact ? phoneLayout(base, new Placer(w, h, zones), balls, keepPrev ? L : undefined) : fitToHud(base, sizes, check);
       const key = JSON.stringify([next.pines, next.lanterns, next.cabin, next.snowman]);
       if (key !== f.key) {
         f.key = key;

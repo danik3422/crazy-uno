@@ -13,6 +13,7 @@ import { canFullscreen, enterFullscreen, SMALL_SCREEN, useMedia, usePhone } from
 import { UiIcon } from '../components/UiIcon';
 import { CoinFlip } from './CoinFlip';
 import { ColorPick } from './ColorPick';
+import { ChallengePick } from './ChallengePick';
 import { RematchVote } from './RematchVote';
 import { ReactionButton } from './Reactions';
 import type { OnlineCtx } from './onlineCtx';
@@ -44,6 +45,8 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked, finale 
   const phone = usePhone();
   const [showEnd, setShowEnd] = useState(false);
   const pickColor = useCallback((c: Color) => game.resolveChoice(c), [game]);
+  const declineChallenge = useCallback(() => game.declineChallenge(), [game]);
+  const challengeWild4 = useCallback(() => game.challengeWild4(), [game]);
 
   // let the confetti and revealed hands play for a moment before the results card
   useEffect(() => {
@@ -102,20 +105,15 @@ export function Overlays({ game, score, onAgain, onMenu, online, locked, finale 
   } else if (s.phase === 'play' && mine && s.challenge && s.challenge.target === s.cur && !s.drawn) {
     const by = s.players[s.challenge.by];
     modal = (
-      <Modal band>
-        <p className="muted">{t('ov.laid4', { who: by.name })}</p>
-        <h2>{t('ov.challenge')}</h2>
-        <p className="small muted">
-          {t('ov.challengeHelp', { who: by.name })}
-        </p>
-        <div className="row center">
-          <button className="btn big blue" onClick={() => game.declineChallenge()}>
-            {/* nothing to answer it with: accepting means taking the cards, so the button says so */}
-            {game.cp().hand.some(c => game.playable(c)) ? t('ov.accept') : t('ov.acceptTake', { n: s.pending })}
-          </button>
-          <button className="btn big red" autoFocus onClick={() => game.challengeWild4()}>{t('ov.challengeBtn')}</button>
-        </div>
-      </Modal>
+      <div className="ov pick-ov">
+        <ChallengePick
+          by={by}
+          pending={s.pending}
+          canAnswer={game.cp().hand.some(c => game.playable(c))}
+          onAccept={declineChallenge}
+          onChallenge={challengeWild4}
+        />
+      </div>
     );
   } else if (s.phase === 'choose' && mine && s.choice?.kind === 'color') {
     const counts = Object.fromEntries(COLORS.map(c => [c, p.hand.filter(x => x.color === c).length])) as Record<Color, number>;

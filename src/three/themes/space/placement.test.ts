@@ -49,4 +49,28 @@ describe('placePlanet', () => {
     }
     expect(placePlanet(W, H, 84, 175, [{ x0: W / 2 - 100, y0: 0, x1: W, y1: 200 }])).toBeNull();
   });
+
+  it('on a phone: finds the free pocket anywhere on the screen, keeps the planet whole and off the deck', () => {
+    const w = 667;
+    const h = 375;
+    // a crowded phone: plates along the top and the sides, the hand and the dock along the bottom
+    const keep: Rect[] = [
+      { x0: 0, y0: 0, x1: w, y1: 110 },
+      { x0: 0, y0: 190, x1: 110, y1: 268 },
+      { x0: 557, y0: 190, x1: w, y1: 268 },
+      { x0: 164, y0: 110, x1: 512, y1: h },
+      { x0: 0, y0: 322, x1: w, y1: h },
+    ];
+    const open = (x: number) => x < 140 || x > 530;
+    const p = placePlanet(w, h, 45, 60, keep, { l: 0, r: 0, open })!;
+    expect(p).not.toBeNull();
+    expect(open(p.x)).toBe(true);
+    // most of the planet shows (it may hang a little past a side edge)
+    expect(p.x - 0.4 * p.r).toBeGreaterThanOrEqual(-0.01);
+    expect(p.x + 0.4 * p.r).toBeLessThanOrEqual(w + 0.01);
+    const rings: Rect = { x0: Math.max(0, p.x - 2.45 * p.r), x1: Math.min(w, p.x + 2.45 * p.r), y0: p.y - 1.2 * p.r, y1: p.y + 1.2 * p.r };
+    for (const r of keep) expect(touches(rings, r)).toBe(false);
+    // it stays put while its spot is still clear, even if another would do as well
+    expect(placePlanet(w, h, 45, 60, keep, { l: 0, r: 0, open }, p)).toBe(p);
+  });
 });

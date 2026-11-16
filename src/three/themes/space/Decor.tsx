@@ -1,12 +1,13 @@
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { exposeDebug } from '../../../lib/debug';
 import type { DecorProps } from '../types';
 import { GIANT, MOON, bodyMaterial, ringMaterial } from './bodies';
 import { streakTex } from './textures';
 import { placePlanet, type PlanetSpot } from './placement';
-import { ballOnScreen, underHud, useHudZones } from '../decorKit';
-import { arena, makeView, toScreen } from '../../layout';
+import { ballOnScreen, floorAt, underHud, useHudZones } from '../decorKit';
+import { arena, makeView, restCamera, toScreen, visibleHalfWidth, type View } from '../../layout';
 
 /*
  * Space: the table is a station deck (drawn by the floor shader) adrift in a nebula. Out beyond it hang a
@@ -32,10 +33,22 @@ const MOON_R = 0.2;
 /** how far from the camera the planet floats (it is drawn to a size in pixels, see placement.ts) */
 const PLANET_DIST = 46;
 /** the biggest planet's radius, as a share of the screen's half-height */
-const PLANET_SIZE = { landscape: 0.22, portrait: 0.16 };
+const PLANET_SIZE = { landscape: 0.22, portrait: 0.16, phone: 0.24 };
 
 /** the asteroid drift: an arc far past the opponents, below the deck's level (seen "through" the void) */
 const BELT = { rx: 17, rz: 12, y: -3.2, from: Math.PI * 1.25, to: Math.PI * 1.75 };
+
+/** a phone's asteroids: down each side strip from far (z0) to near (z1), `e` in from the edge, drawn at scale `s` */
+const DRIFT = { z0: -7, z1: 2.5, y: -0.6, e: 1.1, s: 0.65 };
+
+/** how far out from the pile the station deck and the seats reach (table units, x and z): the planet keeps off it */
+const DECK = { rx: 8.6, rz: 5.6 };
+/** does screen pixel (x, y) look past the deck and the seats (or above the horizon)? */
+function offDeck(view: View, w: number, h: number, x: number, y: number, tmp: THREE.Vector3) {
+  const A = arena(view);
+  const p = floorAt(restCamera(view), w, h, x, y, tmp);
+  return !p || ((p.x - A.discard[0]) / DECK.rx) ** 2 + ((p.z - A.discard[2]) / DECK.rz) ** 2 > 1;
+}
 
 /** frame-rate independent easing: the share of the way to cover this frame (the same glide at 30 or 144 fps) */
 const damp = (dt: number, k: number) => 1 - Math.exp(-dt * k);
@@ -119,6 +132,8 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
       seenW: 0,
       seenH: 0,
       seenPortrait: false,
+      /** a phone on its side: the asteroids drift down the side strips instead of past the far edge */
+      phone: false,
       box: { x0: 0, y0: 0, x1: 0, y1: 0 },
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -170,6 +185,7 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
     s.dir.set(left ? 1 : -1, -0.05 - Math.random() * 0.05, 0.08).normalize();
   };
 
+  exposeDebug('__planet', st);
   useFrame((state, dt) => {
     const now = performance.now() / 1000;
     const t = state.clock.elapsedTime;
@@ -185,11 +201,18 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
       st.seenPortrait = portrait;
       const view = makeView(w, h);
       const floor = toScreen(view, 0, 0, -arena(view).rz).y;
-      st.spot = placePlanet(w, h, (portrait ? PLANET_SIZE.portrait : PLANET_SIZE.landscape) * (h / 2), floor, zones.rects);
+      const phone = lite && !!zones.view.compact;
+      const ins = zones.view.insets;
+      st.spot = phone
+        ? placePlanet(w, h, PLANET_SIZE.phone * (h / 2), floor, zones.keep, { l: ins?.l ?? 0, r: ins?.r ?? 0, open: (x, y) => offDeck(view, w, h, x, y, st.v) }, st.spot)
+        : placePlanet(w, h, (portrait ? PLANET_SIZE.portrait : PLANET_SIZE.landscape) * (h / 2), floor, zones.rects);
+      st.phone = phone;
     }
-    // glides to its spot (grows in right there when it had none), or shrinks away where it is when there is none
+    // glides to its spot (grows in right there when it had none), or shrinks away where it is when there is none.
+    // A spot far away (across the cards) is not glided to: the planet shrinks away and grows again there.
     const k = damp(dt, 3);
-    if (st.spot) {
+    const away = !!st.spot && st.at.r >= 1 && Math.hypot(st.spot.x - st.at.x, st.spot.y - st.at.y) > Math.max(st.at.r * 4, h * 0.3);
+    if (st.spot && !away) {
       if (st.at.r < 1) {
         st.at.x = st.spot.x;
         st.at.y = st.spot.y;
@@ -197,7 +220,8 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
       st.at.x += (st.spot.x - st.at.x) * k;
       st.at.y += (st.spot.y - st.at.y) * k;
     }
-    st.at.r += ((st.spot?.r ?? 0) - st.at.r) * k;
+    // (shrinking away for a jump: quickly, and the last pixels at a steady pace, so it is gone in about half a second)
+    st.at.r = away ? Math.max(0, st.at.r - Math.max(st.at.r * damp(dt, 8), 40 * dt)) : st.at.r + ((st.spot?.r ?? 0) - st.at.r) * k;
     // pinned to that point of the screen: worked out again every frame (a few multiplies), so it stays put
     // through the camera's intro move and the mouse parallax
     st.v.set((st.at.x / w) * 2 - 1, 1 - (st.at.y / h) * 2, 0.5).unproject(camera).sub(camera.position).normalize();
@@ -244,10 +268,19 @@ export function Decor({ accent, portrait, lite }: DecorProps) {
       if (now < r.deadUntil) s = 0;
       else if (now - r.deadUntil < 0.8) s *= THREE.MathUtils.smootherstep(now - r.deadUntil, 0, 0.8);
       if (i === st.rockHot) s *= 1.2;
-      // the lanes lie one behind the other (deeper, lower), not wider: the belt never reaches the side plates
-      d.position.set(Math.cos(ang) * BELT.rx, BELT.y - r.lane * 0.9 + Math.sin(t * 0.4 + i * 1.7) * 0.15, Math.sin(ang) * BELT.rz * (1 + r.lane * 0.15));
-      // fades out while it drifts under a plate or the HUD
-      const under = underHud(ballOnScreen(camera, w, h, d.position.x, d.position.y, d.position.z, r.s * 0.5, st.box), zones.rects, 4);
+      const bob = Math.sin(t * 0.4 + i * 1.7) * 0.15;
+      if (st.phone) {
+        // a phone: two streams down the side strips, past the side players, toward the camera
+        const z = DRIFT.z0 + (DRIFT.z1 - DRIFT.z0) * r.u;
+        const side = i % 2 ? 1 : -1;
+        d.position.set(side * (visibleHalfWidth(zones.view, DRIFT.y, z) - DRIFT.e - r.lane * 0.8), DRIFT.y - r.lane * 0.5 + bob, z);
+        s *= DRIFT.s;
+      } else {
+        // the lanes lie one behind the other (deeper, lower), not wider: the belt never reaches the side plates
+        d.position.set(Math.cos(ang) * BELT.rx, BELT.y - r.lane * 0.9 + bob, Math.sin(ang) * BELT.rz * (1 + r.lane * 0.15));
+      }
+      // fades out while it drifts under a plate or the HUD (on a phone: or a card, or the room of the hand)
+      const under = underHud(ballOnScreen(camera, w, h, d.position.x, d.position.y, d.position.z, r.s * 0.5 * (st.phone ? DRIFT.s : 1), st.box), st.phone ? zones.keep : zones.rects, 4);
       r.vis += ((under ? 0 : 1) - r.vis) * damp(dt, 5);
       s *= r.vis;
       d.rotation.copy(r.rot);

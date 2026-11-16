@@ -1,3 +1,5 @@
+import type { Ball, Placer } from '../decorKit';
+
 /*
  * Where the Halloween decor stands. Everything lives at the rim of what the camera sees: the far graveyard
  * (which lands in the thin band at the top of the screen) and the two far corners, never in the middle where
@@ -8,7 +10,8 @@
  */
 
 export interface Spot { x: number; z: number; s: number; e?: number }
-export interface Ghost { x: number; y: number; z: number }
+/** a ghost's home spot; `s` scales it and its drift (a phone's ghost may be drawn smaller or bigger) */
+export interface Ghost { x: number; y: number; z: number; s?: number }
 
 export interface HalloweenLayout {
   pumpkins: Spot[];
@@ -96,6 +99,9 @@ export interface Sizes {
 /** is a ball of radius `r` around (x, y, z) clear of the HUD and the plates on the screen? */
 export type Clear = (x: number, y: number, z: number, r: number) => boolean;
 
+/** a ghost wanders this far from its home spot (see Decor), at scale 1 */
+const GHOST_DRIFT = 0.75;
+
 /** the ways a corner lantern may step aside, tried in this order: deeper or nearer, further in, then smaller */
 const STEPS = (() => {
   const out: { dz: number; de: number; k: number }[] = [];
@@ -107,8 +113,6 @@ const STEPS = (() => {
 /** how far a ghost may drift aside to get out from under the HUD (table units, either way), in steps */
 const GHOST_STEP = 0.6;
 const GHOST_STEPS = 6;
-/** a ghost wanders this far from its home spot (see Decor) */
-const GHOST_WANDER = 0.75;
 
 /**
  * Keeps the graveyard out from under the HUD and the plates. A corner lantern (with its candles) steps aside to the
@@ -141,7 +145,7 @@ export function fitToHud(L: HalloweenLayout, halfWidth: (z: number) => number, S
   const tombs = L.tombs.filter(t => clear(t.x, S.tomb.y * t.s, t.z, S.tomb.r * t.s));
   const crosses = L.crosses.filter(t => clear(t.x, S.cross.y * t.s, t.z, S.cross.r * t.s));
   const ghosts = L.ghosts.flatMap(g => {
-    const r = S.ghost.r * 1.15 + GHOST_WANDER;
+    const r = S.ghost.r * 1.15 + GHOST_DRIFT;
     for (let i = 0; i <= GHOST_STEPS * 2; i++) {
       // 0, +1, -1, +2, -2 ... steps, outward first
       const k = Math.ceil(i / 2) * (i % 2 ? 1 : -1) * Math.sign(g.x || 1);
@@ -163,9 +167,71 @@ export function layout(portrait: boolean, lite: boolean): HalloweenLayout {
     pumpkins: portrait ? L.pumpkins.slice(0, 2) : [{ x: -1, z: -6.0, s: 0.72, e: 1.5 }, { x: 1, z: -6.0, s: 0.7, e: 1.5 }],
     tombs: L.tombs.filter((_, i) => i % 2 === 0),
     crosses: [L.crosses[0], L.crosses[L.crosses.length - 1]],
-    candles: [],
-    ghosts: L.ghosts.slice(0, 1),
+    candles: portrait ? [] : L.candles.slice(0, 4),
+    ghosts: portrait ? L.ghosts.slice(0, 1) : L.ghosts,
     bats: 6,
     wisps: 10,
+    // a phone on its side: the wisps drift along the side strips and the far band, never over the middle
+    ...(portrait ? {} : { wispBox: [-13, 13, -9, 2] as [number, number, number, number], wispGap: 8 }),
   };
+}
+
+/** spots in the band past the far players: every x, at every depth */
+const band = (xs: number[], zs: number[]) => zs.flatMap(z => xs.map(x => ({ x, z })));
+/** puts the spots on one side (sign of x) first */
+const sideFirst = (spots: { x: number; z: number }[], side: number) => [...spots.filter(p => Math.sign(p.x) === side), ...spots.filter(p => Math.sign(p.x) !== side)];
+/** a ghost floats this high over the ground, at scale 1 */
+const GHOST_Y = 0.95;
+
+/**
+ * A phone on its side has no free corners to speak of: its plates, the dock and the hand take most of the screen.
+ * The graveyard goes where this screen has room (see Placer): the strips at the side edges, beside and between the
+ * side players, and the band past the far ones. Two big jack-o'-lanterns first (one each side when they can), a
+ * ghost over each side, candles round the lanterns, then headstones, crosses and two small lanterns where room is
+ * left, each sized for the phone's short screen. `prev`: the layout until now, kept where it still fits.
+ */
+export function phoneLayout(L: HalloweenLayout, P: Placer, S: Record<keyof Sizes, Ball>, prev?: HalloweenLayout): HalloweenLayout {
+  const h = P.h;
+  const sides = (zs: number[], es: number[]) => [-1, 1].flatMap(side => [...P.side(side, zs, es), ...P.strip(side)]);
+  const near = sides([-2.5, -1, -4, 0.5, -5.5, 2, 3, 4], [1.4, 2.2, 0.8, 3, 4]);
+  const far = band([-10, 10, -7.5, 7.5, -12.5, 12.5, -5, 5, -2.5, 2.5], [-10.5, -12.5, -8.5]);
+  const pumpkins: Spot[] = [];
+  for (let i = 0; i < 4; i++) {
+    const side = i % 2 ? 1 : -1;
+    const big = i < 2;
+    const p = P.place(big ? [...sideFirst(near, side), ...sideFirst(far, side)] : [...sideFirst(far, side), ...sideFirst(near, side)], S.pumpkin,
+      big ? { maxPx: 0.085 * h, minPx: 0.04 * h, onScreen: 0.95 } : { maxPx: 0.055 * h, minPx: 0.028 * h, onScreen: 0.9 }, prev?.pumpkins[i]);
+    if (p) pumpkins.push(p);
+  }
+  const ghosts: Ghost[] = [];
+  const ghostBall = { r: S.ghost.r * 1.15 + GHOST_DRIFT, y: GHOST_Y + S.ghost.y };
+  const ghostSpots = [...sides([-4, -2.5, -6, -1, 1, 2.5, 3.5], [2.2, 1.4, 3, 0.8, 4]), ...far];
+  for (let i = 0; i < 2; i++) {
+    const was = prev?.ghosts[i];
+    const p = P.place(sideFirst(ghostSpots, i % 2 ? 1 : -1), ghostBall, { maxPx: 0.12 * h, minPx: 0.06 * h, onScreen: 0.85, maxScale: 1.1 }, was && { x: was.x, z: was.z, s: was.s ?? 1 });
+    if (p) ghosts.push({ x: p.x, y: GHOST_Y * p.s, z: p.z, s: p.s });
+  }
+  // the candles stand in a little group round each big lantern, a step in front of it or beside it
+  const candles: Spot[] = [];
+  const candleBall = { r: 0.32, y: 0.32 };
+  pumpkins.slice(0, 2).forEach((p, k) => {
+    const d = 1.1 * p.s + 0.3;
+    const round = [[-0.8, 0.5], [0.8, 0.5], [-1, -0.2], [1, -0.2], [0, 0.9], [-0.6, -0.8], [0.6, -0.8]].map(([dx, dz]) => ({ x: p.x + dx * d, z: p.z + dz * d }));
+    for (let j = 0; j < 2; j++) {
+      const c = P.place(round, candleBall, { maxPx: 0.03 * h, minPx: 0.012 * h, maxScale: 1, onScreen: 1, pad: 4 }, prev?.candles[k * 2 + j]);
+      if (c) candles.push({ ...c, s: 0.6 + ((k * 2 + j) % 3) * 0.2 });
+    }
+  });
+  const tombs: Spot[] = [];
+  const crosses: Spot[] = [];
+  const small = { maxPx: 0.07 * h, minPx: 0.03 * h, onScreen: 0.6 };
+  for (let i = 0; i < 4; i++) {
+    const p = P.place(sideFirst([...far, ...near], i % 2 ? 1 : -1), S.tomb, small, prev?.tombs[i]);
+    if (p) tombs.push(p);
+  }
+  for (let i = 0; i < 2; i++) {
+    const p = P.place(sideFirst([...far, ...near], i % 2 ? -1 : 1), S.cross, small, prev?.crosses[i]);
+    if (p) crosses.push(p);
+  }
+  return { ...L, pumpkins, ghosts, candles, tombs, crosses };
 }
