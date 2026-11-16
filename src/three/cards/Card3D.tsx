@@ -9,6 +9,7 @@ import { cardBodyGeometry, cardFaceGeometry, CARD_H, CARD_W } from './cardShape'
 import { cardTexture } from './textures';
 import { fillSoft } from './glowTexture';
 import { THEMES } from '../themes/index';
+import { PREVIEW, SHAKE_MS, touchHand, useTouchHand } from './touchHand';
 
 /** the printed faces, cut to the card's rounded outline */
 const plane = cardFaceGeometry();
@@ -87,6 +88,9 @@ function sharpFaces(shader: THREE.WebGLProgramParametersWithUniforms) {
     THREE.ShaderChunk.map_fragment.replace('texture2D( map, vMapUv )', `texture2D( map, vMapUv, ${FACE_LOD_BIAS} )`),
   );
 }
+
+/** a finger on a hand card: the touch hand (touchHand.ts) handles it, not the card's own pointer zone */
+const byFinger = (e: ThreeEvent<PointerEvent | MouseEvent>) => (e.nativeEvent as PointerEvent).pointerType === 'touch';
 
 const easeInOut = (p: number) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
 /** a toss: leaves the hand with speed and glides in */
@@ -214,11 +218,14 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
   const pickRef = useRef(onPick);
   pickRef.current = onPick;
   const { camera, gl } = useThree();
+  useTouchHand(card.id, t, onPick, ref);
 
   /** Grab a playable hand card: follow the finger over the table, drop it on the pile to play. */
   const startDrag = (e: ThreeEvent<PointerEvent>) => {
     const tt = tRef.current;
     if (!tt.interactive || tt.zone !== 'hand' || e.button > 0) return;
+    // a finger picks and plays the hand's cards through the touch hand; the card held up in front keeps its own drag
+    if (byFinger(e) && !tt.held) return;
     e.stopPropagation();
     drag.id = card.id;
     drag.moved = false;
@@ -435,7 +442,9 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     // a card you hold, drag or lift is drawn over the others: lifted out of an overlapping fan it would cut through its neighbours
     // while another card is being dragged, the ones under the pointer stay down
     const otherDragged = drag.id !== null && drag.id !== card.id && drag.moved;
-    const top = tt.zone === 'hand' && (drag.id === card.id || (!otherDragged && ((hovered.current || keySel.id === card.id) && tt.interactive || !!tt.held)));
+    // picked by a finger: risen and grown into a big preview, playable or not (touchHand.ts)
+    const fingered = touchHand.sel === card.id && tt.zone === 'hand' && !tt.held && !otherDragged && !dragging;
+    const top = tt.zone === 'hand' && (drag.id === card.id || fingered || (!otherDragged && ((hovered.current || keySel.id === card.id) && tt.interactive || !!tt.held)));
     if (top !== onTop.current) {
       onTop.current = top;
       bodyRef.current.material = top ? edgeMatTop : edgeMat;
@@ -448,6 +457,15 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
         mat.transparent = top;
         mat.needsUpdate = true;
       }
+    }
+    // the cards beside the finger's card step aside to make room for it
+    if (tt.zone === 'hand' && touchHand.sel !== null && !otherDragged) x += touchHand.room.get(card.id) ?? 0;
+    // a card the finger tried to play but may not: a short shake, "no"
+    const shook = touchHand.shakeId === card.id ? (performance.now() - touchHand.shakeAt) / SHAKE_MS : 1;
+    if (shook < 1) {
+      const a = Math.sin(shook * Math.PI * 7) * (1 - shook);
+      x += a * 0.05;
+      rz += a * 0.07;
     }
     const chaos = now < fxState.chaosUntil && (tt.zone === 'hand' || tt.zone === 'opp');
     if (chaos) {
@@ -475,6 +493,12 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
       rx = drag.over ? -1.35 : -0.95;
       ry = 0;
       rz = 0;
+    } else if (fingered) {
+      // the finger's preview: up along the card's own face (the hand leans back) and toward you, clear of the finger
+      // (a face-down hand, in a blind event, is turned over: the same lean)
+      const lean = tt.rot[0] > Math.PI / 2 ? tt.rot[0] - Math.PI : tt.rot[0];
+      y += PREVIEW.up * Math.cos(lean);
+      z += PREVIEW.up * Math.sin(lean) + PREVIEW.toward;
     } else if (!otherDragged && (hovered.current || keySel.id === card.id) && tt.interactive) {
       // lift toward the viewer along the card's own normal, never sideways into its neighbours
       y += (tt.held ? 0.12 : 0.3) * motion.hoverLift;
@@ -568,7 +592,7 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     // a played card lands with a little slam: it grows in flight and settles on the pile
     const slam = slamPop(now - slamAt.current);
     const base = tt.scale ?? 1;
-    const sTarget = dragging ? (drag.over ? 1.25 : 1.12) : !otherDragged && (hovered.current || keySel.id === card.id) && tt.interactive ? base * 1.12 : base;
+    const sTarget = dragging ? (drag.over ? 1.25 : 1.12) : fingered ? base * PREVIEW.scale : !otherDragged && (hovered.current || keySel.id === card.id) && tt.interactive ? base * 1.12 : base;
     if (slam) {
       // a short, exact pop: the spring would lag behind it and leave the card swollen
       g.scale.setScalar(base * (1 + slam));
@@ -577,7 +601,8 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
 
     if (hitRef.current) hitRef.current.geometry = hovered.current && tt.interactive ? hitPlaneLifted : hitPlane;
     // playable cards are simply raised (see layout); the rest are dimmed
-    const shade = tt.dim ? 0.42 : 1;
+    // a card you may not play stays dim, a little less so in the finger's preview (it is there to be read)
+    const shade = tt.dim ? (fingered ? 0.62 : 0.42) : 1;
     const c = frontMat.current.color;
     c.setScalar(c.r + (shade - c.r) * k);
   });
@@ -606,7 +631,7 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
   const inHand = t.zone === 'hand';
   const handlers = {
     onPointerOver: (e: ThreeEvent<PointerEvent>) => {
-      if (!t.interactive) return;
+      if (!t.interactive || (inHand && !t.held && byFinger(e))) return;
       e.stopPropagation();
       hovered.current = true;
       document.body.style.cursor = 'pointer';
@@ -617,7 +642,7 @@ export const Card3D = memo(function Card3D({ card, t, theme, onPick }: Props) {
     },
     onPointerDown: startDrag,
     onClick: (e: ThreeEvent<MouseEvent>) => {
-      if (!t.interactive) return;
+      if (!t.interactive || (inHand && !t.held && byFinger(e))) return;
       e.stopPropagation();
       if (performance.now() < drag.suppressClickUntil) return;
       hovered.current = false;

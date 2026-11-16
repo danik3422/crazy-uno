@@ -4,6 +4,7 @@ import { CARD_W } from '../cards/cardShape';
 import { visibleHalfWidth } from './camera';
 import { cardsRect, handRoom, toScreen } from './fit';
 import { HELD, arena, handScale } from './table';
+import { MIN_SLOT } from '../cards/touchSlots';
 import type { Target, Vec3, View } from './types';
 
 const PI = Math.PI;
@@ -67,8 +68,12 @@ export function placeHand({ g, v, A, out, dealDelay, seat, viewer, myTurn, over 
     const hand = held ? p.hand.filter(c => c !== held) : p.hand;
     const m = hand.length;
     const rest = !myTurn && !over && s.phase !== 'handover' ? HAND_REST : 0;
-    // a big hand goes into two rows (the back row a little higher), so every card stays readable
-    const rows = m > (v.portrait ? 11 : 20) ? 2 : 1;
+    // pixels per table unit across the hand, to turn the overflow into a narrower spread
+    const ppu = toScreen(v, 1, A.hand.y, A.hand.z).x - toScreen(v, 0, A.hand.y, A.hand.z).x;
+    // a big hand goes into two rows (the back row a little higher), so every card stays readable. A phone on its side
+    // splits it as soon as one row would leave a card less than a fingertip of the hand to be picked by (MIN_SLOT)
+    const oneRow = v.compact ? Math.floor((room.x1 - room.x0 - CARD_W * big * ppu) / MIN_SLOT) + 1 : 20;
+    const rows = m > (v.portrait ? 11 : Math.min(20, Math.max(7, oneRow))) ? 2 : 1;
     const backN = rows === 2 ? Math.ceil(m / 2) : m;
     const tilt = A.hand.tilt;
     // the card face normal and its "up" direction: rows and layers move along them
@@ -108,7 +113,9 @@ export function placeHand({ g, v, A, out, dealDelay, seat, viewer, myTurn, over 
       for (let r = 0; r < rowSizes.length; r++) {
         const n = rowSizes[r];
         const cs = (rows === 2 ? (v.portrait ? 0.86 : 0.8) : 1) * big * shrink;
-        const sp = Math.min(h.sp * cs, (h.maxW - (rows === 2 ? (v.portrait ? 0.9 : 1.2) : 0)) / Math.max(n - 1, 1));
+        // on a phone on its side, two rows of cards made smaller to fit the height keep their usual spacing (the room
+        // allowing): what shows of each card stays wide enough for a finger
+        const sp = Math.min(h.sp * (rows === 2 && v.compact ? cs / shrink : cs), (h.maxW - (rows === 2 ? (v.portrait ? 0.9 : 1.2) : 0)) / Math.max(n - 1, 1));
         const room = sp * Math.max(n - 1, 0);
         // A raised card wants a whole card width after it (it stands in front and hides the next card's left side,
         // where the number is); the card just before a raised one keeps at least its corner number in view.
@@ -201,8 +208,6 @@ export function placeHand({ g, v, A, out, dealDelay, seat, viewer, myTurn, over 
       }
       return Math.abs(b0) <= 0.5 ? s0 : s1;
     };
-    // pixels per table unit across the hand, to turn the overflow into a narrower spread
-    const ppu = toScreen(v, 1, A.hand.y, A.hand.z).x - toScreen(v, 0, A.hand.y, A.hand.z).x;
     // the hand, risen on your turn, stops short of the middle of the pile and of the opponents' fans above its corners
     // (computeTargets places those first)
     let pileY = toScreen(v, A.discard[0], 0, A.discard[2]).y + room.y0 * 2;
