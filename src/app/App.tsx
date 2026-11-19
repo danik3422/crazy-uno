@@ -157,11 +157,11 @@ export default function App() {
     setScreen('local-game');
   };
 
-  // debug: window.__knock('all' | 'one') knocks bots out, here or (on the dev server) in the online room
+  // debug: window.__knock('all' | 'one' | 'me') knocks bots (or yourself) out, here or (on the dev server) in the online room
   useEffect(() => {
-    exposeDebug('__knock', (which: 'one' | 'all' = 'all') => {
+    exposeDebug('__knock', (which: 'one' | 'all' | 'me' = 'all') => {
       if (screen === 'online') conn.send({ t: 'debug', knockout: which });
-      else local?.debugKnockOut(which);
+      else local?.debugKnockOut(which === 'me' ? (local.humans()[0] ?? 0) : which);
     });
   }, [screen, conn, local]);
 

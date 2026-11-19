@@ -7,106 +7,194 @@
   z-index: 30;
   gap: 8px;
 }
-/* overlays */
-.ov {
-  position: fixed; inset: 0; z-index: 50; display: grid; place-items: center;
-  background: rgba(3, 14, 10, 0.64);
-  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
-  animation: fade 0.2s;
-}
-.ov.opaque { background: var(--stage); }
-.box {
-  background: var(--felt); border: 2px solid var(--line); border-radius: 22px; padding: 22px; max-width: 540px; width: 100%;
-  display: flex; flex-direction: column; gap: 16px; align-items: center; text-align: center; max-height: 100%; overflow: auto;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5); animation: rise 0.35s cubic-bezier(.2, 1.3, .4, 1);
-}
-.box h2 { font-family: var(--display); font-weight: 900; font-size: 22px; margin: 0; text-wrap: balance; }
-.box h2.huge { font-size: clamp(28px, 7vw, 44px); color: var(--gold); }
-.box p { margin: 0; font-size: 17px; }
-.box p.muted { font-size: 15px; }
-.plist { display: flex; flex-direction: column; gap: 8px; width: 100%; }
-.plist-bot { margin: -3px 6px -2px 0; }
-.win-cup { margin: -6px 0 -4px; }
-.plist button {
-  display: flex; justify-content: space-between; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--line);
-  background: rgba(0, 0, 0, 0.25); cursor: pointer; font-weight: 700;
-}
-.plist button:hover { border-color: var(--gold); }
-.dare {
-  font-size: 20px !important;
-  font-weight: 500;
-  border-radius: 14px;
-  padding: 18px;
-  border: 2px dashed var(--gold);
-  background: rgba(0, 0, 0, 0.25) !important;
-  border-color: var(--gold-bright) !important;
-}
-.score { width: 100%; display: flex; flex-direction: column; gap: 4px; font-variant-numeric: tabular-nums; }
-.score div { display: flex; justify-content: space-between; padding: 6px 10px; border-radius: 8px; background: rgba(0, 0, 0, 0.2); }
-/* a long name gives way ("…"), the points never do */
-.score div { min-width: 0; max-width: 100%; }
-.score div span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.score div b { flex: none; }
-.box {
-  background: linear-gradient(180deg, rgba(92, 36, 160, 0.96), rgba(52, 16, 98, 0.96));
-  border-color: rgba(255, 255, 255, 0.28);
-}
-.ov.band-ov { background: rgba(10, 0, 20, 0.18); backdrop-filter: none; }
-.box.band {
-  max-width: none; width: calc(100% + 32px); margin-inline: -16px; border-radius: 0; border-inline: 0;
-  border-block: 2px solid rgba(255, 255, 255, 0.4); padding-block: 22px;
-  background: linear-gradient(90deg, rgba(72, 26, 128, 0) 0%, var(--band) 14%, var(--band) 86%, rgba(72, 26, 128, 0) 100%);
-  box-shadow: 0 0 60px rgba(120, 60, 220, 0.35); animation: band-in 0.35s cubic-bezier(.2, 1.2, .4, 1);
-}
-.box.band > * { max-width: 640px; width: 100%; }
-.box.band .row, .box.band h2, .box.band p, .box.band .coin-stage { width: auto; }
-/* a lone button keeps its own width, not the band's */
-.box.band > .btn { width: auto; }
-.ov.sheet-ov {
-  align-items: end; background: linear-gradient(to top, rgba(10, 0, 20, 0.55), transparent 45%); backdrop-filter: none;
-  padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
-}
-.box.sheet { max-width: 620px; gap: 10px; padding: 16px 20px; animation: sheet-in 0.45s cubic-bezier(.2, 1.2, .4, 1); }
-.box.sheet h2 { font-size: 20px; }
-.box.sheet .dare { font-size: 16px !important; padding: 10px 14px; }
-.box.sheet .score { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 6px; }
-.box.sheet .score small { width: 100%; }
-.box.sheet .score div { gap: 10px; padding: 4px 10px; }
-@media (max-width: 560px) {
-  .box.sheet { padding: 12px 14px; gap: 8px; }
-  .box.sheet h2 { font-size: 17px; }
-  .box.sheet p { font-size: 13px; }
-  .box.sheet .dare { font-size: 14px !important; padding: 8px 10px; }
-  .box.sheet .score div { font-size: 12px; padding: 3px 8px; }
-  .box.sheet .btn.big { font-size: 15px; padding: 12px 18px; }
-}
-@media (orientation: landscape) and (max-height: 520px) {
-  .box { padding: 14px 18px; gap: 10px; border-radius: 18px; max-height: calc(100dvh - 16px); }
-  .box.sheet { max-width: 560px; padding: 10px 14px; gap: 6px; }
-}
 @media (orientation: landscape) and (max-height: 520px) {
   .corner-btns { top: calc(6px + env(safe-area-inset-top, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); gap: 6px; }
-  .ov { padding: max(8px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); }
-  .box h2 { font-size: 18px; }
-  .box h2.huge { font-size: 26px; }
-  .box p { font-size: 14px; }
-  .box p.muted { font-size: 13px; }
-  /* the strip reaches past the dialog's side padding (12px here, more beside a notch), never past the screen */
-  .box.band { padding-block: 12px; width: calc(100% + 24px); margin-inline: -12px; }
-      .dare { font-size: 15px !important; padding: 10px 12px; }
-  .box.sheet h2 { font-size: 16px; }
-  .box.sheet .score div { font-size: 12px; padding: 2px 8px; }
-  .ov.sheet-ov { place-items: center end; align-items: center; background: linear-gradient(to left, rgba(10, 0, 20, 0.55), transparent 60%); }
-  .box.sheet { width: min(48%, 420px); max-height: calc(100dvh - 16px); }
-  .box.sheet .score { gap: 4px; }
-  .box.sheet .row { flex-wrap: wrap; justify-content: center; }
-  .box:has(.legend) { max-width: min(780px, 100%); }
-  .box .legend { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-  .box .legend img { width: 36px; height: 54px; }
-  .box .legend small { font-size: 12px; }
 }
-@keyframes rise { from { transform: translateY(30px) scale(0.94); opacity: 0; } }
-@keyframes band-in { from { transform: scaleY(0.1); opacity: 0; } }
-@keyframes sheet-in { from { transform: translateY(110%); } }
 /* an open menu (reactions, settings) stays above an event banner that pops up meanwhile (z 40), below dialogs (z 50) */
 .corner-btns:has(.sound-pop, .react-pop) { z-index: 45; }
+
+/* The dialogs themselves are GamePanels (GamePanel.css); below are only their own parts. */
+
+/* ---------- pass the device: the next player's face and name, what waits for them ---------- */
+.gp.handover { --gp-w: 420px; gap: 10px; }
+.handover-ava { border-radius: 50% !important; border: 3px solid var(--gold-bright); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4); margin-top: 4px; }
+.gp-title.handover-name {
+  font-size: clamp(28px, 5vw, 40px);
+  color: var(--gold-bright);
+  margin: 0;
+  /* a name is one word for the eye: cut with "…" rather than broken */
+  overflow-wrap: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.handover-notes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.handover-notes li {
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-wrap: balance;
+}
+.handover-notes b { color: var(--gold-bright); }
+.handover .gp-actions { margin-top: 4px; }
+
+/* ---------- a dare: room for both answers on one line each ---------- */
+.gp.dare-panel { --gp-w: 520px; }
+
+/* ---------- choose a player (Seven, Swap, Gift): their face, name, how many cards ---------- */
+.gp.pick-player { --gp-w: 440px; }
+.plist { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.plist.lots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.gp.pick-player:has(.plist.lots) { --gp-w: 600px; }
+.plist button {
+  position: relative;
+  min-width: 0;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+}
+.plist-ava { flex: none; border-radius: 50% !important; }
+.plist-name { flex: 1; min-width: 0; font-weight: 800; font-size: 15.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plist-bot { flex: none; opacity: 0.8; }
+.plist-n {
+  flex: none;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.plist-key {
+  flex: none;
+  min-width: 1.5em;
+  padding: 1px 4px;
+  border-radius: 6px;
+  font: 700 11px/1.3 var(--body);
+  text-align: center;
+  color: var(--muted);
+  background: rgba(0, 0, 0, 0.28);
+}
+@media (pointer: coarse) {
+  .plist-key { display: none; }
+}
+@media (hover: hover) {
+  .plist button:hover { background: rgba(255, 255, 255, 0.11); border-color: var(--gold); }
+}
+.plist button:active { transform: scale(0.98); }
+.plist button:focus { outline: none; }
+.plist button:focus-visible { outline: 3px solid var(--gold-bright); outline-offset: 2px; }
+
+/* ---------- the round's results: who won, the forfeit, tonight's score, what next ---------- */
+.gp.results { --gp-w: 560px; gap: 8px; padding-block: 14px; }
+/* on the right of a computer or a tablet on its side (GamePanel.css): narrower, the podium keeps the left */
+@media (orientation: landscape) and (min-height: 521px) and (min-aspect-ratio: 5/4) {
+  .gp.results { --gp-w: clamp(340px, 34vw, 460px); }
+}
+.results .gp-title { color: var(--gold-bright); font-size: clamp(20px, 2.4vw, 24px); margin: 0; }
+.results .gp-card { font-size: 16px; padding: 10px 14px; }
+.results-forfeit { width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.score { width: 100%; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.score small { width: 100%; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.score div {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  min-width: 0;
+  max-width: 100%;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 14px;
+}
+/* a long name gives way ("…"), the points never do */
+.score div span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.score div b { flex: none; color: var(--gold-bright); }
+
+/* ---------- what the cards do: the legend, scrolled inside the panel ---------- */
+.gp.help { --gp-w: 780px; text-align: left; }
+.help .gp-title { text-align: center; }
+.help .legend-sub { margin: 8px 0 0; font-family: var(--display); font-weight: 800; font-size: 17px; text-align: center; }
+/* "Got it" stays in reach at the bottom while the legend scrolls */
+.help-ok {
+  position: sticky;
+  bottom: -16px;
+  margin-bottom: -16px;
+  padding: 10px 0 16px;
+  background: linear-gradient(to top, rgba(16, 10, 32, 1) 70%, rgba(16, 10, 32, 0));
+}
+
+/* ---------- leave the game / the room ---------- */
+.gp.leave { --gp-w: 420px; }
+.leave-text { font-size: 14.5px; }
+
+/* a phone on its side: everything tighter */
+@media (orientation: landscape) and (max-height: 520px) {
+  .gp.handover { gap: 6px; }
+  .handover-ava { width: 48px !important; height: 48px !important; border-width: 2px; margin-top: 0; }
+  .gp-title.handover-name { font-size: 26px; }
+  .handover-notes li { padding: 5px 10px; font-size: 13px; }
+  .plist { gap: 6px; }
+  .plist.many { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gp.pick-player:has(.plist.many) { --gp-w: 600px; }
+  .plist button { min-height: 44px; padding: 4px 10px 4px 6px; gap: 8px; }
+  .plist-ava { width: 30px !important; height: 30px !important; }
+  .plist-name { font-size: 14px; }
+  .gp.results { width: min(48%, 420px); gap: 6px; padding: 10px 14px; }
+  .results .gp-title { font-size: 18px; }
+  .results .gp-card { font-size: 14px; padding: 8px 10px; }
+  .score { gap: 4px; }
+  .score div { font-size: 12px; padding: 2px 8px; }
+  .help-ok { bottom: -12px; margin-bottom: -12px; padding: 8px 0 12px; }
+  .help .legend { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .help .legend img { width: 36px; height: 54px; }
+  .help .legend small { font-size: 12px; }
+}
+/* a narrow screen: the results a touch smaller */
+@media (max-width: 560px) {
+  .results .gp-title { font-size: 19px; }
+  .results .gp-card { font-size: 15px; padding: 8px 10px; }
+  .score div { font-size: 12.5px; padding: 3px 9px; }
+}
+/* phones on their side (375–440px tall): the results tighter still, so nothing has to scroll beside the podium */
+@media (orientation: landscape) and (max-height: 460px) {
+  .gp.results { gap: 4px; padding-block: 8px; width: min(50%, 480px); }
+  .results .gp-pill { min-height: 24px; font-size: 12px; }
+  .results .gp-title { font-size: 17px; }
+  .results .gp-note { font-size: 11.5px; }
+  .results .gp-card { font-size: 13px; padding: 5px 10px; border-radius: 12px; }
+  .score small { font-size: 10.5px; }
+}
+/* online on a phone on its side the rematch vote shares the panel: the score and forfeit give it room */
+@media (orientation: landscape) and (max-height: 460px) {
+  .results:has(.rematch) { gap: 3px; }
+  .results:has(.rematch) .gp-card { font-size: 12px; padding: 4px 8px; }
+  .results:has(.rematch) .score { gap: 3px; }
+  .results:has(.rematch) .score small { display: none; }
+  .results:has(.rematch) .score div { font-size: 11px; padding: 1px 7px; }
+  .results:has(.rematch) .btn.big { font-size: 14px; padding-inline: 8px; }
+}

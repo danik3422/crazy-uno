@@ -17,7 +17,10 @@ interface Props {
   onLeave: () => void;
 }
 
-/** After a round: everybody presses "Play again"; when all have, a 5-second countdown starts the next round. */
+/**
+ * After a round online (inside the results panel): everybody presses "Play again"; when all have, a 5-second
+ * countdown starts the next round. The host may start without the slow ones, or take everybody back to the lobby.
+ */
 export function RematchVote({ me, members, rematch, receivedAt, isHost, onVote, onForce, onLobby, onLeave }: Props) {
   const t = useT();
   const ready = new Set(rematch?.ready ?? []);
@@ -56,26 +59,26 @@ export function RematchVote({ me, members, rematch, receivedAt, isHost, onVote, 
           <b key={left}>{left}</b>
         </div>
       ) : (
-        <p className="muted small rematch-hint" aria-live="polite">
+        <p className="gp-note rematch-hint" aria-live="polite">
           {iAmReady
             ? waitingNames.length ? t('rm.waitFor', { names: waitingNames.join(', ') }) : t('rm.allReady')
             : t('rm.whenAll')}
         </p>
       )}
 
-      <div className="row center">
+      <div className={`gp-actions${isHost && left === null && iAmReady && waitingNames.length > 0 ? '' : ' one'}`}>
         {iAmReady ? (
-          <button className="btn" onClick={() => onVote(false)}>{t('rm.cancel')}</button>
+          <button type="button" className="btn big blue" onClick={() => onVote(false)}>{t('rm.cancel')}</button>
         ) : (
-          <button className="btn big" autoFocus onClick={() => onVote(true)}>{t('ov.again')}</button>
+          <button type="button" className="btn big" onClick={() => onVote(true)}>{t('ov.again')}</button>
         )}
         {isHost && left === null && iAmReady && waitingNames.length > 0 && (
-          <button className="btn big blue" onClick={onForce}>{t('rm.force')}</button>
+          <button type="button" className="btn big" onClick={onForce}>{t('rm.force')}</button>
         )}
       </div>
-      <div className="row center rematch-sub">
-        {isHost && <button className="btn" onClick={onLobby}>{t('rm.lobby')}</button>}
-        <button className="btn" onClick={onLeave}>{t('rm.leave')}</button>
+      <div className="rematch-sub">
+        {isHost && <button type="button" className="btn" onClick={onLobby}>{t('rm.lobby')}</button>}
+        <button type="button" className="btn" onClick={onLeave}>{t('rm.leave')}</button>
       </div>
     </div>
   );

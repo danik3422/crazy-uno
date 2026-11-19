@@ -1,8 +1,9 @@
 .rematch { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+.rematch > .gp-actions { margin-top: 2px; }
 .rematch-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
 .rematch-list li {
   display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px 4px 4px; border-radius: 999px;
-  background: rgba(0, 0, 0, 0.28); font-size: 13px; font-weight: 700; transition: background 0.25s;
+  background: rgba(255, 255, 255, 0.08); font-size: 13px; font-weight: 700; transition: background 0.25s;
 }
 .rematch-list li .avatar { border-radius: 50% !important; border: 2px solid #fff; }
 .rematch-list li.ok { background: rgba(38, 165, 86, 0.55); }
@@ -15,9 +16,30 @@
   font-family: var(--display); font-weight: 900; font-size: 40px; line-height: 1; color: var(--gold);
   animation: count-pop 0.5s cubic-bezier(.2, 1.6, .4, 1);
 }
-.rematch-sub .btn { font-size: 13px; padding: 7px 12px; background: transparent; color: var(--muted); }
+.rematch-count span { color: var(--muted); }
+/* the quieter ways out, two small outlined pills under the main buttons; 44px tall to tap */
+.rematch-sub { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 8px; margin-top: -2px; }
+.rematch-sub .btn {
+  min-height: 44px; font-size: 13px; font-weight: 700; padding: 6px 14px; border-radius: 999px;
+  background: transparent; color: var(--muted); border: 1px solid rgba(255, 255, 255, 0.16);
+}
 .rematch-sub .btn:hover { color: var(--ink); background: rgba(255, 255, 255, 0.08); }
+@media (orientation: landscape) and (max-height: 520px) {
+  .rematch { gap: 6px; }
+  .rematch-sub .btn { min-height: 36px; padding: 4px 12px; }
+  .rematch-count b { font-size: 30px; }
+}
 /* a long name: one line, cut with "…" (two lines made the chips ragged) */
 .rematch-list li { max-width: 100%; min-width: 0; }
 .rematch-list .rm-name { min-width: 0; max-width: 11em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
 @keyframes count-pop { from { transform: scale(1.8); opacity: 0; } }
+/* phones on their side: the vote fits beside the podium without scrolling */
+@media (orientation: landscape) and (max-height: 460px) {
+  .rematch { gap: 4px; }
+  .rematch-list li { padding: 2px 8px 2px 2px; font-size: 12px; gap: 5px; }
+  .rematch-list li .avatar { width: 24px !important; height: 24px !important; }
+  .rematch-hint { font-size: 11.5px; }
+  .rematch-count b { font-size: 24px; }
+  .rematch-sub { margin-top: 0; }
+  .rematch-sub .btn { min-height: 40px; padding: 2px 12px; font-size: 12px; }
+}

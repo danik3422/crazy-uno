@@ -243,7 +243,6 @@ const g = {
   before: null as number | null,
   x0: 0,
   y0: 0,
-  t0: 0,
   moved: false,
   /** where the finger was when the picked card last changed: an upward move from here is a drag toward the pile */
   ax: 0,
@@ -258,14 +257,18 @@ const g = {
   /** the browser's click after our touch must not reach the table */
   quietUntil: 0,
   lastTick: 0,
+  /** the canvas' place on the page, read once when the finger lands (it does not move under a finger) */
+  left: 0,
+  top: 0,
+  w: 0,
+  h: 0,
 };
-
-/** debug: what the last touch did */
-const last = { play: null as { id: number; ok: boolean } | null, up: '' };
 
 const ray = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
 const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -DRAG_HEIGHT);
+
+const NO_ROWS: Row[] = [];
 
 function select(id: number | null) {
   if (touchHand.sel === id) return;
@@ -273,15 +276,16 @@ function select(id: number | null) {
   touchHand.room.clear();
   if (id === null) return;
   // the cards beside it step aside along the hand, the nearest the most
-  const row = g.hand?.rows.find(r => r.ids.includes(id));
   const t = cards.get(id)?.t;
-  if (row && t) {
+  for (const row of g.hand?.rows ?? NO_ROWS) {
     const i = row.ids.indexOf(id);
+    if (i < 0 || !t) continue;
     const step = CARD_W * (t.scale ?? 1) * 0.3;
-    row.ids.forEach((other, k) => {
+    for (let k = 0; k < row.ids.length; k++) {
       const aside = k === i ? 0 : Math.sign(k - i) * step * Math.exp(-(Math.abs(k - i) - 1) / 2.5);
-      touchHand.room.set(other, row.spread[k] + aside);
-    });
+      touchHand.room.set(row.ids[k], row.spread[k] + aside);
+    }
+    break;
   }
   // a light tick under the finger for every card passed (not a buzz when sliding fast)
   const now = performance.now();
@@ -294,7 +298,6 @@ function select(id: number | null) {
 /** Play the picked card, or shake it when it may not go now. */
 function play(id: number) {
   const e = cards.get(id);
-  last.play = { id, ok: !!e?.t.interactive };
   if (!e) return;
   if (e.t.interactive) {
     select(null);
@@ -315,9 +318,8 @@ function endDrag() {
 }
 
 /** The card follows the finger over the table (as with a mouse drag): over the pile, letting go plays it. */
-function dragTo(canvas: HTMLCanvasElement, cx: number, cy: number) {
-  const r = canvas.getBoundingClientRect();
-  ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+function dragTo(x: number, y: number) {
+  ndc.set((x / g.w) * 2 - 1, -(y / g.h) * 2 + 1);
   ray.setFromCamera(ndc, cam!);
   if (!ray.ray.intersectPlane(dragPlane, drag.point)) return;
   const near = Math.hypot(drag.point.x - dropZone.x, drag.point.z - dropZone.z) < dropZone.radius;
@@ -338,11 +340,17 @@ function under(x: number, y: number, mayRise: boolean) {
   return R.ids[pickSlot(R.edges, x, cur >= 0 ? cur : null)] ?? touchHand.sel;
 }
 
+/** The picked card leaves the hand with the finger (at x, y) and follows it over the table. */
+function lift(x: number, y: number) {
+  g.dragging = true;
+  g.dragY = y;
+  drag.id = touchHand.sel;
+  drag.moved = true;
+  drag.over = false;
+  dragTo(x, y);
+}
+
 function listen(canvas: HTMLCanvasElement) {
-  const local = (e: PointerEvent) => {
-    const r = canvas.getBoundingClientRect();
-    return [e.clientX - r.left, e.clientY - r.top, r.width, r.height];
-  };
   const sample = (y: number) => {
     g.ys[g.k % 8] = y;
     g.ts[g.k % 8] = performance.now();
@@ -373,7 +381,11 @@ function listen(canvas: HTMLCanvasElement) {
       e.stopPropagation();
       return;
     }
-    const [x, y, w, h] = local(e);
+    const r = canvas.getBoundingClientRect();
+    const w = r.width;
+    const h = r.height;
+    const x = e.clientX - r.left;
+    const y = e.clientY - r.top;
     const H = shape(w, h);
     const sel = touchHand.sel;
     const selObj = sel !== null ? cards.get(sel)?.obj : null;
@@ -393,10 +405,13 @@ function listen(canvas: HTMLCanvasElement) {
       // already captured by the touch itself
     }
     g.hand = H;
+    g.left = r.left;
+    g.top = r.top;
+    g.w = w;
+    g.h = h;
     g.before = sel;
     g.x0 = g.ax = x;
     g.y0 = g.ay = y;
-    g.t0 = performance.now();
     g.moved = false;
     g.k = 0;
     sample(y);
@@ -413,24 +428,17 @@ function listen(canvas: HTMLCanvasElement) {
   const move = (e: PointerEvent) => {
     if (e.pointerId !== g.pointer || !g.hand) return;
     e.stopPropagation();
-    const [x, y] = local(e);
+    const x = e.clientX - g.left;
+    const y = e.clientY - g.top;
     sample(y);
     const sel = touchHand.sel;
     const playable = sel !== null && !!cards.get(sel)?.t.interactive;
-    const lift = () => {
-      g.dragging = true;
-      g.dragY = y;
-      drag.id = sel;
-      drag.moved = true;
-      drag.over = false;
-      dragTo(canvas, e.clientX, e.clientY);
-    };
     if (!g.moved) {
       if (Math.hypot(x - g.x0, y - g.y0) < TAP_SLOP) return;
       g.moved = true;
       // the first move decides: up (steeper than about 27°) on a card you may play takes it out of the hand at once,
       // even on its way to a pile off to the side; anything flatter slides along the hand
-      if (playable && g.y0 - y > 0.5 * Math.abs(x - g.x0)) return lift();
+      if (playable && g.y0 - y > 0.5 * Math.abs(x - g.x0)) return lift(x, y);
     }
     if (g.dragging) {
       // back down to where the drag began: the card returns to the hand and the finger picks again
@@ -439,14 +447,14 @@ function listen(canvas: HTMLCanvasElement) {
         g.ax = x;
         g.ay = y;
       } else {
-        dragTo(canvas, e.clientX, e.clientY);
+        dragTo(x, y);
         return;
       }
     }
     const upward = g.ay - y;
     const reach = Math.max(30, g.hand.cardPx * 0.3);
     // pushed up away from the hand (more up than sideways): the card leaves the hand with the finger
-    if (playable && upward >= reach && upward > Math.abs(x - g.ax)) return lift();
+    if (playable && upward >= reach && upward > Math.abs(x - g.ax)) return lift(x, y);
     // above the hand: the choice stays as it is
     if (y < g.hand.top) return;
     // up into the row behind only by sliding there (an upward push is a drag toward the pile)
@@ -464,17 +472,16 @@ function listen(canvas: HTMLCanvasElement) {
     g.pointer = null;
     g.quietUntil = performance.now() + 450;
     drag.suppressClickUntil = g.quietUntil;
-    const [, y, , h] = local(e);
+    const y = e.clientY - g.top;
     sample(y);
     const sel = touchHand.sel;
     // a quick flick up, or a card clearly pulled up out of the hand (a quarter of the screen) and let go:
     // either way the player meant "play it", even short of the pile and however slowly the finger moved
-    const pulled = g.dragging && g.y0 - y >= h * PULL_FRAC;
+    const pulled = g.dragging && g.y0 - y >= g.h * PULL_FRAC;
     const flick = (rise() >= FLICK_V && g.y0 - y >= FLICK_D) || pulled;
     // however long it was held: a finger that stays put on the card already picked means "this one"
     const tap = !g.moved;
     const over = g.dragging && drag.over;
-    last.up = `ms=${Math.round(performance.now() - g.t0)} moved=${g.moved} tap=${tap} flick=${flick} rise=${rise().toFixed(2)} drag=${g.dragging} over=${over} before=${g.before} sel=${sel}`;
     endDrag();
     g.hand = null;
     if (sel === null || e.type === 'pointercancel') return;
@@ -510,11 +517,11 @@ function listen(canvas: HTMLCanvasElement) {
   };
 }
 
-/** debug and tests: the card picked by the finger, and the hand's strips on screen */
-export function touchDebug() {
+/** debug and tests: the card picked by the finger (or last refused), and the hand's strips on screen */
+function touchDebug() {
   const c = cam ? [...attached.keys()][0] : null;
   const r = c?.getBoundingClientRect();
   const H = r ? shape(r.width, r.height) : null;
-  return { sel: touchHand.sel, dragging: g.dragging, last, rows: H?.rows.map(x => ({ ids: x.ids, edges: x.edges.map(Math.round), top: Math.round(x.top) })), top: H?.top };
+  return { sel: touchHand.sel, dragging: g.dragging, shakeId: touchHand.shakeId, shakeAt: touchHand.shakeAt, rows: H?.rows.map(x => ({ ids: x.ids, edges: x.edges.map(Math.round), top: Math.round(x.top) })), top: H?.top };
 }
 exposeDebug('__touch', touchDebug);

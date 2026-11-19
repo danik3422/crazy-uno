@@ -29,3 +29,59 @@ describe('event timing', () => {
     expect(eventDue(state(23, 10, true), never)).toBe(true);
   });
 });
+
+describe('coin of fate', () => {
+  /** a person's turn, waiting on the coin; the dice are set by `roll` */
+  function coinTurn() {
+    let roll = 0.1;
+    const g = new Game(
+      { players: [{ name: 'Me', bot: false }, { name: 'Bot', bot: true }], rules: { ...DEFAULT_RULES, events: true }, online: true },
+      { rng: () => roll },
+    );
+    g.s.cur = 0;
+    g.s.phase = 'coin';
+    g.s.coin = null;
+    return { g, setRoll: (r: number) => { roll = r; } };
+  }
+
+  it('a right guess sheds 2 cards, then the turn goes on', () => {
+    const { g, setRoll } = coinTurn();
+    const before = g.s.players[0].hand.length;
+    setRoll(0.1); // heads
+    g.guessCoin('heads');
+    expect(g.s.coin).toEqual({ guess: 'heads', result: 'heads', win: true });
+    expect(g.s.players[0].hand.length).toBe(before - 2);
+    // a second guess while the result shows changes nothing
+    g.guessCoin('tails');
+    expect(g.s.coin?.guess).toBe('heads');
+    g.finishCoin();
+    expect(g.s.coin).toBeNull();
+    expect(g.s.phase).toBe('play');
+    expect(g.s.cur).toBe(0);
+  });
+
+  it('a wrong guess draws 2 cards', () => {
+    const { g, setRoll } = coinTurn();
+    const before = g.s.players[0].hand.length;
+    setRoll(0.9); // tails
+    g.guessCoin('heads');
+    expect(g.s.coin).toEqual({ guess: 'heads', result: 'tails', win: false });
+    expect(g.s.players[0].hand.length).toBe(before + 2);
+    g.finishCoin();
+    expect(g.s.phase).toBe('play');
+  });
+
+  it('a right guess never empties the hand (shedding stops at one card)', () => {
+    const { g, setRoll } = coinTurn();
+    g.s.players[0].hand = g.s.players[0].hand.slice(0, 2);
+    setRoll(0.1);
+    g.guessCoin('heads');
+    expect(g.s.players[0].hand.length).toBe(1);
+  });
+
+  it('finishing before guessing does nothing', () => {
+    const { g } = coinTurn();
+    g.finishCoin();
+    expect(g.s.phase).toBe('coin');
+  });
+});

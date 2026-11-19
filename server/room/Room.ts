@@ -294,11 +294,11 @@ export class Room {
 
   /* ---------- messages ---------- */
 
-  /** Dev server only: knock out one bot (or every bot) still in the game, the way 25 cards would. */
-  private debug(knockout: 'one' | 'all') {
+  /** Dev server only: knock out one bot, every bot, or the sender themselves ('me'), the way 25 cards would. */
+  private debug(m: Member, knockout: 'one' | 'all' | 'me') {
     const g = this.game;
     if (!this.opts.debug || !g) return;
-    g.debugKnockOut(knockout);
+    g.debugKnockOut(knockout === 'me' ? this.seats.indexOf(m.id) : knockout);
   }
 
   handle(m: Member, msg: ClientMsg) {
@@ -391,7 +391,7 @@ export class Room {
       case 'react':
         return this.react(m, msg.id);
       case 'debug':
-        return this.debug(msg.knockout);
+        return this.debug(m, msg.knockout);
       case 'join':
       case 'create':
       case 'ping':
@@ -402,9 +402,9 @@ export class Room {
   /* ---------- round start: loading screens and the deal ---------- */
 
   /** The table is still loading or the cards are still flying. */
-  private warming() {
+  private warming(now = Date.now()) {
     const w = this.warm;
-    return !!w && (w.dealEnd === null || Date.now() < w.dealEnd);
+    return !!w && (w.dealEnd === null || now < w.dealEnd);
   }
 
   /**
@@ -649,14 +649,17 @@ export class Room {
     return b;
   }
 
-  /** The game as `m` may see it: their own hand face up, everyone else's as opaque placeholders (see playerView). */
-  view(m: Member | null): PlayerView | null {
+  /**
+   * The game as `m` may see it at server time `now`: their own hand face up, everyone else's as opaque placeholders
+   * (see playerView).
+   */
+  view(m: Member | null, now = Date.now()): PlayerView | null {
     const g = this.game;
     if (!g) return null;
     return buildPlayerView(g, {
       you: m ? this.seats.indexOf(m.id) : -1,
       book: m ? this.aliasBook(m, g) : null,
-      dealing: this.warming(),
+      dealing: this.warming(now),
       seats: this.seats,
       isOffline: seat => {
         const mem = this.member(this.seats[seat]);
@@ -689,8 +692,10 @@ export class Room {
   }
 
   private sendState(m: Member) {
-    const v = this.view(m);
-    if (v && m.sock) this.sendTo(m.sock, { t: 'state', view: v, now: Date.now() });
+    // one clock reading for both: the view is exactly what the table looked like at the `now` it is stamped with
+    const now = Date.now();
+    const v = this.view(m, now);
+    if (v && m.sock) this.sendTo(m.sock, { t: 'state', view: v, now });
   }
 
   /** Engine changed: coalesce several commits of one action into one broadcast. */

@@ -825,6 +825,7 @@ const enStrings: Record<keyof typeof ruStrings, Entry> = {
   'ov.timeUp': '⏱ The round’s time is up: the fewest cards wins',
   'ov.loser': '{who} has the most cards ({n}). Forfeit:',
   'ov.score': 'Wins tonight',
+  'ov.roundOver': 'Round over',
   'ov.toMenu': 'Menu',
   'ov.again': 'Play again',
   'ov.cardsBtn': 'Cards',

@@ -59,17 +59,21 @@ class TestClient {
         this.readyFor = m.view.state.round;
         this.send({ t: 'ready', round: m.view.state.round });
       }
-      this.checkSecrecy(m.view);
+      this.checkSecrecy(m.view, m.now);
       if (this.auto) this.play(m.view);
     }
     this.waiters.forEach(w => w());
   }
 
-  /** Nobody may see another player's cards while the round is on. */
-  private checkSecrecy(v: PlayerView) {
+  /**
+   * Nobody may see another player's cards while the round is on. `now`: the server time the view was built at. The
+   * deal positions are judged by that, not by when this client got round to reading the message: on a busy machine
+   * a view from the last moments of the deal can arrive well after the deal is over, and still rightly carry them.
+   */
+  private checkSecrecy(v: PlayerView, now: number) {
     const s = v.state;
     if (s.phase === 'over') return;
-    const dealt = v.warmup.dealEnd !== null && Date.now() > v.warmup.dealEnd + 100;
+    const dealt = v.warmup.dealEnd !== null && now >= v.warmup.dealEnd;
     s.players.forEach((p, i) => {
       if (i === v.you) return;
       if (p.hand.some(c => !c.hidden)) this.leaks++;
@@ -237,9 +241,10 @@ describe('online rooms', () => {
     let sawChallenge = false;
     let sawCatchWindow = false;
     for (const c of clients) {
-      const orig = (c as unknown as { checkSecrecy: (v: PlayerView) => void }).checkSecrecy.bind(c);
-      (c as unknown as { checkSecrecy: (v: PlayerView) => void }).checkSecrecy = (v: PlayerView) => {
-        orig(v);
+      const spy = c as unknown as { checkSecrecy: (v: PlayerView, now: number) => void };
+      const orig = spy.checkSecrecy.bind(c);
+      spy.checkSecrecy = (v: PlayerView, now: number) => {
+        orig(v, now);
         if (v.state.challenge) {
           sawChallenge = true;
           if (v.state.challenge.guilty) c.leaks++;
@@ -272,9 +277,10 @@ describe('online rooms', () => {
     let jumpsSeen = 0;
     let wrongJumps = 0;
     for (const c of clients) {
-      const orig = (c as unknown as { checkSecrecy: (v: PlayerView) => void }).checkSecrecy.bind(c);
-      (c as unknown as { checkSecrecy: (v: PlayerView) => void }).checkSecrecy = (v: PlayerView) => {
-        orig(v);
+      const spy = c as unknown as { checkSecrecy: (v: PlayerView, now: number) => void };
+      const orig = spy.checkSecrecy.bind(c);
+      spy.checkSecrecy = (v: PlayerView, now: number) => {
+        orig(v, now);
         const s = v.state;
         // every jump the server let through went on an identical card: the last card named in the log before it
         s.log.forEach((l, i) => {
@@ -313,6 +319,33 @@ describe('online rooms', () => {
     expect(jumpsSeen).toBeGreaterThan(0);
     expect(wrongJumps).toBe(0);
     clients.forEach(c => c.close());
+  });
+
+  it('judges the deal positions by when the server built a view, not by when a busy client read it', async () => {
+    const [host, guest] = await openRoom(['Занятой', 'Гость']);
+    let stalled = false;
+    let sawDealIdx = false;
+    const spy = guest as unknown as { checkSecrecy: (v: PlayerView, now: number) => void };
+    const orig = spy.checkSecrecy.bind(guest);
+    spy.checkSecrecy = (v: PlayerView, now: number) => {
+      if (v.warmup.dealEnd !== null && !stalled) {
+        // the machine is busy: this process is off the CPU for a moment, longer than the whole (sped-up) deal
+        stalled = true;
+        const until = v.warmup.dealEnd + 250;
+        while (Date.now() < until) { /* busy */ }
+      }
+      if (v.state.players.some((p, i) => i !== v.you && p.hand.some(c => c.dealIdx !== undefined))) sawDealIdx = true;
+      orig(v, now);
+    };
+    host.send({ t: 'start' });
+    await guest.until(() => over(guest), 30_000);
+    // the view read late was built mid-deal and rightly carried the deal positions: that is no leak
+    expect(stalled).toBe(true);
+    expect(sawDealIdx).toBe(true);
+    expect(guest.leaks).toBe(0);
+    expect(host.leaks).toBe(0);
+    host.close();
+    guest.close();
   });
 
   it('holds the round until every screen is ready, then deals to everyone at once', async () => {

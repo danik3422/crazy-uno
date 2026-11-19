@@ -832,6 +832,7 @@ const plStrings: Record<keyof typeof ruStrings, Entry> = {
   'ov.timeUp': '⏱ Czas rundy minął: wygrywa ten, kto ma najmniej kart',
   'ov.loser': 'Najwięcej kart ma {who} ({n}). Kara:',
   'ov.score': 'Wygrane tego wieczoru',
+  'ov.roundOver': 'Koniec rundy',
   'ov.toMenu': 'Menu',
   'ov.again': 'Jeszcze runda',
   'ov.cardsBtn': 'Karty',

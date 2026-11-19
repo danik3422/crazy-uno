@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
 import type { Player } from '../../game/types';
 import { useT } from '../../i18n';
 import { AvatarImg } from '../components/AvatarImg';
+import { GamePanel, Key } from './GamePanel';
 import './ChallengePick.css';
 
 interface Props {
@@ -23,24 +23,13 @@ interface Props {
 export function ChallengePick({ by, pending, canAnswer, onAccept, onChallenge }: Props) {
   const t = useT();
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.key === '1') { e.preventDefault(); onAccept(); }
-      if (e.key === '2') { e.preventDefault(); onChallenge(); }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onAccept, onChallenge]);
-
   return (
-    <div className="chal" role="dialog" aria-label={t('ov.challenge')}>
-      <p className="chal-who">
-        <AvatarImg id={by.avatar} name={by.name} bot={by.bot} size={26} className="chal-ava" />
-        <span className="chal-name">{t('ov.laid4', { who: by.name })}</span>
-      </p>
-      <h2 className="chal-title">{t('ov.challenge')}</h2>
-
+    <GamePanel
+      className="chal"
+      pill={<><AvatarImg id={by.avatar} name={by.name} bot={by.bot} size={26} /><span>{t('ov.laid4', { who: by.name })}</span></>}
+      title={t('ov.challenge')}
+      keys={{ 1: onAccept, 2: onChallenge }}
+    >
       <div className="chal-opts">
         <div className="chal-opt">
           <div className="chal-info">
@@ -49,7 +38,7 @@ export function ChallengePick({ by, pending, canAnswer, onAccept, onChallenge }:
           </div>
           <button type="button" className="btn big blue" onClick={onAccept}>
             {canAnswer ? t('ov.accept') : t('ov.acceptTake', { n: pending })}
-            <kbd aria-hidden>1</kbd>
+            <Key k={1} />
           </button>
         </div>
         <div className="chal-opt">
@@ -59,12 +48,12 @@ export function ChallengePick({ by, pending, canAnswer, onAccept, onChallenge }:
           </div>
           <button type="button" className="btn big red" onClick={onChallenge}>
             {t('ov.challengeBtn')}
-            <kbd aria-hidden>2</kbd>
+            <Key k={2} />
           </button>
         </div>
       </div>
 
-      <p className="chal-rule">{t('ov.chRule')}</p>
-    </div>
+      <p className="gp-note chal-rule">{t('ov.chRule')}</p>
+    </GamePanel>
   );
 }

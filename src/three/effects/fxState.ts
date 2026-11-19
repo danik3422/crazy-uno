@@ -67,6 +67,34 @@ export function summonMascot(mode: MascotMode = 'fly', delay = 0, target = 0, se
 
 export const nowSec = () => performance.now() / 1000;
 
+/**
+ * A new round: every timed table effect of the last one ends now (upside down, spins, the carousel, shaking,
+ * a bombing run or meteor still in flight…). They last a fixed time from when they fired, and a round that ended
+ * sooner (or a rematch everyone agreed to quickly) would otherwise start under them.
+ */
+export function resetRoundFx() {
+  const f = fxState;
+  f.shakeUntil = 0;
+  f.shakeAmp = 0;
+  f.chaosUntil = 0;
+  f.holdUntil = 0;
+  f.spinUntil = 0;
+  f.upsideUntil = 0;
+  f.carouselUntil = 0;
+  f.boomAt = -100;
+  f.winAt = -100;
+  f.eventAt = -100;
+  f.event = { ...f.event, at: -100, id: null };
+  f.landAt = -100;
+  f.drawLandAt = -100;
+  f.meteor = { at: -100, target: 0 };
+  f.lightning = { at: -100, target: 0 };
+  f.burst = { at: -100, target: 0 };
+  f.mascot = { ...f.mascot, at: -100 };
+  f.drop = { ...f.drop, at: -100, until: -100 };
+  f.bombFall = { ...f.bombFall, at: -100 };
+}
+
 export function shake(amp: number, dur: number) {
   // a shaking camera is exactly what "reduce motion" asks to avoid; the effects themselves still play
   if (reducedMotion()) return;

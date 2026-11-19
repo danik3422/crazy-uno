@@ -1105,9 +1105,12 @@ export class Game extends Observable {
   }
 
   /** Debug (the console, the dev server): knock out one bot (or every bot) still in the game, as 25 cards would. */
-  debugKnockOut(which: 'one' | 'all') {
+  debugKnockOut(which: 'one' | 'all' | number) {
     const bots = this.s.players.filter(p => p.bot && !p.out);
-    for (const p of which === 'all' ? bots : bots.slice(0, 1)) if (this.s.phase !== 'over') this.knockOut(p);
+    // a seat number: that player (a person too), to try what a knocked-out player sees
+    const seat = typeof which === 'number' ? this.s.players[which] : undefined;
+    const who = typeof which === 'number' ? (seat && !seat.out ? [seat] : []) : which === 'all' ? bots : bots.slice(0, 1);
+    for (const p of who) if (this.s.phase !== 'over') this.knockOut(p);
     // a bot knocked out in the middle of its own turn hands the turn on, as a real knock-out on a draw does
     this.skipIfOut();
     this.emitChange();

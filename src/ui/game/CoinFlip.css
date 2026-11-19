@@ -1,3 +1,6 @@
+/* The coin of fate in the shared game panel (GamePanel.css): the coin, the rule (then the verdict), two guesses. */
+.gp.coin-panel { --gp-w: 440px; }
+.coin-verdict { padding-block: 10px; }
 .coin-stage { perspective: 600px; height: 150px; display: grid; place-items: center; }
 .coin { position: relative; width: 120px; height: 120px; transform-style: preserve-3d; }
 .coin.idle { animation: coin-idle 2.4s ease-in-out infinite; }
@@ -12,9 +15,10 @@
 .coin .tails { transform: rotateY(180deg); }
 @keyframes coin-idle { 50% { transform: rotateY(25deg) translateY(-6px); } }
 @keyframes coin-flip { 0% { transform: translateY(0) rotateY(0); } 45% { transform: translateY(-60px) rotateY(calc(var(--end) * 0.6)); } 100% { transform: translateY(0) rotateY(var(--end)); } }
-/* a phone on its side: a smaller coin, so the band with its question and both buttons fits the short screen */
+/* a phone on its side: a smaller coin, so the panel with its question and both buttons fits the short screen */
 @media (orientation: landscape) and (max-height: 520px) {
-  .coin-stage { height: 92px; }
+  .coin-stage { height: 88px; }
+  .coin-verdict { padding-block: 6px; }
   .coin { width: 76px; height: 76px; }
   .coin .face { border-width: 4px; }
   @keyframes coin-flip { 0% { transform: translateY(0) rotateY(0); } 45% { transform: translateY(-30px) rotateY(calc(var(--end) * 0.6)); } 100% { transform: translateY(0) rotateY(var(--end)); } }

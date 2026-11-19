@@ -1,34 +1,13 @@
-/* The colour choice after a wild: a compact panel of four small cards over a lightly dimmed table. */
+/* The colour choice after a wild: four small cards in the shared game panel (GamePanel.css). */
 
-.ov.pick-ov {
-  /* the table stays readable behind: a soft vignette, darker only where the panel sits */
-  background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(8, 4, 18, 0.62), rgba(8, 4, 18, 0.28) 70%);
-}
-
-.cpick {
+.gp.cpick {
   --card-w: clamp(66px, 10.5vw, 116px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  /* as wide as its four cards */
+  width: auto;
   gap: 18px;
   padding: 20px clamp(16px, 3vw, 30px) 18px;
-  border-radius: 28px;
-  background: linear-gradient(180deg, rgba(34, 22, 62, 0.97), rgba(16, 10, 32, 0.97));
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12) inset, 0 24px 60px rgba(0, 0, 0, 0.55);
-  max-width: 100%;
-  animation: cpick-in 0.32s cubic-bezier(0.2, 1.2, 0.4, 1);
 }
-
-.cpick-title {
-  margin: 0;
-  font-family: var(--display);
-  font-weight: 900;
-  font-size: clamp(18px, 2.2vw, 24px);
-  color: var(--ink);
-  text-align: center;
-  text-wrap: balance;
-}
+.cpick .gp-title { margin: 0; font-size: clamp(18px, 2.2vw, 24px); }
 
 .cpick-row {
   display: flex;
@@ -159,22 +138,22 @@
 
 /* a phone on its side: one tight row, smaller cards */
 @media (orientation: landscape) and (max-height: 520px) {
-  .cpick { --card-w: clamp(56px, 9vw, 74px); gap: 10px; padding: 12px 18px 12px; border-radius: 22px; }
+  .gp.cpick { --card-w: clamp(56px, 9vw, 74px); gap: 10px; padding: 12px 18px 12px; }
+  .cpick .gp-title { font-size: 18px; }
   .cpick-row { padding-top: 6px; }
   .cpick-card { gap: 5px; }
   .cpick-name { font-size: 12px; }
 }
 /* narrow portrait: four cards across the width */
 @media (max-width: 480px) {
-  .cpick { --card-w: calc((100vw - 32px - 32px - 3 * 10px) / 4); padding-inline: 16px; }
+  .gp.cpick { --card-w: calc((100vw - 32px - 32px - 3 * 10px) / 4); padding-inline: 16px; }
   .cpick-row { gap: 10px; }
   .cpick-name { font-size: 11px; }
 }
 
-@keyframes cpick-in { from { transform: translateY(18px) scale(0.96); opacity: 0; } }
 @keyframes cpick-deal { from { transform: translateY(36px) rotate(10deg); opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .cpick, .cpick-card { animation: none; }
+  .cpick-card { animation: none; }
   .cpick-face { transition: none; }
 }

@@ -1,0 +1,187 @@
+/* Every dialog during a game (GamePanel.tsx): a compact dark panel over a softly vignetted table. */
+
+/* the layer: centred, clear of the Dynamic Island / notch and the home indicator */
+.ov {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding:
+    max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px))
+    max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  animation: fade 0.2s;
+}
+/* the table stays readable behind: a soft vignette, darker only where the panel sits */
+.ov.pick-ov {
+  background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(8, 4, 18, 0.62), rgba(8, 4, 18, 0.28) 70%);
+}
+/* the hot-seat curtain hides the table (and the last player's hand) completely */
+.ov.pick-ov.opaque { background: var(--stage); }
+/* the round's results: docked to the bottom, the podium in the middle stays in view */
+.ov.pick-ov.dock-ov {
+  align-items: end;
+  background: linear-gradient(to top, rgba(8, 4, 18, 0.6), transparent 50%);
+}
+/* a computer or a tablet on its side: the results sit on the right, the podium stands in the free left part
+   (the finale camera shifts it there, see CameraRig) instead of half of it hiding under the panel */
+@media (orientation: landscape) and (min-height: 521px) and (min-aspect-ratio: 5/4) {
+  .ov.pick-ov.dock-ov {
+    align-items: center;
+    justify-items: end;
+    padding-top: calc(72px + env(safe-area-inset-top, 0px));
+    padding-right: max(24px, env(safe-area-inset-right, 0px));
+    background: linear-gradient(to left, rgba(8, 4, 18, 0.6), transparent 55%);
+  }
+  /* (the results set their own width in Overlays.css) */
+}
+
+.gp {
+  --gp-w: 480px;
+  width: min(var(--gp-w), 100%);
+  max-height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 18px clamp(14px, 3vw, 22px) 16px;
+  border-radius: 28px;
+  text-align: center;
+  color: var(--ink);
+  background: linear-gradient(180deg, rgba(34, 22, 62, 0.97), rgba(16, 10, 32, 0.97));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12) inset, 0 24px 60px rgba(0, 0, 0, 0.55);
+  animation: gp-in 0.32s cubic-bezier(0.2, 1.2, 0.4, 1);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.gp:focus { outline: none; }
+.gp > * { flex: none; }
+.gp p { margin: 0; }
+
+/* who / what: a small pill with a face or an icon */
+.gp-pill {
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 12px;
+  min-height: 32px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+/* a face or an icon sits flush with the pill's rounded end */
+.gp-pill:has(> .avatar:first-child, > img:first-child) { padding-left: 3px; }
+.gp-pill > .avatar { border-radius: 50% !important; flex: none; }
+.gp-pill > img { flex: none; }
+.gp-pill > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.gp-title {
+  margin: -2px 0 2px;
+  max-width: 100%;
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: clamp(21px, 2.8vw, 28px);
+  line-height: 1.15;
+  color: var(--ink);
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+/* the text that matters (a dare, a forfeit, the coin's verdict): a lit card with a dashed gold edge */
+.gp-card {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 2px dashed var(--gold-bright);
+  background: rgba(255, 216, 74, 0.08);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(17px, 2vw, 21px);
+  line-height: 1.3;
+  color: var(--ink);
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.gp-card.good { border-color: #4fd98a; background: rgba(47, 191, 106, 0.14); }
+.gp-card.bad { border-color: #ff7a6e; background: rgba(229, 65, 58, 0.14); }
+
+/* a quiet line under the content */
+.gp-note { font-size: 13px; line-height: 1.35; color: var(--muted); text-wrap: balance; }
+
+/* the game's own buttons: two equal halves, or one centred button of its own width */
+.gp-actions { width: 100%; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; }
+.gp-actions.one { display: flex; justify-content: center; }
+.gp-actions.one .btn.big { min-width: min(220px, 100%); }
+.gp-actions .btn.big {
+  position: relative;
+  padding-inline: 14px;
+  white-space: normal;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+/* the red button wears a gold ring to stand out elsewhere; in a panel the choices are equal, so no ring */
+.gp .btn.big.red {
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.55), 0 4px 0 #7a0a04, 0 10px 22px rgba(0, 0, 0, 0.35);
+}
+/* a ring only for the keyboard (never one that makes a button look chosen) */
+.gp .btn:focus { outline: none; }
+.gp .btn:focus-visible { outline: 3px solid var(--gold-bright); outline-offset: 3px; }
+
+/* the key hint inside a button */
+.gp-key {
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  translate: 0 -50%;
+  min-width: 1.5em;
+  padding: 1px 4px;
+  border-radius: 6px;
+  font: 700 11px/1.3 var(--body);
+  letter-spacing: 0;
+  text-shadow: none;
+  background: rgba(0, 0, 0, 0.22);
+}
+.gp-actions .btn.big:has(.gp-key) { padding-inline: 30px; }
+/* touch screens have no keyboard */
+@media (pointer: coarse) {
+  .gp-key { display: none; }
+  .gp-actions .btn.big:has(.gp-key) { padding-inline: 14px; }
+}
+
+/* a phone on its side: everything tighter, so the panel fits the short screen */
+@media (orientation: landscape) and (max-height: 520px) {
+  .ov {
+    padding:
+      max(8px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px))
+      max(8px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+  }
+  .gp { gap: 8px; padding: 12px 16px; border-radius: 22px; }
+  /* the game's buttons are shorter here; a finger still needs 44px */
+  .gp .btn.big { min-height: 44px; padding-block: 8px; }
+  .gp-pill { font-size: 12.5px; min-height: 28px; }
+  .gp-title { font-size: 20px; margin: -2px 0 0; }
+  .gp-card { padding: 10px 14px; font-size: 16px; border-radius: 14px; }
+  .gp-note { font-size: 12px; }
+  .ov.pick-ov.dock-ov {
+    /* below the corner buttons (reactions, gear): they stay in reach beside the results */
+    padding-top: calc(48px + env(safe-area-inset-top, 0px));
+    place-items: center end;
+    background: linear-gradient(to left, rgba(8, 4, 18, 0.6), transparent 60%);
+  }
+}
+
+@keyframes gp-in { from { transform: translateY(18px) scale(0.96); opacity: 0; } }
+@keyframes gp-dock-in { from { transform: translateY(40px); opacity: 0; } }
+.gp.dock { animation-name: gp-dock-in; animation-duration: 0.45s; }
+@media (prefers-reduced-motion: reduce) {
+  .gp { animation: none; }
+}
